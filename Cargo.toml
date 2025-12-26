@@ -1,0 +1,16 @@
+[package]
+name = "bevy_basisu_loader"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+bevy = { version = "0.17", default-features = false, features = ["bevy_asset","bevy_image", "bevy_render"] }
+serde = { version = "1", features = ["derive"] }
+thiserror = { version = "2", default-features = false }
+
+[build-dependencies]
+cc = "1.2"
+bindgen = "0.72"
+
+[workspace]
+members = ["examples/test_scene"]
