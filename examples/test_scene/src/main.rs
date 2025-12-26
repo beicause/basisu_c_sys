@@ -61,7 +61,7 @@ fn setup(
         MeshMaterial3d(materials.add(StandardMaterial {
             uv_transform: Affine2::from_scale(Vec2::new(2., 2.)),
             base_color_texture: Some(asset_server.load_with_settings(
-                "desk_uastc_hdr_4x4.ktx2#basisu",
+                "desk_uastc_hdr_4x4_mips_10.ktx2#basisu",
                 |s: &mut BasisuLoaderSettings| {
                     s.sampler =
                         bevy::image::ImageSampler::Descriptor(bevy::image::ImageSamplerDescriptor {

@@ -165,7 +165,18 @@ impl AssetLoader for BasisuLoader {
             data: None,
             data_order: TextureDataOrder::MipMajor,
             texture_descriptor: TextureDescriptor {
-                size: extent.physical_size(out_format),
+                // Note: we must give wgpu the logical texture dimensions, so it can correctly compute mip sizes.
+                // However this currently causes wgpu to panic if the dimensions aren't a multiple of blocksize.
+                // See https://github.com/gfx-rs/wgpu/issues/7677 for more context.
+                size: {
+                    #[cfg(debug_assertions)]
+                    if extent != extent.physical_size(out_format) {
+                        bevy::log::error!(
+                            "BasisU texture size has to be a multiple of block size to ensure correct mip levels transcoding, otherwise it will panic for now. This is due to a wgpu limitation, see https://github.com/gfx-rs/wgpu/issues/7677"
+                        );
+                    }
+                    extent
+                },
                 format: out_format,
                 dimension: TextureDimension::D2,
                 label: None,
