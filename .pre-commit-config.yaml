@@ -1,0 +1,55 @@
+default_language_version:
+  python: python3
+exclude: |
+  (?x)^(
+    .*thirdparty/.*|
+    .*\.svg|
+  )$
+repos:
+  - repo: https://github.com/codespell-project/codespell
+    rev: v2.4.1
+    hooks:
+      - id: codespell
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v5.0.0
+    hooks:
+      - id: trailing-whitespace
+      - id: end-of-file-fixer
+  - repo: local
+    hooks:
+      - id: cargo-fmt
+        name: cargo-fmt
+        description: Format files with cargo fmt.
+        entry: cargo
+        language: system
+        types: [rust]
+        args: [
+            # "+nightly",
+            "fmt",
+            "--all",
+          ]
+        pass_filenames: false
+
+      - id: cargo-clippy
+        name: cargo-clippy
+        description: Lint rust sources
+        entry: cargo
+        language: system
+        args: [
+            # "+nightly",
+            "clippy",
+            "--workspace",
+            "--all-targets",
+            "--all-features",
+            "--",
+            "-Dwarnings",
+          ]
+        types: [rust]
+        pass_filenames: false
+
+      - id: taplo-toml
+        name: taplo-toml
+        description: Format toml with taplo.
+        entry: taplo fmt
+        language: system
+        types: [toml]
