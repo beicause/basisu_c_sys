@@ -1,0 +1,8 @@
+[package]
+name = "test_scene"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+bevy = { version = "0.17" }
+bevy_basisu_loader = { path = "../.." }
