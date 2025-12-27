@@ -10,12 +10,9 @@ bevy = { version = "0.17", default-features = false, features = [
   "bevy_render",
   "bevy_log",
 ] }
+basisu-sys = { path = "crates/basisu-sys" }
 serde = { version = "1", features = ["derive"] }
 thiserror = { version = "2", default-features = false }
 
-[build-dependencies]
-cc = "1.2"
-bindgen = "0.72"
-
 [workspace]
-members = ["examples/test_scene"]
+members = ["crates/*", "examples/test_scene"]
