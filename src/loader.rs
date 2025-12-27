@@ -10,11 +10,6 @@ use bevy::render::render_resource::{
 use serde::{Deserialize, Serialize};
 use thiserror::Error;
 
-#[derive(Asset, Debug, Clone, PartialEq, TypePath)]
-pub struct BasisuTranscodedImage {
-    pub handle: Handle<Image>,
-}
-
 pub struct BasisuLoader {
     supported_compressed_formats: TextureCompressionMethod,
 }
@@ -64,7 +59,7 @@ pub enum BasisuLoaderError {
 }
 
 impl AssetLoader for BasisuLoader {
-    type Asset = BasisuTranscodedImage;
+    type Asset = Image;
 
     type Settings = BasisuLoaderSettings;
 
@@ -74,7 +69,7 @@ impl AssetLoader for BasisuLoader {
         &self,
         reader: &mut dyn bevy::asset::io::Reader,
         settings: &Self::Settings,
-        load_context: &mut bevy::asset::LoadContext<'_>,
+        _load_context: &mut bevy::asset::LoadContext<'_>,
     ) -> Result<Self::Asset, Self::Error> {
         let mut data = Vec::new();
         reader.read_to_end(&mut data).await?;
@@ -195,11 +190,8 @@ impl AssetLoader for BasisuLoader {
             asset_usage: settings.asset_usage,
             copy_on_resize: false,
         };
-        println!("{:#?}", image);
         image.data = Some(out_data);
-        Ok(BasisuTranscodedImage {
-            handle: load_context.add_labeled_asset("basisu".into(), image),
-        })
+        Ok(image)
     }
 
     fn extensions(&self) -> &[&str] {

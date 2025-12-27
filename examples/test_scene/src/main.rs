@@ -21,7 +21,7 @@ fn setup(
     mut meshes: ResMut<Assets<Mesh>>,
     mut materials: ResMut<Assets<StandardMaterial>>,
 ) {
-    let skybox_handle = asset_server.load("gl_skybox_etc1s_cubemap_mips_12.ktx2#basisu");
+    let skybox_handle = asset_server.load("gl_skybox_etc1s_cubemap_mips_12.ktx2");
     // camera
     commands.spawn((
         Camera3d::default(),
@@ -39,7 +39,7 @@ fn setup(
     commands.spawn((
         Mesh3d(meshes.add(Rectangle::new(1.0, 1.0).mesh().build())),
         MeshMaterial3d(materials.add(StandardMaterial {
-            base_color_texture: Some(asset_server.load("tough_uastc_ldr_4x4_mips_11.ktx2#basisu")),
+            base_color_texture: Some(asset_server.load("tough_uastc_ldr_4x4_mips_11.ktx2")),
             unlit: true,
             ..Default::default()
         })),
@@ -49,7 +49,7 @@ fn setup(
     commands.spawn((
         Mesh3d(meshes.add(Rectangle::new(0.644 * 3.0, 0.874 * 3.0).mesh().build())),
         MeshMaterial3d(materials.add(StandardMaterial {
-            base_color_texture: Some(asset_server.load("desk_uastc_hdr_6x6_mips_10.ktx2#basisu")),
+            base_color_texture: Some(asset_server.load("desk_uastc_hdr_6x6_mips_10.ktx2")),
             unlit: true,
             ..Default::default()
         })),
@@ -61,7 +61,7 @@ fn setup(
         MeshMaterial3d(materials.add(StandardMaterial {
             uv_transform: Affine2::from_scale(Vec2::new(2., 2.)),
             base_color_texture: Some(asset_server.load_with_settings(
-                "desk_uastc_hdr_4x4_mips_10.ktx2#basisu",
+                "desk_uastc_hdr_4x4_mips_10.ktx2",
                 |s: &mut BasisuLoaderSettings| {
                     s.sampler =
                         bevy::image::ImageSampler::Descriptor(bevy::image::ImageSamplerDescriptor {
