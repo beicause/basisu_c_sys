@@ -1,4 +1,4 @@
-use crate::transcoding_wrapper::{self, TextureCompressionMethod, TextureTranscodedFormat};
+use basisu_sys::transcoding::{self, TextureCompressionMethod, TextureTranscodedFormat};
 use bevy::asset::{AssetLoader, RenderAssetUsages};
 use bevy::image::ImageSampler;
 use bevy::prelude::*;
@@ -78,19 +78,19 @@ impl AssetLoader for BasisuLoader {
     ) -> Result<Self::Asset, Self::Error> {
         let mut data = Vec::new();
         reader.read_to_end(&mut data).await?;
-
         let data_size = u32::try_from(data.len()).unwrap();
-        // SAFETY: The transcoding wrapper is safe as long as the transcoding code is correct.
+
+        // SAFETY: Ensure the transcoding code is correct.
         let (out_data, out_format, extent, levels, view_dimension) = unsafe {
-            let transcoder = transcoding_wrapper::ktx2_transcoder_new();
-            if !transcoding_wrapper::ktx2_transcoder_init(transcoder, data.as_ptr(), data_size) {
+            let transcoder = transcoding::ktx2_transcoder_new();
+            if !transcoding::ktx2_transcoder_init(transcoder, data.as_ptr(), data_size) {
                 return Err(BasisuLoaderError::TranscodingError("ktx2_transcoder_init"));
             }
-            if !transcoding_wrapper::ktx2_transcoder_start(transcoder) {
+            if !transcoding::ktx2_transcoder_start(transcoder) {
                 return Err(BasisuLoaderError::TranscodingError("ktx2_transcoder_start"));
             }
             let mut is_srgb = true;
-            let target_format = transcoding_wrapper::ktx2_transcoder_get_transcoded_format(
+            let target_format = transcoding::ktx2_transcoder_get_transcoded_format(
                 transcoder,
                 self.supported_compressed_formats,
                 &raw mut is_srgb,
@@ -102,7 +102,7 @@ impl AssetLoader for BasisuLoader {
             let mut layers = 0;
             let mut faces = 1;
             let mut dst_bytes = 0;
-            if !transcoding_wrapper::ktx2_transcoder_get_texture_info(
+            if !transcoding::ktx2_transcoder_get_texture_info(
                 transcoder,
                 target_format,
                 &raw mut width,
@@ -139,7 +139,7 @@ impl AssetLoader for BasisuLoader {
 
             let mut out = vec![0; dst_bytes as usize];
 
-            if !transcoding_wrapper::ktx2_transcoder_transcode_image(
+            if !transcoding::ktx2_transcoder_transcode_image(
                 transcoder,
                 data.as_ptr(),
                 u32::try_from(data.len()).unwrap(),
@@ -151,8 +151,8 @@ impl AssetLoader for BasisuLoader {
                     "ktx2_transcoder_transcode_image",
                 ));
             }
-            transcoding_wrapper::ktx2_transcoder_clear(transcoder);
-            transcoding_wrapper::ktx2_transcoder_delete(transcoder);
+            transcoding::ktx2_transcoder_clear(transcoder);
+            transcoding::ktx2_transcoder_delete(transcoder);
             (
                 out,
                 texture_transcode_format_to_bevy_format(target_format, is_srgb),

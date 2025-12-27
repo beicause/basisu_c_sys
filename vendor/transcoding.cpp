@@ -1,4 +1,4 @@
-#include "transcoding_wrapper.hpp"
+#include "transcoding.hpp"
 #include "basis_universal/transcoder/basisu_transcoder.h"
 
 enum TextureCompressionMethod;
