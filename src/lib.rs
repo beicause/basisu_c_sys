@@ -13,8 +13,7 @@ impl Plugin for BasisuLoaderPlugin {
         unsafe {
             basisu_sys::transcoding::basisu_transcoder_init();
         }
-        app.init_asset::<BasisuTranscodedImage>()
-            .preregister_asset_loader::<BasisuLoader>(&["ktx2"]);
+        app.preregister_asset_loader::<BasisuLoader>(&["ktx2"]);
     }
 
     fn finish(&self, app: &mut App) {
