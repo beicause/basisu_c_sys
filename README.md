@@ -57,3 +57,12 @@ Or Clone this repo and build them from source with the config in `.cargo/config.
 cargo b -p basisu-vendor --target wasm32-unknown-emscripten --profile web_release
 ```
 And copy them from `target/wasm32-unknown-emscripten/web_release/`
+
+## License
+
+Except where noted (below and/or in individual files), all code in this repository is dual-licensed under either:
+
+* MIT License ([LICENSE-MIT](LICENSE-MIT) or [http://opensource.org/licenses/MIT](http://opensource.org/licenses/MIT))
+* Apache License, Version 2.0 ([LICENSE-APACHE](LICENSE-APACHE) or [http://www.apache.org/licenses/LICENSE-2.0](http://www.apache.org/licenses/LICENSE-2.0))
+
+at your option.
