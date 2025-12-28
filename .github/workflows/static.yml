@@ -4,7 +4,7 @@ name: Deploy static content to Pages
 on:
   # Runs on pushes targeting the default branch
   # push:
-    # branches: ["master"]
+  # branches: ["master"]
 
   # Allows you to run this workflow manually from the Actions tab
   workflow_dispatch:
@@ -30,6 +30,8 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+        with:
+          lfs: true
       - name: Copy prebuilt basisu vendor
         run: rm -r web/debug/ && rm web/basisu-vendor.js && rm web/basisu_vendor.wasm && cp prebuild/basisu-vendor.js web/ && cp prebuild/basisu_vendor.wasm web/
       - name: Install rust toolchain
