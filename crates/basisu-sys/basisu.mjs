@@ -1,3 +1,4 @@
+// Change this to /debug/basisu-vendor.js for debugging basis universal.
 import Vendor from "/basisu-vendor.js";
 
 const vendor = await Vendor();

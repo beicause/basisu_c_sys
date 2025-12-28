@@ -176,6 +176,7 @@ static ChannelType channel_id_to_type(bool is_uastc,
 	}
 }
 
+// Select target format according to https://github.com/KhronosGroup/3D-Formats-Guidelines/blob/main/KTXDeveloperGuide.md.
 static basist::transcoder_texture_format get_target_texture_format(
 		basist::basis_tex_format basis_format, ChannelType channel_type,
 		TextureCompressionMethod supported_compressed_formats) {
