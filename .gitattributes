@@ -1,5 +1,5 @@
 *.ktx2 filter=lfs diff=lfs merge=lfs -text
 *.basisu_ktx2 filter=lfs diff=lfs merge=lfs -text
-wasm/basisu-vendor.js filter=lfs diff=lfs merge=lfs -text
+prebuild/basisu-vendor.js filter=lfs diff=lfs merge=lfs -text
 *.wasm filter=lfs diff=lfs merge=lfs -text
 * !text !filter !merge !diff
