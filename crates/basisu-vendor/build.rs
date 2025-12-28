@@ -1,4 +1,7 @@
 fn main() {
+    // Disable BC1/3/4/5 as we only use BC7 when supported.
+    // Disable PVRTC1/2, ATC, FXT1 as wgpu does not support them.
+
     let mut build = cc::Build::new();
     build
         .cpp(true)
@@ -6,14 +9,15 @@ fn main() {
         .flag("-x")
         .flag("c++")
         .flag("-std=c++17")
-        .define("BASISU_FORCE_DEVEL_MESSAGES", "1")
+        // .define("BASISU_FORCE_DEVEL_MESSAGES", "1")
         // .define("BASISD_SUPPORT_KTX2", "1")
         // .define("BASISD_SUPPORT_KTX2_ZSTD", "1")
         // .define("BASISD_SUPPORT_UASTC", "1")
-        // .define("BASISD_SUPPORT_DXT1", "1") //(BC1)
-        // .define("BASISD_SUPPORT_DXT5A", "1") //(BC3 / 4 / 5)
+        .define("BASISD_SUPPORT_DXT1", "0") //(BC1)
+        .define("BASISD_SUPPORT_DXT5A", "0") //(BC3 / 4 / 5)
         // .define("BASISD_SUPPORT_BC7", "1")
         // .define("BASISD_SUPPORT_BC7_MODE5", "1")
+        //
         .define("BASISD_SUPPORT_PVRTC1", "0")
         // .define("BASISD_SUPPORT_ETC2_EAC_A8", "1")
         // .define("BASISD_SUPPORT_ASTC", "1")
