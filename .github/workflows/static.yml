@@ -1,0 +1,54 @@
+# Simple workflow for deploying static content to GitHub Pages
+name: Deploy static content to Pages
+
+on:
+  # Runs on pushes targeting the default branch
+  # push:
+    # branches: ["master"]
+
+  # Allows you to run this workflow manually from the Actions tab
+  workflow_dispatch:
+
+# Sets permissions of the GITHUB_TOKEN to allow deployment to GitHub Pages
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+# Allow only one concurrent deployment, skipping runs queued between the run in-progress and latest queued.
+concurrency:
+  group: "pages"
+  cancel-in-progress: true
+
+jobs:
+  # Single deploy job since we're just deploying
+  deploy:
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Install rust toolchain
+        uses: actions-rs/toolchain@v1.0.6
+        with:
+          target: wasm32-unknown-unknown
+          default: stable
+      - name: Build
+        run: cargo build -p test_scene --target wasm32-unknown-unknown --profile web_release
+      - name: Install wasm-bindgen
+        run: cargo install --force wasm-bindgen-cli
+      - name: Wasm bindgen
+        run: wasm-bindgen --out-name wasm_example --out-dir web/target/ --target web target/wasm32-unknown-unknown/web_release/test_scene.wasm
+      - name: Copy basisu-vendor
+        run: cp prebuild/basisu-vendor.js web/ && cp prebuild/basisu_vendor.wasm web/
+      - name: Setup Pages
+        uses: actions/configure-pages@v5
+      - name: Upload artifact
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: web/
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4
