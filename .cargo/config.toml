@@ -14,3 +14,6 @@ rustflags = [
   "-Clink-arg=-sEXPORTED_RUNTIME_METHODS=HEAPU8",
   "-Clink-arg=-sEXPORTED_FUNCTIONS=_malloc,_free,_rust_basisu_transcoder_init,_rust_ktx2_transcoder_new,_rust_ktx2_transcoder_delete,_rust_ktx2_transcoder_transcode_image,_rust_ktx2_transcoder_get_r_dst_buf,_rust_ktx2_transcoder_get_r_dst_buf_len,_rust_ktx2_transcoder_get_r_width,_rust_ktx2_transcoder_get_r_height,_rust_ktx2_transcoder_get_r_levels,_rust_ktx2_transcoder_get_r_layers,_rust_ktx2_transcoder_get_r_faces,_rust_ktx2_transcoder_get_r_target_format,_rust_ktx2_transcoder_get_r_is_srgb",
 ]
+
+[unstable]
+build-std = ["std"]
