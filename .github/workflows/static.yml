@@ -30,19 +30,20 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+      - name: Copy prebuilt basisu vendor
+        run: rm -r web/debug/ && rm web/basisu-vendor.js && rm web/basisu_vendor.wasm && cp prebuild/basisu-vendor.js web/ && cp prebuild/basisu_vendor.wasm web/
       - name: Install rust toolchain
         uses: actions-rs/toolchain@v1.0.6
         with:
           target: wasm32-unknown-unknown
           default: stable
+          toolchain: stable
       - name: Build
         run: cargo build -p test_scene --target wasm32-unknown-unknown --profile web_release
       - name: Install wasm-bindgen
         run: cargo install --force wasm-bindgen-cli
       - name: Wasm bindgen
         run: wasm-bindgen --out-name wasm_example --out-dir web/target/ --target web target/wasm32-unknown-unknown/web_release/test_scene.wasm
-      - name: Copy basisu-vendor
-        run: cp prebuild/basisu-vendor.js web/ && cp prebuild/basisu_vendor.wasm web/
       - name: Setup Pages
         uses: actions/configure-pages@v5
       - name: Upload artifact
