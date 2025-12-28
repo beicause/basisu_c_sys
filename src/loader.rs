@@ -177,7 +177,7 @@ fn texture_transcode_format_to_bevy_format(
     is_srgb: bool,
 ) -> TextureFormat {
     let mut fmt = match transcoded {
-        TextureTranscodedFormat::cTFETC1_RGB => unreachable!(),
+        TextureTranscodedFormat::cTFETC1_RGB => TextureFormat::Etc2Rgb8Unorm,
         TextureTranscodedFormat::cTFETC2_RGBA => TextureFormat::Etc2Rgba8Unorm,
         TextureTranscodedFormat::cTFBC1_RGB => TextureFormat::Bc1RgbaUnorm,
         TextureTranscodedFormat::cTFBC3_RGBA => TextureFormat::Bc3RgbaUnorm,
