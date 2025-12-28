@@ -1,8 +1,14 @@
 fn main() {
-    // Disable BC1/3/4/5 as we only use BC7 when supported.
-    // Disable PVRTC1/2, ATC, FXT1 as wgpu does not support them.
-
     let mut build = cc::Build::new();
+
+    let target_os = std::env::var("CARGO_CFG_TARGET_OS").unwrap();
+    // Use c++_static for Android.
+    if target_os == "android" {
+        build.cpp_link_stdlib("c++_static");
+    }
+
+    // Disable BC1/3/4/5 as we always use BC7 when supported.
+    // Disable PVRTC1/2, ATC, FXT1 as wgpu does not support them.
     build
         .cpp(true)
         .warnings(false)
@@ -17,7 +23,6 @@ fn main() {
         .define("BASISD_SUPPORT_DXT5A", "0") //(BC3 / 4 / 5)
         // .define("BASISD_SUPPORT_BC7", "1")
         // .define("BASISD_SUPPORT_BC7_MODE5", "1")
-        //
         .define("BASISD_SUPPORT_PVRTC1", "0")
         // .define("BASISD_SUPPORT_ETC2_EAC_A8", "1")
         // .define("BASISD_SUPPORT_ASTC", "1")

@@ -3,6 +3,9 @@ name = "test_scene"
 version = "0.1.0"
 edition = "2024"
 
+[lib]
+crate-type = ["lib", "cdylib"]
+
 [dependencies]
 bevy = { version = "0.17" }
 bevy_basisu_loader = { path = "../.." }
