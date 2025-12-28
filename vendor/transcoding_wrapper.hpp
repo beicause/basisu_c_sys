@@ -6,7 +6,7 @@ class ktx2_transcoder;
 extern "C" {
 
 // This enum must be in sync with the `basist::transcoder_texture_format`.
-enum class TextureTranscodedFormat {
+enum TextureTranscodedFormat : unsigned int {
 	// Compressed formats
 
 	// ETC1-2
@@ -82,7 +82,7 @@ enum class TextureTranscodedFormat {
 	cTFATC_RGBA_INTERPOLATED_ALPHA = cTFATC_RGBA,
 };
 
-enum TextureCompressionMethod {
+enum TextureCompressionMethod : unsigned char {
 	NONE = 0,
 	ASTC_LDR = 1 << 0,
 	ASTC_HDR = 1 << 1,
@@ -90,23 +90,37 @@ enum TextureCompressionMethod {
 	ETC2 = 1 << 3
 };
 
-void basisu_transcoder_init();
+struct Transcoder {
+	basist::ktx2_transcoder *inner;
+	unsigned char *src_buf;
+	unsigned int src_buf_len;
+	unsigned char *r_dst_buf;
+	unsigned int r_dst_buf_len;
+	unsigned int r_width;
+	unsigned int r_height;
+	unsigned int r_levels;
+	unsigned int r_layers;
+	unsigned int r_faces;
+	TextureTranscodedFormat r_target_format;
+	bool r_is_srgb;
+};
 
-basist::ktx2_transcoder *ktx2_transcoder_new();
+void c_basisu_transcoder_init();
 
-void ktx2_transcoder_delete(basist::ktx2_transcoder *transcoder);
+Transcoder *c_ktx2_transcoder_new();
 
-bool ktx2_transcoder_start(basist::ktx2_transcoder *transcoder);
+void c_ktx2_transcoder_delete(Transcoder *transcoder);
 
-void ktx2_transcoder_clear(basist::ktx2_transcoder *transcoder);
+bool c_ktx2_transcoder_transcode_image(Transcoder *transcoder, const unsigned char *data, unsigned int data_size,
+		TextureCompressionMethod supported_compressed_formats);
 
-bool ktx2_transcoder_init(basist::ktx2_transcoder *transcoder, const unsigned char *data, unsigned int data_size);
-
-bool ktx2_transcoder_get_texture_info(basist::ktx2_transcoder *transcoder, TextureTranscodedFormat target_format, unsigned int *r_width, unsigned int *r_height, unsigned int *r_levels, unsigned int *r_layers, unsigned int *r_faces, unsigned int *r_total_bytes);
-
-TextureTranscodedFormat ktx2_transcoder_get_transcoded_format(basist::ktx2_transcoder *transcoder, TextureCompressionMethod supported_compressed_formats, bool *r_is_srgb);
-
-bool ktx2_transcoder_transcode_image(
-		basist::ktx2_transcoder *transcoder,
-		const unsigned char *data, unsigned int data_size, TextureTranscodedFormat target_format, unsigned char *r_dst_data, unsigned int r_dst_data_size);
+unsigned char *c_ktx2_transcoder_get_r_dst_buf(Transcoder *transcoder);
+unsigned int c_ktx2_transcoder_get_r_dst_buf_len(Transcoder *transcoder);
+unsigned int c_ktx2_transcoder_get_r_width(Transcoder *transcoder);
+unsigned int c_ktx2_transcoder_get_r_height(Transcoder *transcoder);
+unsigned int c_ktx2_transcoder_get_r_levels(Transcoder *transcoder);
+unsigned int c_ktx2_transcoder_get_r_layers(Transcoder *transcoder);
+unsigned int c_ktx2_transcoder_get_r_faces(Transcoder *transcoder);
+TextureTranscodedFormat c_ktx2_transcoder_get_r_target_format(Transcoder *transcoder);
+bool c_ktx2_transcoder_get_r_is_srgb(Transcoder *transcoder);
 }

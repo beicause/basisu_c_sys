@@ -11,9 +11,9 @@ impl Plugin for BasisuLoaderPlugin {
     fn build(&self, app: &mut App) {
         // SAFETY: Initialization of the basis universal transcoder should always succeed.
         unsafe {
-            basisu_sys::transcoding::basisu_transcoder_init();
+            basisu_sys::basisu_transcoder_init();
         }
-        app.preregister_asset_loader::<BasisuLoader>(&["ktx2"]);
+        app.preregister_asset_loader::<BasisuLoader>(&["basisu_ktx2"]);
     }
 
     fn finish(&self, app: &mut App) {

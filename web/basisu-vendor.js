@@ -1,0 +1,1 @@
+../target/wasm32-unknown-emscripten/web_release/basisu-vendor.js

@@ -1,7 +1,7 @@
-#include "transcoding.hpp"
+#include "transcoding_wrapper.hpp"
 #include "basis_universal/transcoder/basisu_transcoder.h"
 
-enum TextureCompressionMethod;
+enum TextureCompressionMethod : unsigned char;
 
 enum ChannelType {
 	CHANNEL_RGB,
@@ -19,47 +19,44 @@ static basist::transcoder_texture_format get_target_texture_format(
 		TextureCompressionMethod supported_compressed_formats);
 
 extern "C" {
-void basisu_transcoder_init() {
+void c_basisu_transcoder_init() {
 	basist::basisu_transcoder_init();
 }
 
-basist::ktx2_transcoder *ktx2_transcoder_new() {
-	basist::ktx2_transcoder *transcoder = new basist::ktx2_transcoder();
+Transcoder *c_ktx2_transcoder_new() {
+	basist::ktx2_transcoder *inner = new basist::ktx2_transcoder();
+	Transcoder *transcoder = new Transcoder();
+	transcoder->inner = inner;
 	return transcoder;
 }
 
-void ktx2_transcoder_delete(basist::ktx2_transcoder *transcoder) {
+void c_ktx2_transcoder_delete(Transcoder *transcoder) {
+	if (transcoder->r_dst_buf) {
+		free(transcoder->r_dst_buf);
+		transcoder->r_dst_buf = nullptr;
+		transcoder->r_dst_buf_len = 0;
+	}
 	delete transcoder;
 }
 
-void ktx2_transcoder_clear(basist::ktx2_transcoder *transcoder) {
-	transcoder->clear();
-}
+static bool c_ktx2_transcoder_get_texture_info(Transcoder *transcoder, TextureTranscodedFormat target_format, unsigned int *r_width, unsigned int *r_height, unsigned int *r_levels, unsigned int *r_layers, unsigned int *r_faces, unsigned int *r_total_bytes) {
+	basist::ktx2_transcoder *inner = transcoder->inner;
 
-bool ktx2_transcoder_init(basist::ktx2_transcoder *transcoder, const unsigned char *data, unsigned int data_size) {
-	return transcoder->init(data, data_size);
-}
-
-bool ktx2_transcoder_start(basist::ktx2_transcoder *transcoder) {
-	return transcoder->start_transcoding();
-}
-
-bool ktx2_transcoder_get_texture_info(basist::ktx2_transcoder *transcoder, TextureTranscodedFormat target_format, unsigned int *r_width, unsigned int *r_height, unsigned int *r_levels, unsigned int *r_layers, unsigned int *r_faces, unsigned int *r_total_bytes) {
-	*r_width = transcoder->get_width();
-	*r_height = transcoder->get_height();
-	*r_levels = transcoder->get_levels();
-	*r_layers = transcoder->get_layers();
-	*r_faces = transcoder->get_faces();
+	*r_width = inner->get_width();
+	*r_height = inner->get_height();
+	*r_levels = inner->get_levels();
+	*r_layers = inner->get_layers();
+	*r_faces = inner->get_faces();
 
 	const basist::transcoder_texture_format transcode_format = static_cast<basist::transcoder_texture_format>(static_cast<uint32_t>(target_format));
 
 	uint32_t total_bytes = 0;
-	uint32_t total_layers = basisu::maximumu(transcoder->get_layers(), 1u);
-	for (uint32_t level_index = 0; level_index < transcoder->get_levels(); level_index++) {
+	uint32_t total_layers = basisu::maximumu(inner->get_layers(), 1u);
+	for (uint32_t level_index = 0; level_index < inner->get_levels(); level_index++) {
 		for (uint32_t layer_index = 0; layer_index < total_layers; layer_index++) {
-			for (uint32_t face_index = 0; face_index < transcoder->get_faces(); face_index++) {
+			for (uint32_t face_index = 0; face_index < inner->get_faces(); face_index++) {
 				basist::ktx2_image_level_info level_info;
-				if (!transcoder->get_image_level_info(level_info, level_index, layer_index, face_index)) {
+				if (!inner->get_image_level_info(level_info, level_index, layer_index, face_index)) {
 					return false;
 				}
 				uint32_t bytes = basist::basis_compute_transcoded_image_size_in_bytes(transcode_format, level_info.m_orig_width, level_info.m_orig_height);
@@ -72,28 +69,40 @@ bool ktx2_transcoder_get_texture_info(basist::ktx2_transcoder *transcoder, Textu
 	return true;
 }
 
-TextureTranscodedFormat ktx2_transcoder_get_transcoded_format(basist::ktx2_transcoder *transcoder, TextureCompressionMethod supported_compressed_formats, bool *r_is_srgb) {
-	basist::ktx2_df_channel_id channel_id0 = transcoder->get_dfd_channel_id0();
-	basist::ktx2_df_channel_id channel_id1 = transcoder->get_dfd_channel_id1();
-	basist::basis_tex_format basis_format = transcoder->get_basis_tex_format();
-	ChannelType channel_type = channel_id_to_type(transcoder->is_uastc(), channel_id0, channel_id1);
+static void c_ktx2_transcoder_get_target_format(Transcoder *transcoder, TextureCompressionMethod supported_compressed_formats, bool *r_is_srgb, TextureTranscodedFormat *r_format) {
+	basist::ktx2_transcoder *inner = transcoder->inner;
+
+	basist::ktx2_df_channel_id channel_id0 = inner->get_dfd_channel_id0();
+	basist::ktx2_df_channel_id channel_id1 = inner->get_dfd_channel_id1();
+	basist::basis_tex_format basis_format = inner->get_basis_tex_format();
+	ChannelType channel_type = channel_id_to_type(inner->is_uastc(), channel_id0, channel_id1);
 	basist::transcoder_texture_format target_format = get_target_texture_format(basis_format, channel_type, supported_compressed_formats);
-	*r_is_srgb = transcoder->get_dfd_transfer_func() == basist::KTX2_KHR_DF_TRANSFER_SRGB;
-	return static_cast<TextureTranscodedFormat>(static_cast<uint32_t>(target_format));
+	*r_is_srgb = inner->get_dfd_transfer_func() == basist::KTX2_KHR_DF_TRANSFER_SRGB;
+	*r_format = static_cast<TextureTranscodedFormat>(static_cast<uint32_t>(target_format));
 }
 
-bool ktx2_transcoder_transcode_image(
-		basist::ktx2_transcoder *transcoder,
-		const uint8_t *data, uint32_t data_size, TextureTranscodedFormat target_format, uint8_t *r_dst_data, uint32_t r_dst_data_size) {
-	const basist::transcoder_texture_format transcode_format = static_cast<basist::transcoder_texture_format>(static_cast<uint32_t>(target_format));
+bool c_ktx2_transcoder_transcode_image(
+		Transcoder *transcoder, const unsigned char *data, unsigned int data_size,
+		TextureCompressionMethod supported_compressed_formats) {
+	basist::ktx2_transcoder *inner = transcoder->inner;
+	inner->init(data, data_size);
+	inner->start_transcoding();
 
-	uint32_t total_layers = basisu::maximumu(transcoder->get_layers(), 1u);
-	uint8_t *out = r_dst_data;
-	for (uint32_t level_index = 0; level_index < transcoder->get_levels(); level_index++) {
+	c_ktx2_transcoder_get_target_format(transcoder, supported_compressed_formats, &transcoder->r_is_srgb, &transcoder->r_target_format);
+	const basist::transcoder_texture_format transcode_format = static_cast<basist::transcoder_texture_format>(static_cast<uint32_t>(transcoder->r_target_format));
+
+	if (!c_ktx2_transcoder_get_texture_info(transcoder, transcoder->r_target_format, &transcoder->r_width, &transcoder->r_height, &transcoder->r_levels, &transcoder->r_layers, &transcoder->r_faces, &transcoder->r_dst_buf_len)) {
+		return false;
+	}
+	transcoder->r_dst_buf = (unsigned char *)malloc(transcoder->r_dst_buf_len);
+
+	uint32_t total_layers = basisu::maximumu(inner->get_layers(), 1u);
+	uint8_t *out = transcoder->r_dst_buf;
+	for (uint32_t level_index = 0; level_index < inner->get_levels(); level_index++) {
 		for (uint32_t layer_index = 0; layer_index < total_layers; layer_index++) {
-			for (uint32_t face_index = 0; face_index < transcoder->get_faces(); face_index++) {
+			for (uint32_t face_index = 0; face_index < inner->get_faces(); face_index++) {
 				basist::ktx2_image_level_info level_info;
-				if (!transcoder->get_image_level_info(level_info, level_index, layer_index, face_index)) {
+				if (!inner->get_image_level_info(level_info, level_index, layer_index, face_index)) {
 					return false;
 				}
 
@@ -110,7 +119,7 @@ bool ktx2_transcoder_transcode_image(
 					total_dst_blocks_or_pixels = num_dst_blocks_x * num_dst_blocks_y;
 				}
 
-				if (!transcoder->transcode_image_level(level_index, layer_index, face_index, out, total_dst_blocks_or_pixels, transcode_format)) {
+				if (!inner->transcode_image_level(level_index, layer_index, face_index, out, total_dst_blocks_or_pixels, transcode_format)) {
 					return false;
 				}
 
@@ -119,6 +128,7 @@ bool ktx2_transcoder_transcode_image(
 			}
 		}
 	}
+	transcoder->inner->clear();
 
 	return true;
 }
@@ -241,4 +251,31 @@ static basist::transcoder_texture_format get_target_texture_format(
 			return basist::transcoder_texture_format::cTFTotalTextureFormats;
 	}
 	return basist::transcoder_texture_format::cTFTotalTextureFormats;
+}
+unsigned char *c_ktx2_transcoder_get_r_dst_buf(Transcoder *transcoder) {
+	return transcoder->r_dst_buf;
+}
+unsigned int c_ktx2_transcoder_get_r_dst_buf_len(Transcoder *transcoder) {
+	return transcoder->r_dst_buf_len;
+}
+unsigned int c_ktx2_transcoder_get_r_width(Transcoder *transcoder) {
+	return transcoder->r_width;
+}
+unsigned int c_ktx2_transcoder_get_r_height(Transcoder *transcoder) {
+	return transcoder->r_height;
+}
+unsigned int c_ktx2_transcoder_get_r_levels(Transcoder *transcoder) {
+	return transcoder->r_levels;
+}
+unsigned int c_ktx2_transcoder_get_r_layers(Transcoder *transcoder) {
+	return transcoder->r_layers;
+}
+unsigned int c_ktx2_transcoder_get_r_faces(Transcoder *transcoder) {
+	return transcoder->r_faces;
+}
+TextureTranscodedFormat c_ktx2_transcoder_get_r_target_format(Transcoder *transcoder) {
+	return transcoder->r_target_format;
+}
+bool c_ktx2_transcoder_get_r_is_srgb(Transcoder *transcoder) {
+	return transcoder->r_is_srgb;
 }

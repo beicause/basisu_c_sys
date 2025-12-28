@@ -10,9 +10,15 @@ bevy = { version = "0.17", default-features = false, features = [
   "bevy_render",
   "bevy_log",
 ] }
-basisu-sys = { path = "crates/basisu-sys" }
 serde = { version = "1", features = ["derive"] }
 thiserror = { version = "2", default-features = false }
+basisu-sys = { path = "crates/basisu-sys" }
 
 [workspace]
 members = ["crates/*", "examples/test_scene"]
+
+[profile.web_release]
+inherits = "release"
+opt-level = "s"
+lto = "thin"
+codegen-units = 1

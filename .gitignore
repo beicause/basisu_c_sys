@@ -1,2 +1,7 @@
 /target
+
+.zed
+.vscode
+.idea
+
 *.log
