@@ -4,6 +4,7 @@ version = "0.1.0"
 edition = "2024"
 
 [lib]
+name = "test_scene_lib"
 crate-type = ["lib", "cdylib"]
 
 [dependencies]

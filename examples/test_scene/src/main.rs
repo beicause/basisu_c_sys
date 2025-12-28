@@ -1,3 +1,3 @@
 fn main() {
-    test_scene::main();
+    test_scene_lib::main();
 }
