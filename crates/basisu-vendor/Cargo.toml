@@ -1,0 +1,10 @@
+[package]
+name = "basisu-vendor"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+basisu-bindgen = { path = "../basisu-bindgen" }
+
+[build-dependencies]
+cc = "1.2"

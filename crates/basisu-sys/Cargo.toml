@@ -3,8 +3,9 @@ name = "basisu-sys"
 version = "0.1.0"
 edition = "2024"
 
-[dependencies]
+[target.'cfg(target_arch = "wasm32")'.dependencies]
+basisu-bindgen = { path = "../basisu-bindgen" }
+wasm-bindgen = "0.2.106"
 
-[build-dependencies]
-cc = "1.2"
-bindgen = "0.72"
+[target.'cfg(not(target_arch = "wasm32"))'.dependencies]
+basisu-vendor = { path = "../basisu-vendor" }
