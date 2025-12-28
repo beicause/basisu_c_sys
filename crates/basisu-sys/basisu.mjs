@@ -1,5 +1,5 @@
-// Change this to /debug/basisu-vendor.js for debugging basis universal.
-import Vendor from "/basisu-vendor.js";
+// Change this to "debug/basisu-vendor.js" for debugging basis universal.
+import Vendor from "basisu-vendor";
 
 const vendor = await Vendor();
 

@@ -1,6 +1,7 @@
 <html lang="en">
 	<head>
 		<meta charset="UTF-8" />
+		<meta name="viewport" content="width=device-width, initial-scale=1.0" />
 		<style>
 			body {
 				background: linear-gradient(
@@ -21,6 +22,13 @@
 		</style>
 		<title>Wasm Example</title>
 	</head>
+	<script type="importmap">
+		{
+			"imports": {
+				"basisu-vendor": "./basisu-vendor.js"
+			}
+		}
+	</script>
 	<script type="module">
 		import init from "./target/wasm_example.js";
 		init();

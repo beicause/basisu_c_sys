@@ -1,1 +1,1 @@
-../target/wasm32-unknown-emscripten/web_release/basisu_vendor.wasm
+../prebuild/basisu_vendor.wasm
