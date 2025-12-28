@@ -8,7 +8,9 @@ Although Bevy includes built-in support for Basis Universal textures via the [`b
 3. No support for WASM
 4. It compiles both the encoder and transcoder and includes transcoding formats not supported by wgpu, which increases binary size
 
-This plugin adds supports for USATC HDR, and WASM through using JavaScript to call BasisU compiled with `wasm32-unknown-emscripten`, and includes only the transcoder and necessary transcoding formats.
+This plugin adds a loader for Basis Universal KTX2 textures with support for ETC1S, UASTC LDR and USATC HDR, and web support through JavaScript glue to call Basis Universal C++ library compiled with `wasm32-unknown-emscripten` which includes only the transcoder and necessary transcoding formats.
+
+Web demo: https://beicause.github.io/bevy_basisu_loader/
 
 ## Usage
 
@@ -34,9 +36,9 @@ pub fn main() {
 
 ⚠️Note: you have to rename the file extension to `.basisu_ktx2` to load it with this `BasisuLoader`. This is a limitations of bevy because otherwise bevy will load `.ktx2` file with its `ImageLoader`.
 
-⚠️Note: The ompressed texture dimensions must be a multiplier of block size. See https://github.com/gfx-rs/wgpu/issues/7677 for more context.
-block_size = 4, for etc1s/uastc_ldr/uastc_hdr_4x4
-block_size = 4 or 6, for uastc_hdr_6x6
+⚠️Note: The ompressed texture dimensions must be a multiplier of block size. See https://github.com/gfx-rs/wgpu/issues/7677 for more context.  
+block_size = 4, for etc1s/uastc_ldr/uastc_hdr_4x4  
+block_size = 4 or 6, for uastc_hdr_6x6  
 
 ## Implementation details
 
