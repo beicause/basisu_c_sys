@@ -50,7 +50,17 @@ The `crates/basisu-sys`. For native platforms it re-exports the APIs of `basisu-
 
 ## Run on web
 
-TLDR: Copy the `basisu-vendor.js` and `basisu_vendor.wasm` to the root dir of your webpage. The prebuilt wasm can be found in `prebuild/`.
+TLDR: Copy the `basisu-vendor.js` and `basisu_vendor.wasm` to your webpage assets and provide `basisu-vendor` importmap:
+```html
+	<script type="importmap">
+		{
+			"imports": {
+				"basisu-vendor": "./basisu-vendor.js"
+			}
+		}
+	</script>
+```
+The prebuilt wasm can be found in `prebuild/`.
 
 Or Clone this repo and build them from source with the config in `.cargo/config.toml`:
 ```sh
