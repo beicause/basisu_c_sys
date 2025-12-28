@@ -14,6 +14,8 @@ repos:
     rev: v5.0.0
     hooks:
       - id: trailing-whitespace
+        args: [--markdown-linebreak-ext=md]
+      - id: check-added-large-files
       - id: end-of-file-fixer
   - repo: local
     hooks:
