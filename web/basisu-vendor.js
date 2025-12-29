@@ -1,1 +1,1 @@
-../prebuild/basisu-vendor.js
+../prebuilt/basisu-vendor.js

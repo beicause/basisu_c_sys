@@ -14,7 +14,7 @@ Web demo: https://beicause.github.io/bevy_basisu_loader/
 
 ## Usage
 
-1. Add Cargo dependency:
+1. Add the Cargo dependency:
 ```toml
 bevy_basisu_loader = { version = "0.1", git = "https://github.com/beicause/bevy_basisu_loader" }
 ```
@@ -62,13 +62,19 @@ TLDR: Copy the `basisu-vendor.js` and `basisu_vendor.wasm` to your webpage asset
 		}
 	</script>
 ```
-The prebuilt wasm can be found in `prebuild/`.
+The prebuilt wasm can be found in `prebuilt/`.
 
 Or Clone this repo and build them from source with the config in `.cargo/config.toml`:
 ```sh
-cargo b -p basisu-vendor --target wasm32-unknown-emscripten --profile web_release
+cargo b_basisu_vendor
 ```
 And copy them from `target/wasm32-unknown-emscripten/web_release/`
+
+## Bevy version compatibility
+
+| `bevy` | `bevy_basisu_loader` |
+| ------ | -------------------- |
+| 0.17   | 0.1                  |
 
 ## License
 

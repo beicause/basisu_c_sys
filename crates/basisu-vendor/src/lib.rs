@@ -20,8 +20,8 @@ pub unsafe extern "C" fn rust_ktx2_transcoder_delete(transcoder: *mut Transcoder
 #[unsafe(no_mangle)]
 pub unsafe extern "C" fn rust_ktx2_transcoder_transcode_image(
     transcoder: *mut Transcoder,
-    data: *const ::std::os::raw::c_uchar,
-    data_size: ::std::os::raw::c_uint,
+    data: *const ::core::ffi::c_uchar,
+    data_size: ::core::ffi::c_uint,
     supported_compressed_formats: TextureCompressionMethod,
 ) -> bool {
     unsafe {
@@ -37,43 +37,43 @@ pub unsafe extern "C" fn rust_ktx2_transcoder_transcode_image(
 #[unsafe(no_mangle)]
 pub unsafe extern "C" fn rust_ktx2_transcoder_get_r_dst_buf(
     transcoder: *mut Transcoder,
-) -> *mut ::std::os::raw::c_uchar {
+) -> *mut ::core::ffi::c_uchar {
     unsafe { basisu_bindgen::c_ktx2_transcoder_get_r_dst_buf(transcoder) }
 }
 #[unsafe(no_mangle)]
 pub unsafe extern "C" fn rust_ktx2_transcoder_get_r_dst_buf_len(
     transcoder: *mut Transcoder,
-) -> ::std::os::raw::c_uint {
+) -> ::core::ffi::c_uint {
     unsafe { basisu_bindgen::c_ktx2_transcoder_get_r_dst_buf_len(transcoder) }
 }
 #[unsafe(no_mangle)]
 pub unsafe extern "C" fn rust_ktx2_transcoder_get_r_width(
     transcoder: *mut Transcoder,
-) -> ::std::os::raw::c_uint {
+) -> ::core::ffi::c_uint {
     unsafe { basisu_bindgen::c_ktx2_transcoder_get_r_width(transcoder) }
 }
 #[unsafe(no_mangle)]
 pub unsafe extern "C" fn rust_ktx2_transcoder_get_r_height(
     transcoder: *mut Transcoder,
-) -> ::std::os::raw::c_uint {
+) -> ::core::ffi::c_uint {
     unsafe { basisu_bindgen::c_ktx2_transcoder_get_r_height(transcoder) }
 }
 #[unsafe(no_mangle)]
 pub unsafe extern "C" fn rust_ktx2_transcoder_get_r_levels(
     transcoder: *mut Transcoder,
-) -> ::std::os::raw::c_uint {
+) -> ::core::ffi::c_uint {
     unsafe { basisu_bindgen::c_ktx2_transcoder_get_r_levels(transcoder) }
 }
 #[unsafe(no_mangle)]
 pub unsafe extern "C" fn rust_ktx2_transcoder_get_r_layers(
     transcoder: *mut Transcoder,
-) -> ::std::os::raw::c_uint {
+) -> ::core::ffi::c_uint {
     unsafe { basisu_bindgen::c_ktx2_transcoder_get_r_layers(transcoder) }
 }
 #[unsafe(no_mangle)]
 pub unsafe extern "C" fn rust_ktx2_transcoder_get_r_faces(
     transcoder: *mut Transcoder,
-) -> ::std::os::raw::c_uint {
+) -> ::core::ffi::c_uint {
     unsafe { basisu_bindgen::c_ktx2_transcoder_get_r_faces(transcoder) }
 }
 #[unsafe(no_mangle)]
