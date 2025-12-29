@@ -9,7 +9,15 @@ use bevy_basisu_loader::{BasisuLoaderPlugin, BasisuLoaderSettings};
 #[bevy_main]
 pub fn main() {
     App::new()
-        .add_plugins(DefaultPlugins)
+        .add_plugins(DefaultPlugins.set(WindowPlugin {
+            primary_window: Some(Window {
+                // Bind to canvas included in `index.html`
+                canvas: Some("#bevy".to_owned()),
+                fit_canvas_to_parent: true,
+                ..default()
+            }),
+            ..default()
+        }))
         .add_plugins(BasisuLoaderPlugin)
         .add_systems(Startup, setup)
         .add_systems(Update, rotate_camera)
@@ -79,12 +87,16 @@ fn setup(
             * Transform::from_rotation(Quat::from_rotation_y(-45.0)),
     ));
 
-    // ambient light
-    commands.insert_resource(AmbientLight {
-        color: Color::srgb_u8(210, 220, 240),
-        brightness: 1.0,
-        ..default()
-    });
+    // UI
+    commands.spawn((
+        Text::new("Press Q, E to rotate camera."),
+        Node {
+            position_type: PositionType::Absolute,
+            top: px(12),
+            left: px(12),
+            ..default()
+        },
+    ));
 }
 
 fn rotate_camera(
