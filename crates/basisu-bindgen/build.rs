@@ -4,6 +4,7 @@ fn main() {
     bindgen::Builder::default()
         .clang_args(&["-x", "c++", "-std=c++17", "-fvisibility=default"])
         .header("../../vendor/transcoding_wrapper.hpp")
+        .use_core()
         .parse_callbacks(Box::new(bindgen::CargoCallbacks::new()))
         .allowlist_type("Transcoder")
         .allowlist_type("TextureTranscodedFormat")

@@ -1,5 +1,9 @@
+[target.wasm32-unknown-unknown]
+rustflags = ["-Ctarget-feature=+simd128"]
+
 [target.'cfg(all(not(debug_assertions), target_os = "emscripten"))']
 rustflags = [
+  "-Ctarget-feature=+simd128",
   "-Clink-arg=-sEXPORT_ES6",
   "-Clink-arg=-sALLOW_MEMORY_GROWTH",
   "-Clink-arg=-sEXPORTED_RUNTIME_METHODS=HEAPU8",
@@ -8,6 +12,7 @@ rustflags = [
 
 [target.'cfg(all(debug_assertions, target_os = "emscripten"))']
 rustflags = [
+  "-Ctarget-feature=+simd128",
   "-Clink-arg=-sASSERTIONS=1",
   "-Clink-arg=-sEXPORT_ES6",
   "-Clink-arg=-sALLOW_MEMORY_GROWTH",
@@ -15,5 +20,6 @@ rustflags = [
   "-Clink-arg=-sEXPORTED_FUNCTIONS=_malloc,_free,_rust_basisu_transcoder_init,_rust_ktx2_transcoder_new,_rust_ktx2_transcoder_delete,_rust_ktx2_transcoder_transcode_image,_rust_ktx2_transcoder_get_r_dst_buf,_rust_ktx2_transcoder_get_r_dst_buf_len,_rust_ktx2_transcoder_get_r_width,_rust_ktx2_transcoder_get_r_height,_rust_ktx2_transcoder_get_r_levels,_rust_ktx2_transcoder_get_r_layers,_rust_ktx2_transcoder_get_r_faces,_rust_ktx2_transcoder_get_r_target_format,_rust_ktx2_transcoder_get_r_is_srgb",
 ]
 
-[unstable]
-build-std = ["std"]
+[alias]
+b_basisu_vendor = "b -Z build-std=std,panic_abort -p basisu-vendor --target wasm32-unknown-emscripten --profile web_release"
+b_test_scene = "b -Z build-std=std,panic_abort -p test_scene --target wasm32-unknown-unknown"

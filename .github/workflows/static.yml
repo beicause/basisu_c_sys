@@ -33,7 +33,7 @@ jobs:
         with:
           lfs: true
       - name: Copy prebuilt basisu vendor
-        run: rm -r web/debug/ && rm web/basisu-vendor.js && rm web/basisu_vendor.wasm && cp prebuild/basisu-vendor.js web/ && cp prebuild/basisu_vendor.wasm web/
+        run: rm -r web/debug/ && rm web/basisu-vendor.js && rm web/basisu_vendor.wasm && cp prebuilt/basisu-vendor.js web/ && cp prebuilt/basisu_vendor.wasm web/
       - name: Install rust toolchain
         uses: actions-rs/toolchain@v1.0.6
         with:
@@ -41,7 +41,7 @@ jobs:
           default: stable
           toolchain: stable
       - name: Build
-        run: cargo build -p test_scene --target wasm32-unknown-unknown --profile web_release
+        run: cargo b_test_scene --profile web_release
       - name: Install wasm-bindgen
         run: cargo install --force wasm-bindgen-cli
       - name: Wasm bindgen
