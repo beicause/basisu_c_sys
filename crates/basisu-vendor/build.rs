@@ -11,10 +11,15 @@ fn main() {
     // Disable PVRTC1/2, ATC, FXT1 as wgpu does not support them.
     build
         .cpp(true)
-        .warnings(false)
-        .flag("-x")
-        .flag("c++")
-        .flag("-std=c++17")
+        .std("c++17")
+        .flags(&[
+            "-fno-exceptions",
+            "-Wno-unused-function",
+            "-Wno-unused-const-variable",
+            "-Wno-unused-but-set-variable",
+            "-Wno-unused-variable",
+            "-Wno-deprecated",
+        ])
         // .define("BASISU_FORCE_DEVEL_MESSAGES", "1")
         // .define("BASISD_SUPPORT_KTX2", "1")
         // .define("BASISD_SUPPORT_KTX2_ZSTD", "1")

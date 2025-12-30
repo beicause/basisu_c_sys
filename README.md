@@ -55,7 +55,7 @@ The `crates/basisu-sys`. For native platforms it re-exports the APIs of `basisu-
 
 ## Run on web
 
-TLDR: Copy the `basisu-vendor.js` and `basisu_vendor.wasm` to your webpage assets and provide `basisu-vendor` importmap:
+TLDR: Build your bevy application to `wasm32-unknown-unknown` normally, and copy the `basisu-vendor.js` and `basisu_vendor.wasm` to your webpage assets and provide `basisu-vendor` importmap:
 ```html
 	<script type="importmap">
 		{
@@ -65,13 +65,13 @@ TLDR: Copy the `basisu-vendor.js` and `basisu_vendor.wasm` to your webpage asset
 		}
 	</script>
 ```
-The prebuilt wasm can be found in `prebuilt/` (Wasm SIMD is enabled).
-
-Or Clone this repo and build them from source with the config in `.cargo/config.toml`:
+The prebuilt wasm can be found in `prebuilt/`. The wasm is built with:
 ```sh
 cargo b_basisu_vendor
+cp ./target/wasm32-unknown-emscripten/web_release/basisu-vendor.js ./prebuilt/
+cp ./target/wasm32-unknown-emscripten/web_release/basisu_vendor.wasm ./prebuilt/basisu_vendor.raw.wasm
+wasm-opt --enable-bulk-memory-opt --enable-exception-handling --translate-to-exnref --enable-simd --enable-nontrapping-float-to-int -Os ./prebuilt/basisu_vendor.raw.wasm -o ./prebuilt/basisu_vendor.wasm
 ```
-And copy them from `target/wasm32-unknown-emscripten/web_release/`.
 
 ## Bevy version compatibility
 
