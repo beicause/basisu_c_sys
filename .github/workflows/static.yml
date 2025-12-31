@@ -34,7 +34,7 @@ jobs:
           lfs: true
 
       - name: Copy prebuilt basisu vendor
-        run: rm -r web/debug/ && rm web/basisu-vendor.js && rm web/basisu_vendor.wasm && cp prebuilt/basisu-vendor.js web/ && cp prebuilt/basisu_vendor.wasm web/
+        run: cp --remove-destination "$(readlink -f ./web/basisu_vendor.js)" ./web/basisu_vendor.js && cp --remove-destination "$(readlink -f ./web/basisu_vendor.wasm)" ./web/basisu_vendor.wasm
 
       - name: Install wasm-opt
         run: wget https://github.com/WebAssembly/binaryen/releases/download/version_125/binaryen-version_125-x86_64-linux.tar.gz && tar -xvf binaryen-version_125-x86_64-linux.tar.gz && sudo cp binaryen-version_125/bin/wasm-opt /usr/local/bin/
@@ -45,11 +45,11 @@ jobs:
       - name: Install rust toolchain
         uses: dtolnay/rust-toolchain@master
         with:
-          toolchain: nightly-2025-12-29 # Sync with rust-toolchain.toml
+          toolchain: stable
           targets: wasm32-unknown-unknown
 
       - name: Build
-        run: cargo b_test_scene --profile web_release
+        run: cargo b -p test_scene --target wasm32-unknown-unknown --profile web_release
 
       - name: Install wasm-bindgen
         run: cargo binstall --force wasm-bindgen-cli
@@ -58,7 +58,7 @@ jobs:
         run: wasm-bindgen --out-name wasm_example --out-dir web/target/ --target web target/wasm32-unknown-unknown/web_release/test_scene.wasm
 
       - name: Optimize wasm
-        run: wasm-opt --enable-bulk-memory-opt --enable-exception-handling --translate-to-exnref --enable-simd --enable-nontrapping-float-to-int -Os ./web/target/wasm_example_bg.wasm -o ./web/target/wasm_example_bg.wasm
+        run: wasm-opt --enable-simd --enable-bulk-memory-opt --enable-nontrapping-float-to-int -Os ./web/target/wasm_example_bg.wasm -o ./web/target/wasm_example_bg.wasm
 
       - name: Setup Pages
         uses: actions/configure-pages@v5
