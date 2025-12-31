@@ -8,7 +8,7 @@ Although Bevy's `ImageLoader` has built-in support for Basis Universal textures 
 3. No support for Web. Bevy can't be compiled to `wasm32-unknown-emscripten` and `basis-universal-rs` can't be compiled to `wasm32-unknown-unknown`
 4. It compiles both the encoder and transcoder and includes transcoding formats not supported by wgpu, which increases binary size
 
-This plugin adds a loader for Basis Universal KTX2 textures with support for ETC1S, UASTC LDR and USATC HDR, and web support through JavaScript glue to call [Basis Universal](https://github.com/BinomialLLC/basis_universal/) C++ library compiled with `wasm32-unknown-emscripten` which includes only the transcoder and necessary transcoding formats.
+This plugin adds a loader for Basis Universal KTX2 textures with support for ETC1S, UASTC LDR and USATC HDR, and web support through JavaScript glue to call [Basis Universal](https://github.com/BinomialLLC/basis_universal/) C++ library compiled with Emscripten which includes only the transcoder and necessary transcoding formats.
 
 This doesn't include BasisU encoder. To encode textures to `.ktx2`, use the command line tool in [Basis Universal](https://github.com/BinomialLLC/basis_universal/?tab=readme-ov-file#compressing-and-unpacking-ktx2basis-files) repo.
 
@@ -49,28 +49,26 @@ This plugin supports WebGL2 and WebGPU. To run on web this repo uses a solution:
 
 The `crates/basisu-bindgen` uses `bindgen` to generate Rust binding of the C++ wrapper.
 
-The `crates/basisu-vendor` builds a high level wrapper of the basis universal C++ library. For native platforms it builds and links the C++ dependency. For web, it's not a cargo dependency and needs to be build manually with `cargo b -p basisu-vendor --target wasm32-unknown-emscripten`. The wrapper interface is designed so that it does not need to share memory with the main Wasm.
+The `crates/basisu-vendor` builds a high level wrapper of the basis universal C++ library. For native platforms it builds and links the C++ dependency. For web, it's not a cargo dependency and needs to be build manually with Emscripten. The wrapper interface is designed so that it does not need to share memory with the main Wasm.
 
-The `crates/basisu-sys`. For native platforms it re-exports the APIs of `basisu-vendor`. For web it calls a JavaScript wrapper which calls the `basisu-vendor.js` and `basisu_vendor.wasm`. Then it can be used by the loader on all platforms.
+The `crates/basisu-sys`. For native platforms it re-exports the APIs of `basisu-vendor`. For web it calls a JavaScript wrapper which calls the `basisu_vendor.js` and `basisu_vendor.wasm`. Then it can be used by the loader on all platforms.
 
 ## Run on web
 
-TLDR: Build your bevy application to `wasm32-unknown-unknown` normally, and copy the `basisu-vendor.js` and `basisu_vendor.wasm` to your webpage assets and provide `basisu-vendor` importmap:
+TLDR: Build your bevy application to `wasm32-unknown-unknown` normally, and copy the `basisu_vendor.js` and `basisu_vendor.wasm` to your webpage assets and provide `basisu_vendor` importmap:
 ```html
 	<script type="importmap">
 		{
 			"imports": {
-				"basisu-vendor": "./basisu-vendor.js"
+				"basisu_vendor": "./basisu_vendor.js"
 			}
 		}
 	</script>
 ```
 The prebuilt wasm can be found in `prebuilt/`. The wasm is built with:
 ```sh
-cargo b_basisu_vendor
-cp ./target/wasm32-unknown-emscripten/web_release/basisu-vendor.js ./prebuilt/
-cp ./target/wasm32-unknown-emscripten/web_release/basisu_vendor.wasm ./prebuilt/basisu_vendor.raw.wasm
-wasm-opt --enable-bulk-memory-opt --enable-exception-handling --translate-to-exnref --enable-simd --enable-nontrapping-float-to-int -Os ./prebuilt/basisu_vendor.raw.wasm -o ./prebuilt/basisu_vendor.wasm
+BASISU_VENDOR_TARGET_EMSCRIPTEN=1 BASISU_VENDOR_EMCC_ARGS="-Os -flto=full" cargo b -p basisu-vendor --profile web_release
+wasm-opt --enable-simd --enable-bulk-memory-opt --enable-nontrapping-float-to-int -Os ./crates/basisu-vendor/wasm/basisu_vendor.wasm -o ./prebuilt/basisu_vendor.wasm
 ```
 
 ## Bevy version compatibility

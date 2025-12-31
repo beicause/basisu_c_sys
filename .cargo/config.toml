@@ -1,16 +1,2 @@
 [target.wasm32-unknown-unknown]
 rustflags = ["-Ctarget-feature=+simd128"]
-
-[target.wasm32-unknown-emscripten]
-rustflags = [
-  "-Ctarget-feature=+simd128",
-  "-Cllvm-args=-wasm-use-legacy-eh=false",
-  "-Clink-arg=-sEXPORT_ES6",
-  "-Clink-arg=-sALLOW_MEMORY_GROWTH",
-  "-Clink-arg=-sEXPORTED_RUNTIME_METHODS=HEAPU8",
-  "-Clink-arg=-sEXPORTED_FUNCTIONS=_malloc,_free,_c_basisu_transcoder_init,_c_ktx2_transcoder_new,_c_ktx2_transcoder_delete,_c_ktx2_transcoder_transcode_image,_c_ktx2_transcoder_get_r_dst_buf,_c_ktx2_transcoder_get_r_dst_buf_len,_c_ktx2_transcoder_get_r_width,_c_ktx2_transcoder_get_r_height,_c_ktx2_transcoder_get_r_levels,_c_ktx2_transcoder_get_r_layers,_c_ktx2_transcoder_get_r_faces,_c_ktx2_transcoder_get_r_target_format,_c_ktx2_transcoder_get_r_is_srgb",
-]
-
-[alias]
-b_basisu_vendor = "b -p basisu-vendor --target wasm32-unknown-emscripten --profile web_release"
-b_test_scene = "b -p test_scene --target wasm32-unknown-unknown"

@@ -1,3 +1,5 @@
+#![no_std]
+
 #[expect(
     non_upper_case_globals,
     reason = "Generated rust bindings are OK to be unused or non upper case"

@@ -22,7 +22,7 @@ mod js {
     type TextureCompressionMethodRepr = u8;
     type TextureTranscodedFormatRepr = u32;
 
-    #[wasm_bindgen(module = "/basisu.mjs")]
+    #[wasm_bindgen(module = "/basisu_sys.mjs")]
     extern "C" {
         pub unsafe fn js_basisu_transcoder_init();
         pub unsafe fn js_ktx2_transcoder_new() -> *mut Transcoder;
