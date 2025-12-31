@@ -3,8 +3,17 @@ name = "basisu-vendor"
 version = "0.1.0"
 edition = "2024"
 
+[features]
+build-wasm = ["dep:clap"]
+
 [dependencies]
 basisu-bindgen = { path = "../basisu-bindgen" }
+clap = { version = "4.5", features = ["derive"], optional = true }
 
 [build-dependencies]
 cc = "1.2"
+
+[[bin]]
+name = "build-wasm"
+path = "src/bin/build_wasm.rs"
+required-features = ["build-wasm"]
