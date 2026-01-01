@@ -18,8 +18,8 @@ impl Plugin for BasisuLoaderPlugin {
                 ))]
                 bevy::tasks::IoTaskPool::get()
                     .spawn_local(async {
-                        basisu_sys::basisu_sys_init_vendor().await;
-                        unsafe { basisu_sys::basisu_transcoder_init() };
+                        bevy_basisu_loader_sys::basisu_sys_init_vendor().await;
+                        unsafe { bevy_basisu_loader_sys::basisu_transcoder_init() };
                     })
                     .detach();
                 #[cfg(not(all(
@@ -28,7 +28,7 @@ impl Plugin for BasisuLoaderPlugin {
                     target_os = "unknown",
                 )))]
                 unsafe {
-                    basisu_sys::basisu_transcoder_init()
+                    bevy_basisu_loader_sys::basisu_transcoder_init()
                 };
             });
     }

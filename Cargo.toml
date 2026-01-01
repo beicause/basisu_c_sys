@@ -2,6 +2,15 @@
 name = "bevy_basisu_loader"
 version = "0.1.0"
 edition = "2024"
+repository.workspace = true
+license.workspace = true
+description = "Provides a cross-platform, size-optimized KTX2 Basis Universal texture loader for Bevy"
+keywords = ["bevy", "basis universal", "asset loader"]
+exclude = ["vendor/", "assets/", "examples/", "web/", ".*"]
+
+[workspace.package]
+repository = "https://github.com/beicause/bevy_basisu_loader"
+license = "MIT OR Apache-2.0"
 
 [dependencies]
 bevy = { version = "0.17", default-features = false, features = [
@@ -12,7 +21,7 @@ bevy = { version = "0.17", default-features = false, features = [
 ] }
 serde = { version = "1", features = ["derive"] }
 thiserror = { version = "2", default-features = false }
-basisu-sys = { path = "crates/basisu-sys" }
+bevy_basisu_loader_sys = { path = "crates/basisu_sys" }
 
 [workspace]
 members = ["crates/*", "examples/test_scene"]
