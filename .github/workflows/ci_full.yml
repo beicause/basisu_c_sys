@@ -37,7 +37,7 @@ jobs:
           version: ${{ env.EM_VERSION }}
 
       - name: Install wasm-opt
-        run: wget https://github.com/WebAssembly/binaryen/releases/download/version_125/binaryen-version_125-x86_64-linux.tar.gz && tar -xvf binaryen-version_125-x86_64-linux.tar.gz && sudo cp binaryen-version_125/bin/wasm-opt /usr/local/bin/
+        run: wget https://github.com/WebAssembly/binaryen/releases/download/version_125/binaryen-version_125-x86_64-linux.tar.gz && tar -xvf binaryen-version_125-x86_64-linux.tar.gz && sudo cp binaryen-version_125/bin/wasm-opt /usr/local/bin/ && rm -r binaryen-version_125 && rm binaryen-version_125-x86_64-linux.tar.gz
 
       - name: Clippy
         run: cargo clippy -- -D warnings
