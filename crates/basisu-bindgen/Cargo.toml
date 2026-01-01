@@ -1,7 +1,0 @@
-[package]
-name = "basisu-bindgen"
-version = "0.1.0"
-edition = "2024"
-
-[build-dependencies]
-bindgen = "0.72"

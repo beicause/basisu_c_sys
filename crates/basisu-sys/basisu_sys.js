@@ -1,18 +1,13 @@
-// Change this to "debug/basisu-vendor.js" for debugging basis universal.
-import Vendor from "basisu_vendor";
-
-const vendor = await Vendor();
-
 export function js_basisu_transcoder_init() {
-	vendor._c_basisu_transcoder_init();
+	$basisu_sys.vendor._c_basisu_transcoder_init();
 }
 
 export function js_ktx2_transcoder_new() {
-	return vendor._c_ktx2_transcoder_new();
+	return $basisu_sys.vendor._c_ktx2_transcoder_new();
 }
 
 export function js_ktx2_transcoder_delete(transcoder) {
-	vendor._c_ktx2_transcoder_delete(transcoder);
+	$basisu_sys.vendor._c_ktx2_transcoder_delete(transcoder);
 }
 
 /**
@@ -28,16 +23,16 @@ export function js_ktx2_transcoder_transcode_image(
 	supported_compressed_formats,
 ) {
 	const len = u8_arr.length * u8_arr.BYTES_PER_ELEMENT;
-	const src_buf = vendor._malloc(len);
-	vendor.HEAPU8.set(u8_arr, src_buf);
+	const src_buf = $basisu_sys.vendor._malloc(len);
+	$basisu_sys.vendor.HEAPU8.set(u8_arr, src_buf);
 
-	let success = vendor._c_ktx2_transcoder_transcode_image(
+	let success = $basisu_sys.vendor._c_ktx2_transcoder_transcode_image(
 		transcoder,
 		src_buf,
 		len,
 		supported_compressed_formats,
 	);
-	vendor._free(src_buf);
+	$basisu_sys.vendor._free(src_buf);
 	return success;
 }
 
@@ -47,32 +42,34 @@ export function js_ktx2_transcoder_transcode_image(
  * @returns {Uint8Array}
  */
 export function js_ktx2_transcoder_get_r_dst_buf(transcoder) {
-	const dst_buf = vendor._c_ktx2_transcoder_get_r_dst_buf(transcoder);
+	const dst_buf =
+		$basisu_sys.vendor._c_ktx2_transcoder_get_r_dst_buf(transcoder);
 	/** @type {number} */
-	const dst_len = vendor._c_ktx2_transcoder_get_r_dst_buf_len(transcoder);
+	const dst_len =
+		$basisu_sys.vendor._c_ktx2_transcoder_get_r_dst_buf_len(transcoder);
 	const res_arr = new Uint8Array(dst_len);
-	res_arr.set(vendor.HEAPU8.subarray(dst_buf, dst_buf + dst_len));
+	res_arr.set($basisu_sys.vendor.HEAPU8.subarray(dst_buf, dst_buf + dst_len));
 	return res_arr;
 }
 
 export function js_ktx2_transcoder_get_r_width(transcoder) {
-	return vendor._c_ktx2_transcoder_get_r_width(transcoder);
+	return $basisu_sys.vendor._c_ktx2_transcoder_get_r_width(transcoder);
 }
 export function js_ktx2_transcoder_get_r_height(transcoder) {
-	return vendor._c_ktx2_transcoder_get_r_height(transcoder);
+	return $basisu_sys.vendor._c_ktx2_transcoder_get_r_height(transcoder);
 }
 export function js_ktx2_transcoder_get_r_levels(transcoder) {
-	return vendor._c_ktx2_transcoder_get_r_levels(transcoder);
+	return $basisu_sys.vendor._c_ktx2_transcoder_get_r_levels(transcoder);
 }
 export function js_ktx2_transcoder_get_r_layers(transcoder) {
-	return vendor._c_ktx2_transcoder_get_r_layers(transcoder);
+	return $basisu_sys.vendor._c_ktx2_transcoder_get_r_layers(transcoder);
 }
 export function js_ktx2_transcoder_get_r_faces(transcoder) {
-	return vendor._c_ktx2_transcoder_get_r_faces(transcoder);
+	return $basisu_sys.vendor._c_ktx2_transcoder_get_r_faces(transcoder);
 }
 export function js_ktx2_transcoder_get_r_target_format(transcoder) {
-	return vendor._c_ktx2_transcoder_get_r_target_format(transcoder);
+	return $basisu_sys.vendor._c_ktx2_transcoder_get_r_target_format(transcoder);
 }
 export function js_ktx2_transcoder_get_r_is_srgb(transcoder) {
-	return vendor._c_ktx2_transcoder_get_r_is_srgb(transcoder);
+	return $basisu_sys.vendor._c_ktx2_transcoder_get_r_is_srgb(transcoder);
 }

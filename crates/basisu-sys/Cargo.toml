@@ -3,9 +3,22 @@ name = "basisu-sys"
 version = "0.1.0"
 edition = "2024"
 
-[target.'cfg(target_arch = "wasm32")'.dependencies]
-basisu-bindgen = { path = "../basisu-bindgen" }
-wasm-bindgen = "0.2.106"
+[features]
+build-wasm-cli = ["dep:clap"]
 
-[target.'cfg(not(target_arch = "wasm32"))'.dependencies]
-basisu-vendor = { path = "../basisu-vendor" }
+[dependencies]
+clap = { version = "4.5", features = ["derive"], optional = true }
+
+[target.wasm32-unknown-unknown.dependencies]
+wasm-bindgen = "0.2.106"
+js-sys = "0.3.83"
+wasm-bindgen-futures = "0.4.56"
+
+[build-dependencies]
+cc = "1.2"
+bindgen = "0.72"
+
+[[bin]]
+name = "build-wasm-cli"
+path = "src/bin/build_wasm_cli.rs"
+required-features = ["build-wasm-cli"]

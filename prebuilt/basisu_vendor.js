@@ -1,1 +1,0 @@
-../crates/basisu-vendor/wasm/basisu_vendor.js
