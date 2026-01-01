@@ -1,7 +1,11 @@
 [package]
-name = "basisu-sys"
+name = "bevy_basisu_loader_sys"
 version = "0.1.0"
 edition = "2024"
+repository.workspace = true
+license.workspace = true
+description = "A rust wrapper around the Basis Universal transcoder library"
+keywords = ["basis universal", "ffi", "transcoder"]
 
 [features]
 build-wasm-cli = ["dep:clap"]

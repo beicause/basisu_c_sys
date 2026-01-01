@@ -2,5 +2,5 @@
 *.basisu_ktx2 filter=lfs diff=lfs merge=lfs -text
 vendor/basis_universal/**/* filter=lfs diff=lfs merge=lfs -text
 *.wasm filter=lfs diff=lfs merge=lfs -text
-crates/basisu-sys/wasm/* filter=lfs diff=lfs merge=lfs -text
+crates/basisu_sys/wasm/* filter=lfs diff=lfs merge=lfs -text
 * !text !filter !merge !diff

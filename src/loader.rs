@@ -1,4 +1,3 @@
-use basisu_sys::{TextureCompressionMethod, TextureTranscodedFormat};
 use bevy::asset::{AssetLoader, RenderAssetUsages};
 use bevy::image::ImageSampler;
 use bevy::prelude::*;
@@ -7,6 +6,7 @@ use bevy::render::render_resource::{
     TextureFormat, TextureUsages, TextureViewDescriptor, TextureViewDimension,
     WgpuFeatures as Features,
 };
+use bevy_basisu_loader_sys::{TextureCompressionMethod, TextureTranscodedFormat};
 use serde::{Deserialize, Serialize};
 use thiserror::Error;
 
@@ -75,11 +75,11 @@ impl AssetLoader for BasisuLoader {
         reader.read_to_end(&mut data).await?;
         // SAFETY: Ensure the transcoding code is correct.
         let (out_data, out_format, extent, levels, view_dimension) = unsafe {
-            let transcoder = basisu_sys::ktx2_transcoder_new();
+            let transcoder = bevy_basisu_loader_sys::ktx2_transcoder_new();
             if transcoder.is_null() {
                 return Err(BasisuLoaderError::TranscodingError("ktx2_transcoder_new"));
             }
-            if !basisu_sys::ktx2_transcoder_transcode_image(
+            if !bevy_basisu_loader_sys::ktx2_transcoder_transcode_image(
                 transcoder,
                 data,
                 self.supported_compressed_formats,
@@ -89,15 +89,16 @@ impl AssetLoader for BasisuLoader {
                 ));
             }
 
-            let is_srgb = basisu_sys::ktx2_transcoder_get_r_is_srgb(transcoder);
-            let target_format = basisu_sys::ktx2_transcoder_get_r_target_format(transcoder);
+            let is_srgb = bevy_basisu_loader_sys::ktx2_transcoder_get_r_is_srgb(transcoder);
+            let target_format =
+                bevy_basisu_loader_sys::ktx2_transcoder_get_r_target_format(transcoder);
 
-            let width = basisu_sys::ktx2_transcoder_get_r_width(transcoder);
-            let height = basisu_sys::ktx2_transcoder_get_r_height(transcoder);
-            let levels = basisu_sys::ktx2_transcoder_get_r_levels(transcoder);
-            let layers = basisu_sys::ktx2_transcoder_get_r_layers(transcoder);
-            let faces = basisu_sys::ktx2_transcoder_get_r_faces(transcoder);
-            let dst_bytes = basisu_sys::ktx2_transcoder_get_r_dst_buf(transcoder);
+            let width = bevy_basisu_loader_sys::ktx2_transcoder_get_r_width(transcoder);
+            let height = bevy_basisu_loader_sys::ktx2_transcoder_get_r_height(transcoder);
+            let levels = bevy_basisu_loader_sys::ktx2_transcoder_get_r_levels(transcoder);
+            let layers = bevy_basisu_loader_sys::ktx2_transcoder_get_r_layers(transcoder);
+            let faces = bevy_basisu_loader_sys::ktx2_transcoder_get_r_faces(transcoder);
+            let dst_bytes = bevy_basisu_loader_sys::ktx2_transcoder_get_r_dst_buf(transcoder);
 
             let view_dimension = if layers == 0 {
                 if faces == 1 {
@@ -120,7 +121,7 @@ impl AssetLoader for BasisuLoader {
                 depth_or_array_layers: layers.max(1) * faces,
             };
 
-            basisu_sys::ktx2_transcoder_delete(transcoder);
+            bevy_basisu_loader_sys::ktx2_transcoder_delete(transcoder);
             (
                 dst_bytes,
                 texture_transcode_format_to_bevy_format(target_format, is_srgb),

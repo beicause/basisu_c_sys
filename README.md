@@ -1,6 +1,6 @@
 # Bevy KTX2 BasisU texture loader
 
-A bevy plugin that provides a loader for ktx2 basis universal textures.
+A cross-platform, size-optimized Bevy plugin that provides a KTX2 Basis Universal texture loader.
 
 Although Bevy's `ImageLoader` has built-in support for Basis Universal textures via the [`basis-universal-rs`](https://github.com/aclysma/basis-universal-rs) crate, it has some limitations:
 1. It uses a relatively old version of Basis Universal
@@ -47,15 +47,15 @@ block_size = 4 or 6 (so both of them need to be satisfied), for uastc_hdr_6x6
 
 To run on web this repo uses a solution:
 
-The `crates/basisu-sys/` builds a high level wrapper of the basis universal C++ library. For native platforms, it builds and statically links the C++ dependency. For web, it contains a tool to build basisu vendor using Emscripten and produce js and wasm files. The basisu wrapper is designed so that it does not need to share memory with the main Wasm module. Then the js and wasm files will be embedded into binary and can be called through `wasm-bindgen`/`js-sys`.
+The `crates/basisu_sys/` builds a high level wrapper of the basis universal C++ library. For native platforms, it builds and statically links the C++ dependency. For web, it contains a tool to build basisu vendor using Emscripten and produce js and wasm files. The basisu wrapper is designed so that it does not need to share memory with the main Wasm module. Then the js and wasm files will be embedded into binary and can be called through `wasm-bindgen`/`js-sys`.
 
 ## Run on web
 
 TLDR: This plugin supports WebGL2 and WebGPU. Just build your bevy application to `wasm32-unknown-unknown` normally.
 
-The prebuilt wasm in `crates/basisu-sys/wasm` is automatically embedded in binary when building. It was prebuilt with:
+The prebuilt wasm in `crates/basisu_sys/wasm` is automatically embedded in binary when building. It was prebuilt with:
 ```sh
-cargo r -p basisu-sys --bin build-wasm-cli --features build-wasm-cli -- --emcc-flags="-Os -flto=full" --wasm-opt-flags="-Os"
+cargo r -p bevy_basisu_loader_sys --bin build-wasm-cli --features build-wasm-cli -- --emcc-flags="-Os -flto=full" --wasm-opt-flags="-Os"
 ```
 
 ## Bevy version compatibility
