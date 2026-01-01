@@ -1,5 +1,10 @@
 # Bevy KTX2 BasisU texture loader
 
+[![Build](https://github.com/beicause/bevy_basisu_loader/actions/workflows/ci.yml/badge.svg)](https://github.com/beicause/bevy_basisu_loader/actions)
+[![License](https://img.shields.io/badge/license-Apache--2.0_OR_MIT-blue.svg)](https://github.com/beicause/bevy_basisu_loader)
+[![Cargo](https://img.shields.io/crates/v/bevy_basisu_loader.svg)](https://crates.io/crates/bevy_basisu_loader)
+[![Documentation](https://docs.rs/bevy_basisu_loader/badge.svg)](https://docs.rs/bevy_basisu_loader)
+
 A cross-platform, size-optimized Bevy plugin that provides a KTX2 Basis Universal texture loader.
 
 Although Bevy's `ImageLoader` has built-in support for Basis Universal textures via the [`basis-universal-rs`](https://github.com/aclysma/basis-universal-rs) crate, it has some limitations:
