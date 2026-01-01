@@ -1,0 +1,64 @@
+name: Release
+
+on:
+  push:
+    branches: ["master"]
+    tags:
+      - v[0-9]+.*
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: "release"
+  cancel-in-progress: false
+
+env:
+  CARGO_TERM_COLOR: always
+  EM_VERSION: 4.0.22
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          lfs: true
+
+      - name: Install Emscripten
+        uses: mymindstorm/setup-emsdk@v14
+        with:
+          version: ${{ env.EM_VERSION }}
+
+      - name: Install wasm-opt
+        run: wget https://github.com/WebAssembly/binaryen/releases/download/version_125/binaryen-version_125-x86_64-linux.tar.gz && tar -xvf binaryen-version_125-x86_64-linux.tar.gz && sudo cp binaryen-version_125/bin/wasm-opt /usr/local/bin/
+
+      - name: Install cargo-binstall
+        uses: cargo-bins/cargo-binstall@v1.16.6
+
+      - name: Install rust toolchain
+        uses: dtolnay/rust-toolchain@master
+        with:
+          toolchain: stable
+          targets: wasm32-unknown-unknown
+
+      - name: Build basisu vendor wasm
+        run: cargo r -p bevy_basisu_loader_sys --bin build-wasm-cli --features build-wasm-cli -- --emcc-flags="-Os -flto=full" --wasm-opt-flags="-Os"
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          path: crates/basisu_sys/wasm/
+
+      - uses: katyo/publish-crates@v2
+        with:
+          registry-token: ${{ secrets.CARGO_REGISTRY_TOKEN }}
+
+      - name: Create GitHub release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: |
+            crates/basisu_sys/wasm/*
+          token: ${{ secrets.GITHUB_RELEASE_TOKEN }}
