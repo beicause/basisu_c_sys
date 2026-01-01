@@ -5,7 +5,7 @@ edition = "2024"
 repository.workspace = true
 license.workspace = true
 description = "Provides a cross-platform, size-optimized KTX2 Basis Universal texture loader for Bevy"
-keywords = ["bevy", "basis universal", "asset loader"]
+keywords = ["bevy", "basis", "universal", "asset", "transcoder"]
 exclude = ["vendor/", "assets/", "examples/", "web/", ".*"]
 
 [workspace.package]
