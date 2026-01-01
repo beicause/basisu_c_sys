@@ -18,7 +18,7 @@ Web demo: https://beicause.github.io/bevy_basisu_loader/
 
 1. Add the Cargo dependency:
 ```toml
-bevy_basisu_loader = { version = "0.1", git = "https://github.com/beicause/bevy_basisu_loader" }
+bevy_basisu_loader = "0.1"
 ```
 
 2. Add `BasisuLoaderPlugin`:

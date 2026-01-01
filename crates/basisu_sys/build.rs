@@ -29,9 +29,9 @@ const DEFINES: [(&str, &str); 6] = [
     // ("BASISD_SUPPORT_UASTC_HDR", "1"),
 ];
 const SRCS: [&str; 3] = [
-    "../../vendor/basis_universal/transcoder/basisu_transcoder.cpp",
-    "../../vendor/transcoding_wrapper.cpp",
-    "../../vendor/basis_universal/zstd/zstddeclib.c",
+    "vendor/basis_universal/transcoder/basisu_transcoder.cpp",
+    "vendor/transcoding_wrapper.cpp",
+    "vendor/basis_universal/zstd/zstddeclib.c",
 ];
 
 fn main() {
@@ -41,7 +41,7 @@ fn main() {
         compile_basisu_static();
     }
     gen_wasm_build_cmd();
-    println!("cargo::rerun-if-changed=../../vendor/");
+    println!("cargo::rerun-if-changed=vendor/");
 }
 
 fn bindgen() {
@@ -49,7 +49,7 @@ fn bindgen() {
         std::path::PathBuf::from(std::env::var("OUT_DIR").unwrap()).join("transcoding.rs");
     bindgen::Builder::default()
         .clang_args(&["-x", "c++", "-std=c++17", "-fvisibility=default"])
-        .header("../../vendor/transcoding_wrapper.hpp")
+        .header("vendor/transcoding_wrapper.hpp")
         .use_core()
         .parse_callbacks(Box::new(bindgen::CargoCallbacks::new()))
         .allowlist_type("Transcoder")
