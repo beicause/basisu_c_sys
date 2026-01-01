@@ -1,0 +1,81 @@
+name: Rust CI Full
+
+on:
+  workflow_dispatch:
+  push:
+    branches: ["master"]
+  pull_request:
+    branches: ["master"]
+
+concurrency:
+  group: ${{github.workflow}}-${{github.ref}}
+  cancel-in-progress: true
+
+env:
+  CARGO_TERM_COLOR: always
+  EM_VERSION: 4.0.22
+  ANDROID_NDK_VERSION: 28.1.13356709
+
+jobs:
+  build-linux-wasm:
+    name: Build linux,wasm32
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          lfs: true
+
+      - name: Install rust toolchain
+        uses: dtolnay/rust-toolchain@master
+        with:
+          toolchain: stable
+          targets: wasm32-unknown-unknown
+
+      - name: Install Emscripten
+        uses: mymindstorm/setup-emsdk@v14
+        with:
+          version: ${{ env.EM_VERSION }}
+
+      - name: Install wasm-opt
+        run: wget https://github.com/WebAssembly/binaryen/releases/download/version_125/binaryen-version_125-x86_64-linux.tar.gz && tar -xvf binaryen-version_125-x86_64-linux.tar.gz && sudo cp binaryen-version_125/bin/wasm-opt /usr/local/bin/
+
+      - name: Clippy
+        run: cargo clippy -- -D warnings
+
+      - name: Build
+        run: cargo build --verbose
+
+      - name: Build basisu vendor wasm
+        run: cargo r -p bevy_basisu_loader_sys --bin build-wasm-cli --features build-wasm-cli -- --emcc-flags="-Os -flto=full" --wasm-opt-flags="-Os"
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          path: crates/basisu_sys/wasm/
+
+  build-android:
+    name: Build android
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          lfs: true
+
+      - name: Install rust toolchain
+        uses: dtolnay/rust-toolchain@master
+        with:
+          toolchain: stable
+          targets: aarch64-linux-android
+
+      - name: Install cargo-binstall
+        uses: cargo-bins/cargo-binstall@v1.16.6
+
+      - name: Install Android NDK
+        run: |
+          sudo ${ANDROID_HOME}/cmdline-tools/latest/bin/sdkmanager 'ndk;${{env.ANDROID_NDK_VERSION}}'
+
+      - name: Install cargo-ndk
+        run: cargo binstall cargo-ndk
+
+      - name: Build
+        run: cargo ndk -t arm64-v8a build --features bevy/android-game-activity

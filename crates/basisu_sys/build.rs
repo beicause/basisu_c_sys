@@ -84,7 +84,10 @@ fn compile_basisu_static() {
     if target_os == "android" {
         build.cpp_link_stdlib("c++_static");
     }
-    build.cpp(true).std("c++17").flags(&FLAGS);
+    build.cpp(true).std("c++17");
+    for f in FLAGS {
+        build.flag_if_supported(f);
+    }
     for (define, value) in DEFINES {
         build.define(define, value);
     }

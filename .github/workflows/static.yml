@@ -20,6 +20,10 @@ concurrency:
   group: "pages"
   cancel-in-progress: true
 
+env:
+  CARGO_TERM_COLOR: always
+  EM_VERSION: 4.0.22
+
 jobs:
   # Single deploy job since we're just deploying
   deploy:
@@ -33,6 +37,11 @@ jobs:
         with:
           lfs: true
 
+      - name: Install Emscripten
+        uses: mymindstorm/setup-emsdk@v14
+        with:
+          version: ${{ env.EM_VERSION }}
+
       - name: Install wasm-opt
         run: wget https://github.com/WebAssembly/binaryen/releases/download/version_125/binaryen-version_125-x86_64-linux.tar.gz && tar -xvf binaryen-version_125-x86_64-linux.tar.gz && sudo cp binaryen-version_125/bin/wasm-opt /usr/local/bin/
 
@@ -45,11 +54,19 @@ jobs:
           toolchain: stable
           targets: wasm32-unknown-unknown
 
-      - name: Build
-        run: cargo b -p test_scene --target wasm32-unknown-unknown --profile web_release
-
       - name: Install wasm-bindgen
         run: cargo binstall --force wasm-bindgen-cli
+
+      - name: Build basisu vendor wasm
+        run: cargo r -p bevy_basisu_loader_sys --bin build-wasm-cli --features build-wasm-cli -- --emcc-flags="-Os -flto=full" --wasm-opt-flags="-Os"
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          path: crates/basisu_sys/wasm/
+
+      - name: Build
+        run: cargo b -p test_scene --target wasm32-unknown-unknown --profile web_release
 
       - name: Wasm bindgen
         run: wasm-bindgen --out-name wasm_example --out-dir web/target/ --target web target/wasm32-unknown-unknown/web_release/test_scene.wasm
