@@ -33,9 +33,6 @@ jobs:
         with:
           lfs: true
 
-      - name: Copy prebuilt basisu vendor
-        run: cp --remove-destination "$(readlink -f ./web/basisu_vendor.js)" ./web/basisu_vendor.js && cp --remove-destination "$(readlink -f ./web/basisu_vendor.wasm)" ./web/basisu_vendor.wasm
-
       - name: Install wasm-opt
         run: wget https://github.com/WebAssembly/binaryen/releases/download/version_125/binaryen-version_125-x86_64-linux.tar.gz && tar -xvf binaryen-version_125-x86_64-linux.tar.gz && sudo cp binaryen-version_125/bin/wasm-opt /usr/local/bin/
 

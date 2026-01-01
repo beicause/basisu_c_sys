@@ -45,29 +45,17 @@ block_size = 4 or 6 (so both of them need to be satisfied), for uastc_hdr_6x6
 
 ## Implementation details
 
-This plugin supports WebGL2 and WebGPU. To run on web this repo uses a solution:
+To run on web this repo uses a solution:
 
-The `crates/basisu-bindgen` uses `bindgen` to generate Rust binding of the C++ wrapper.
-
-The `crates/basisu-vendor` builds a high level wrapper of the basis universal C++ library. For native platforms, it builds and links the C++ dependency. For web, it's not a cargo dependency and just a cli tool to build basisu wrapper using Emscripten and produce js and wasm files. The basisu wrapper is designed so that it does not need to share memory with the main Wasm module.
-
-The `crates/basisu-sys`. For native platforms, it re-exports the APIs of `basisu-vendor`. For web, it calls the js wrapper which calls the `basisu_vendor.js` and `basisu_vendor.wasm`. Now it can be used by the loader on all platforms!
+The `crates/basisu-sys/` builds a high level wrapper of the basis universal C++ library. For native platforms, it builds and statically links the C++ dependency. For web, it contains a tool to build basisu vendor using Emscripten and produce js and wasm files. The basisu wrapper is designed so that it does not need to share memory with the main Wasm module. Then the js and wasm files will be embedded into binary and can be called through `wasm-bindgen`/`js-sys`.
 
 ## Run on web
 
-TLDR: Build your bevy application to `wasm32-unknown-unknown` normally, and copy the `basisu_vendor.js` and `basisu_vendor.wasm` to your webpage assets and provide `basisu_vendor` importmap:
-```html
-	<script type="importmap">
-		{
-			"imports": {
-				"basisu_vendor": "./basisu_vendor.js"
-			}
-		}
-	</script>
-```
-The prebuilt wasm can be found in `prebuilt/`. The wasm is built with:
+TLDR: This plugin supports WebGL2 and WebGPU. Just build your bevy application to `wasm32-unknown-unknown` normally.
+
+The prebuilt wasm in `crates/basisu-sys/wasm` is automatically embedded in binary when building. It was prebuilt with:
 ```sh
-cargo r -p basisu-vendor --features build-wasm --bin build-wasm -- --emcc-flags="-Os -flto=full" --wasm-opt-flags="-Os"
+cargo r -p basisu-sys --bin build-wasm-cli --features build-wasm-cli -- --emcc-flags="-Os -flto=full" --wasm-opt-flags="-Os"
 ```
 
 ## Bevy version compatibility

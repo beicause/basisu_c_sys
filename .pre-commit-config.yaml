@@ -4,6 +4,7 @@ exclude: |
   (?x)^(
     .*thirdparty/.*|
     .*\.svg|
+    vendor/basis_universal/.*|
   )$
 repos:
   - repo: https://github.com/codespell-project/codespell

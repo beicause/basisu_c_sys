@@ -5,10 +5,10 @@ use clap::Parser;
 #[derive(Parser, Debug)]
 #[command(version, about, long_about = None)]
 struct Args {
-    /// Extra flags to pass to emcc
+    /// Extra flags to pass to emcc.
     #[arg(long)]
     emcc_flags: Option<String>,
-    /// Extra flags to pass to wasm-opt
+    /// Enable wasm-opt and pass extra flags to it.
     #[arg(long)]
     wasm_opt_flags: Option<String>,
 }
@@ -22,9 +22,7 @@ pub fn build_wasm_cmd() {
 
     let user_args = Args::parse();
     if let Some(flags) = user_args.emcc_flags {
-        {
-            emcc_cmd.args(flags.split(" ").filter(|s| !s.is_empty()));
-        }
+        emcc_cmd.args(flags.split(" ").filter(|s| !s.is_empty()));
     }
 
     println!(
@@ -50,9 +48,9 @@ pub fn build_wasm_cmd() {
             "--enable-simd",
             "--enable-bulk-memory-opt",
             "--enable-nontrapping-float-to-int",
-            "./wasm/basisu_vendor.wasm",
+            "wasm/basisu_vendor.wasm",
             "-o",
-            "../../prebuilt/basisu_vendor.wasm",
+            "wasm/basisu_vendor.wasm",
         ]);
 
         wasm_opt_cmd.args(flags.split(" ").filter(|s| !s.is_empty()));
