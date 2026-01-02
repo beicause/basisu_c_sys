@@ -5,6 +5,12 @@ on:
     tags:
       - v[0-9]+.*
   workflow_dispatch:
+    inputs:
+      dry_run:
+        description: "Whether to perform a dry run"
+        required: true
+        default: true
+        type: boolean
 
 permissions:
   contents: write
@@ -17,9 +23,11 @@ concurrency:
 env:
   CARGO_TERM_COLOR: always
   EM_VERSION: 4.0.22
+  DRY_RUN: ${{ github.event_name == 'workflow_dispatch' && inputs.dry_run }}
 
 jobs:
   release:
+    name: Release ${{ (github.event_name == 'workflow_dispatch' && inputs.dry_run && '(Dry Run)') || '' }}
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
@@ -55,8 +63,10 @@ jobs:
       - uses: katyo/publish-crates@v2
         with:
           registry-token: ${{ steps.auth.outputs.token }}
+          dry-run: ${{ env.DRY_RUN }}
 
       - name: Create GitHub release
+        if: ${{ ! env.DRY_RUN }}
         uses: softprops/action-gh-release@v2
         with:
           files: |
