@@ -25,6 +25,9 @@ jobs:
         with:
           lfs: true
 
+      - name: Install Linux dependencies
+        uses: ./.github/actions/install-linux-deps
+
       - name: Install rust toolchain
         uses: dtolnay/rust-toolchain@master
         with:
@@ -40,7 +43,7 @@ jobs:
         run: wget https://github.com/WebAssembly/binaryen/releases/download/version_125/binaryen-version_125-x86_64-linux.tar.gz && tar -xvf binaryen-version_125-x86_64-linux.tar.gz && sudo cp binaryen-version_125/bin/wasm-opt /usr/local/bin/ && rm -r binaryen-version_125 && rm binaryen-version_125-x86_64-linux.tar.gz
 
       - name: Clippy
-        run: cargo clippy -- -D warnings
+        run: cargo clippy --workspace --all-targets --all-features -- -D warnings
 
       - name: Build
         run: cargo build --verbose
