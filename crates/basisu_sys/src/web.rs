@@ -187,9 +187,9 @@ pub unsafe fn ktx2_transcoder_transcode_image(
 ) -> bool {
     BASISU_VENDOR_INSTANCE.with(|inst| {
         let inst = inst.get().unwrap();
-        let heap = inst.js_basisu_heapu8();
         let len = u32::try_from(data.len()).unwrap();
         let ptr = inst.js_basisu_malloc(len as usize);
+        let heap = inst.js_basisu_heapu8();
         heap.set(&data.into(), ptr as u32);
         let result = inst.js_ktx2_transcoder_transcode_image(
             transcoder,
