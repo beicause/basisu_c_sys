@@ -35,6 +35,17 @@ impl BasisuLoader {
     }
 }
 
+#[derive(Serialize, Deserialize, Default, Debug, Clone, Copy)]
+#[repr(u8)]
+pub enum ChannelType {
+    #[default]
+    Auto,
+    Rgba,
+    Rgb,
+    Rg,
+    R,
+}
+
 /// Settings for loading an [`Image`] using an [`BasisuLoader`].
 #[derive(Serialize, Deserialize, Default, Debug, Clone)]
 pub struct BasisuLoaderSettings {
@@ -44,6 +55,21 @@ pub struct BasisuLoaderSettings {
     /// Where the asset will be used - see the docs on
     /// [`RenderAssetUsages`] for details.
     pub asset_usage: RenderAssetUsages,
+    /// Whether the texture should be created as sRGB format.
+    ///
+    /// If `None`, it will be determined by the KTX2 data format descriptor transfer function.
+    pub is_srgb: Option<bool>,
+    /// The channel type hint for transcode target selection.
+    ///
+    /// If [`ChannelType::Auto`], it will be determined by the KTX2 data format descriptor channel type.
+    /// Note: This will be ignored when the transcode target format is not ETC2 or BC4/BC5 and usually has no effect for UASTC textures. See [`BasisuLoaderPlugin`](crate::BasisuLoaderPlugin) for more information about the transcode targets.
+    pub channel_type_hint: ChannelType,
+    /// Forcibly transcode to a specific [`TextureFormat`] if it's not `None`. Otherwise the format will be selected automatically.
+    ///
+    /// Only set this if you know what you're doing and use this with caution, it will fail if the transcode target is not supported by Basis Universal or the texture format is not supported by the device.
+    /// Srgb-ness is ignored and will be determined by `is_srgb`.
+    #[serde(skip)]
+    pub force_transcode_target: Option<TextureFormat>,
 }
 
 /// An error when loading an image using [`BasisuLoader`].
@@ -91,13 +117,20 @@ impl AssetLoader for BasisuLoader {
                 transcoder,
                 data,
                 self.supported_compressed_formats,
+                bevy_basisu_loader_sys::ChannelType(settings.channel_type_hint as u8),
+                texture_bevy_format_to_transcode_format(settings.force_transcode_target),
             ) {
                 return Err(BasisuLoaderError::TranscodingError(
                     "ktx2_transcoder_transcode_image",
                 ));
             }
 
-            let is_srgb = bevy_basisu_loader_sys::ktx2_transcoder_get_r_is_srgb(transcoder);
+            let is_srgb =
+                settings
+                    .is_srgb
+                    .unwrap_or(bevy_basisu_loader_sys::ktx2_transcoder_get_r_is_srgb(
+                        transcoder,
+                    ));
             let target_format =
                 bevy_basisu_loader_sys::ktx2_transcoder_get_r_target_format(transcoder);
 
@@ -237,4 +270,41 @@ fn texture_transcode_format_to_bevy_format(
         fmt = fmt.add_srgb_suffix();
     }
     fmt
+}
+
+fn texture_bevy_format_to_transcode_format(
+    format: Option<TextureFormat>,
+) -> TextureTranscodedFormat {
+    let Some(format) = format else {
+        return TextureTranscodedFormat::cTFTotalTextureFormats;
+    };
+    let format = format.remove_srgb_suffix();
+    match format {
+        TextureFormat::Etc2Rgb8Unorm => TextureTranscodedFormat::cTFETC1_RGB,
+        TextureFormat::Etc2Rgba8Unorm => TextureTranscodedFormat::cTFETC2_RGBA,
+        TextureFormat::Bc1RgbaUnorm => TextureTranscodedFormat::cTFBC1_RGB,
+        TextureFormat::Bc3RgbaUnorm => TextureTranscodedFormat::cTFBC3_RGBA,
+        TextureFormat::Bc4RUnorm => TextureTranscodedFormat::cTFBC4_R,
+        TextureFormat::Bc5RgUnorm => TextureTranscodedFormat::cTFBC5_RG,
+        TextureFormat::Bc7RgbaUnorm => TextureTranscodedFormat::cTFBC7_RGBA,
+        TextureFormat::Astc {
+            block: AstcBlock::B4x4,
+            channel: AstcChannel::Unorm,
+        } => TextureTranscodedFormat::cTFASTC_4x4_RGBA,
+        TextureFormat::EacR11Unorm => TextureTranscodedFormat::cTFETC2_EAC_R11,
+        TextureFormat::EacRg11Unorm => TextureTranscodedFormat::cTFETC2_EAC_RG11,
+        TextureFormat::Bc6hRgbUfloat => TextureTranscodedFormat::cTFBC6H,
+        TextureFormat::Astc {
+            block: AstcBlock::B4x4,
+            channel: AstcChannel::Hdr,
+        } => TextureTranscodedFormat::cTFASTC_HDR_4x4_RGBA,
+        TextureFormat::Rgba8Unorm => TextureTranscodedFormat::cTFRGBA32,
+        TextureFormat::Rgba16Float => TextureTranscodedFormat::cTFRGBA_HALF,
+        TextureFormat::Rgb9e5Ufloat => TextureTranscodedFormat::cTFRGB_9E5,
+        TextureFormat::Astc {
+            block: AstcBlock::B6x6,
+            channel: AstcChannel::Hdr,
+        } => TextureTranscodedFormat::cTFASTC_HDR_6x6_RGBA,
+        _ => unreachable!(),
+    }
 }

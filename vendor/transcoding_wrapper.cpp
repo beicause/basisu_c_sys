@@ -3,13 +3,6 @@
 
 enum TextureCompressionMethod : unsigned char;
 
-enum ChannelType {
-	CHANNEL_RGB,
-	CHANNEL_RGBA,
-	CHANNEL_R,
-	CHANNEL_RG,
-};
-
 static ChannelType channel_id_to_type(bool is_uastc,
 		basist::ktx2_df_channel_id channel_id0,
 		basist::ktx2_df_channel_id channel_id1);
@@ -69,13 +62,13 @@ static bool c_ktx2_transcoder_get_texture_info(Transcoder *transcoder, TextureTr
 	return true;
 }
 
-static void c_ktx2_transcoder_get_target_format(Transcoder *transcoder, TextureCompressionMethod supported_compressed_formats, bool *r_is_srgb, TextureTranscodedFormat *r_format) {
+static void c_ktx2_transcoder_get_target_format(Transcoder *transcoder, TextureCompressionMethod supported_compressed_formats, ChannelType channel_type_hint, bool *r_is_srgb, TextureTranscodedFormat *r_format) {
 	basist::ktx2_transcoder *inner = transcoder->inner;
 
 	basist::ktx2_df_channel_id channel_id0 = inner->get_dfd_channel_id0();
 	basist::ktx2_df_channel_id channel_id1 = inner->get_dfd_channel_id1();
 	basist::basis_tex_format basis_format = inner->get_basis_tex_format();
-	ChannelType channel_type = channel_id_to_type(inner->is_uastc(), channel_id0, channel_id1);
+	ChannelType channel_type = channel_type_hint != CHANNEL_UNDEFINED ? channel_type_hint : channel_id_to_type(inner->is_uastc(), channel_id0, channel_id1);
 	basist::transcoder_texture_format target_format = get_target_texture_format(basis_format, channel_type, supported_compressed_formats);
 	*r_is_srgb = inner->get_dfd_transfer_func() == basist::KTX2_KHR_DF_TRANSFER_SRGB;
 	*r_format = static_cast<TextureTranscodedFormat>(static_cast<uint32_t>(target_format));
@@ -83,13 +76,16 @@ static void c_ktx2_transcoder_get_target_format(Transcoder *transcoder, TextureC
 
 bool c_ktx2_transcoder_transcode_image(
 		Transcoder *transcoder, const unsigned char *data, unsigned int data_size,
-		TextureCompressionMethod supported_compressed_formats) {
+		TextureCompressionMethod supported_compressed_formats, ChannelType channel_type_hint, TextureTranscodedFormat force_transcode_target) {
 	basist::ktx2_transcoder *inner = transcoder->inner;
 	inner->init(data, data_size);
 	inner->start_transcoding();
 
-	c_ktx2_transcoder_get_target_format(transcoder, supported_compressed_formats, &transcoder->r_is_srgb, &transcoder->r_target_format);
-	const basist::transcoder_texture_format transcode_format = static_cast<basist::transcoder_texture_format>(static_cast<uint32_t>(transcoder->r_target_format));
+	c_ktx2_transcoder_get_target_format(transcoder, supported_compressed_formats, channel_type_hint, &transcoder->r_is_srgb, &transcoder->r_target_format);
+	if (force_transcode_target != TextureTranscodedFormat::cTFTotalTextureFormats) {
+		transcoder->r_target_format = force_transcode_target;
+	}
+	basist::transcoder_texture_format transcode_format = static_cast<basist::transcoder_texture_format>(static_cast<uint32_t>(transcoder->r_target_format));
 
 	if (!c_ktx2_transcoder_get_texture_info(transcoder, transcoder->r_target_format, &transcoder->r_width, &transcoder->r_height, &transcoder->r_levels, &transcoder->r_layers, &transcoder->r_faces, &transcoder->r_dst_buf_len)) {
 		return false;
@@ -212,7 +208,8 @@ static basist::transcoder_texture_format get_target_texture_format(
 					case CHANNEL_RGB: {
 						return basist::transcoder_texture_format::cTFETC1_RGB;
 					} break;
-					case CHANNEL_RGBA: {
+					case CHANNEL_RGBA:
+					case CHANNEL_UNDEFINED: {
 						return basist::transcoder_texture_format::cTFETC2_RGBA;
 					} break;
 					case CHANNEL_R: {
@@ -242,6 +239,9 @@ static basist::transcoder_texture_format get_target_texture_format(
 					case CHANNEL_RG: {
 						return basist::transcoder_texture_format::cTFBC5_RG;
 					} break;
+					case CHANNEL_UNDEFINED: {
+						abort();
+					}
 				}
 			} else if (supported_compressed_formats & TextureCompressionMethod::ETC2) {
 				switch (channel_type) {
@@ -257,6 +257,9 @@ static basist::transcoder_texture_format get_target_texture_format(
 					case CHANNEL_RG: {
 						return basist::transcoder_texture_format::cTFETC2_EAC_RG11;
 					} break;
+					case CHANNEL_UNDEFINED: {
+						abort();
+					}
 				}
 			} else {
 				return basist::transcoder_texture_format::cTFRGBA32;

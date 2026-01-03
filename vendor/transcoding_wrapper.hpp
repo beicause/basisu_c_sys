@@ -5,6 +5,14 @@ class ktx2_transcoder;
 
 extern "C" {
 
+enum ChannelType : unsigned char {
+	CHANNEL_UNDEFINED = 0,
+	CHANNEL_RGBA,
+	CHANNEL_RGB,
+	CHANNEL_RG,
+	CHANNEL_R,
+};
+
 // This enum must be in sync with the `basist::transcoder_texture_format`.
 enum TextureTranscodedFormat : unsigned int {
 	// Compressed formats
@@ -112,7 +120,7 @@ Transcoder *c_ktx2_transcoder_new();
 void c_ktx2_transcoder_delete(Transcoder *transcoder);
 
 bool c_ktx2_transcoder_transcode_image(Transcoder *transcoder, const unsigned char *data, unsigned int data_size,
-		TextureCompressionMethod supported_compressed_formats);
+		TextureCompressionMethod supported_compressed_formats, ChannelType channel_type_hint, TextureTranscodedFormat force_transcode_target);
 
 unsigned char *c_ktx2_transcoder_get_r_dst_buf(Transcoder *transcoder);
 unsigned int c_ktx2_transcoder_get_r_dst_buf_len(Transcoder *transcoder);

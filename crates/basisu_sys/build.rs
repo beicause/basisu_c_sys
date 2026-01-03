@@ -70,6 +70,7 @@ fn bindgen() {
         .opaque_type("Transcoder")
         .bitfield_enum("TextureCompressionMethod")
         .newtype_enum("TextureTranscodedFormat")
+        .newtype_enum("ChannelType")
         .generate()
         .expect("Unable to generate bindings")
         .write_to_file(binding_file)
