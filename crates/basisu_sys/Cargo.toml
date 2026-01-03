@@ -6,7 +6,7 @@ repository.workspace = true
 license.workspace = true
 description = "A rust wrapper around the Basis Universal transcoder library"
 keywords = ["basis", "universal", "ffi", "transcoder"]
-exclude = ["src/bin/build_wasm_cli.rs"]
+include = ["vendor/", "wasm/", "src/*.rs"]
 
 [package.metadata.docs.rs]
 targets = ["x86_64-unknown-linux-gnu", "wasm32-unknown-unknown"]
