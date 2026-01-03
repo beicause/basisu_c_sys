@@ -55,7 +55,9 @@ jobs:
       - name: Upload artifact
         uses: actions/upload-artifact@v4
         with:
-          path: crates/basisu_sys/wasm/
+          path: |
+            crates/basisu_sys/wasm/basisu_vendor.js
+            crates/basisu_sys/wasm/basisu_vendor.wasm
 
       - uses: rust-lang/crates-io-auth-action@v1
         id: auth
