@@ -17,6 +17,8 @@ mod transcoding {
     include!(concat!(env!("OUT_DIR"), "/transcoding.rs"));
 }
 
+pub use transcoding::{ChannelType, TextureCompressionMethod, TextureTranscodedFormat, Transcoder};
+
 #[cfg(not(all(
     target_arch = "wasm32",
     target_vendor = "unknown",

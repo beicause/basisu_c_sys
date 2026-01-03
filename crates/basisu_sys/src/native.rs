@@ -1,6 +1,9 @@
 #![expect(clippy::missing_safety_doc, reason = "TODO")]
 
-pub use crate::transcoding::{TextureCompressionMethod, TextureTranscodedFormat, Transcoder};
+use crate::ChannelType;
+use crate::TextureCompressionMethod;
+use crate::TextureTranscodedFormat;
+use crate::Transcoder;
 
 pub use crate::transcoding::c_basisu_transcoder_init as basisu_transcoder_init;
 pub use crate::transcoding::c_ktx2_transcoder_delete as ktx2_transcoder_delete;
@@ -17,6 +20,8 @@ pub unsafe fn ktx2_transcoder_transcode_image(
     transcoder: *mut Transcoder,
     data: Vec<u8>,
     supported_compressed_formats: TextureCompressionMethod,
+    channel_type_hint: ChannelType,
+    force_transcode_target: TextureTranscodedFormat,
 ) -> bool {
     unsafe {
         crate::transcoding::c_ktx2_transcoder_transcode_image(
@@ -24,6 +29,8 @@ pub unsafe fn ktx2_transcoder_transcode_image(
             data.as_ptr(),
             u32::try_from(data.len()).unwrap(),
             supported_compressed_formats,
+            channel_type_hint,
+            force_transcode_target,
         )
     }
 }

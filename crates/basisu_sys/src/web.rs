@@ -2,11 +2,14 @@
 
 use std::cell::OnceCell;
 
-pub use crate::transcoding::{TextureCompressionMethod, TextureTranscodedFormat, Transcoder};
-
 use js_sys::Object;
 use js_sys::Reflect;
 use js_sys::Uint8Array;
+
+use crate::ChannelType;
+use crate::TextureCompressionMethod;
+use crate::TextureTranscodedFormat;
+use crate::Transcoder;
 
 mod bindings_sys {
     use super::Transcoder;
@@ -14,6 +17,7 @@ mod bindings_sys {
     use wasm_bindgen::prelude::wasm_bindgen;
     type TextureCompressionMethodRepr = u8;
     type TextureTranscodedFormatRepr = u32;
+    type ChannelTypeRepr = u8;
 
     #[wasm_bindgen]
     extern "C" {
@@ -40,6 +44,8 @@ mod bindings_sys {
             data: usize,
             data_len: u32,
             supported_compressed_formats: TextureCompressionMethodRepr,
+            channel_type_hint: ChannelTypeRepr,
+            force_transcode_target: TextureTranscodedFormatRepr,
         ) -> bool;
         #[wasm_bindgen(method,js_name=_c_ktx2_transcoder_get_r_dst_buf)]
         pub fn js_ktx2_transcoder_get_r_dst_buf(
@@ -184,6 +190,8 @@ pub unsafe fn ktx2_transcoder_transcode_image(
     transcoder: *mut Transcoder,
     data: Vec<u8>,
     supported_compressed_formats: TextureCompressionMethod,
+    channel_type_hint: ChannelType,
+    force_transcode_target: TextureTranscodedFormat,
 ) -> bool {
     BASISU_VENDOR_INSTANCE.with(|inst| {
         let inst = inst.get().unwrap();
@@ -196,6 +204,8 @@ pub unsafe fn ktx2_transcoder_transcode_image(
             ptr,
             len,
             supported_compressed_formats.0,
+            channel_type_hint.0,
+            force_transcode_target.0,
         );
         inst.js_basisu_free(ptr);
         result
