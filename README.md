@@ -60,7 +60,7 @@ TLDR: Just build your bevy application to `wasm32-unknown-unknown` normally.
 
 The prebuilt wasm in `crates/basisu_sys/wasm` is automatically embedded in binary when building. It was prebuilt through CI with:
 ```sh
-cargo r -p bevy_basisu_loader_sys --bin build-wasm-cli --features build-wasm-cli -- --emcc-flags="-Os -flto=full" --wasm-opt-flags="-Os"
+cargo r -p bevy_basisu_loader_sys --bin build-wasm-cli --features build-wasm-cli -- --emcc-flags="-sEVAL_CTORS -Os -flto=full" --wasm-opt-flags="-Os"
 ```
 
 ## Bevy version compatibility
