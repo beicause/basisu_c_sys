@@ -23,7 +23,7 @@ Web demo: https://beicause.github.io/bevy_basisu_loader/
 
 1. Add the Cargo dependency:
 ```toml
-bevy_basisu_loader = "0.1"
+bevy_basisu_loader = "0.2"
 ```
 
 2. Add `BasisuLoaderPlugin`:
@@ -67,7 +67,7 @@ cargo r -p bevy_basisu_loader_sys --bin build-wasm-cli --features build-wasm-cli
 
 | `bevy` | `bevy_basisu_loader` |
 | ------ | -------------------- |
-| 0.17   | 0.1                  |
+| 0.17   | 0.1, 0.2             |
 
 ## License
 
