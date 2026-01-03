@@ -7,15 +7,14 @@ const FLAGS: [&str; 7] = [
     "-Wno-unused-value",
     "-Wno-deprecated",
 ];
-// Disable BC1/3/4/5 as we always use BC7 when supported.
 // Disable PVRTC1/2, ATC, FXT1 as wgpu does not support them.
-const DEFINES: [(&str, &str); 6] = [
+const DEFINES: [(&str, &str); 5] = [
     // ("BASISU_FORCE_DEVEL_MESSAGES", "1"),
     // ("BASISD_SUPPORT_KTX2", "1"),
     // ("BASISD_SUPPORT_KTX2_ZSTD", "1"),
     // ("BASISD_SUPPORT_UASTC", "1"),
-    ("BASISD_SUPPORT_DXT1", "0"),  //(BC1)
-    ("BASISD_SUPPORT_DXT5A", "0"), //(BC3 / 4 / 5)
+    ("BASISD_SUPPORT_DXT1", "0"), //(BC1)
+    // ("BASISD_SUPPORT_DXT5A", "1"), //(BC3 / 4 / 5)
     // ("BASISD_SUPPORT_BC7", "1"),
     // ("BASISD_SUPPORT_BC7_MODE5", "1"),
     ("BASISD_SUPPORT_PVRTC1", "0"),

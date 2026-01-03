@@ -229,7 +229,20 @@ static basist::transcoder_texture_format get_target_texture_format(
 		case basist::basis_tex_format::cETC1S: {
 			// Prefer BC7 over ETC2 because on some desktop platforms ETC2 is really slow.
 			if (supported_compressed_formats & TextureCompressionMethod::BC) {
-				return basist::transcoder_texture_format::cTFBC7_RGBA;
+				switch (channel_type) {
+					case CHANNEL_RGB: {
+						return basist::transcoder_texture_format::cTFBC7_RGBA;
+					} break;
+					case CHANNEL_RGBA: {
+						return basist::transcoder_texture_format::cTFBC7_RGBA;
+					} break;
+					case CHANNEL_R: {
+						return basist::transcoder_texture_format::cTFBC4_R;
+					} break;
+					case CHANNEL_RG: {
+						return basist::transcoder_texture_format::cTFBC5_RG;
+					} break;
+				}
 			} else if (supported_compressed_formats & TextureCompressionMethod::ETC2) {
 				switch (channel_type) {
 					case CHANNEL_RGB: {
