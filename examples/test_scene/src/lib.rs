@@ -1,5 +1,6 @@
 use bevy::{
     core_pipeline::{Skybox, tonemapping::Tonemapping},
+    log::LogPlugin,
     math::Affine2,
     prelude::*,
     render::view::Hdr,
@@ -9,15 +10,22 @@ use bevy_basisu_loader::{BasisuLoaderPlugin, BasisuLoaderSettings};
 #[bevy_main]
 pub fn main() {
     App::new()
-        .add_plugins(DefaultPlugins.set(WindowPlugin {
-            primary_window: Some(Window {
-                // Bind to canvas included in `index.html`
-                canvas: Some("#bevy".to_owned()),
-                fit_canvas_to_parent: true,
-                ..default()
-            }),
-            ..default()
-        }))
+        .add_plugins(
+            DefaultPlugins
+                .set(WindowPlugin {
+                    primary_window: Some(Window {
+                        // Bind to canvas included in `index.html`
+                        canvas: Some("#bevy".to_owned()),
+                        fit_canvas_to_parent: true,
+                        ..default()
+                    }),
+                    ..default()
+                })
+                .set(LogPlugin {
+                    filter: "bevy_basisu_loader=debug".to_string(),
+                    ..Default::default()
+                }),
+        )
         .add_plugins(BasisuLoaderPlugin)
         .add_systems(Startup, setup)
         .add_systems(Update, rotate_camera)
