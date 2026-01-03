@@ -73,8 +73,16 @@ impl AssetLoader for BasisuLoader {
     ) -> Result<Self::Asset, Self::Error> {
         let mut data = Vec::new();
         reader.read_to_end(&mut data).await?;
+
         // SAFETY: Ensure the transcoding code is correct.
         let (out_data, out_format, extent, levels, view_dimension) = unsafe {
+            let _span = bevy::log::info_span!("Transcoding BasisU Texture").entered();
+            let time = if log::STATIC_MAX_LEVEL >= log::LevelFilter::Debug {
+                Some(bevy::platform::time::Instant::now())
+            } else {
+                None
+            };
+
             let transcoder = bevy_basisu_loader_sys::ktx2_transcoder_new();
             if transcoder.is_null() {
                 return Err(BasisuLoaderError::TranscodingError("ktx2_transcoder_new"));
@@ -122,13 +130,20 @@ impl AssetLoader for BasisuLoader {
             };
 
             bevy_basisu_loader_sys::ktx2_transcoder_delete(transcoder);
-            (
-                dst_bytes,
-                texture_transcode_format_to_bevy_format(target_format, is_srgb),
-                extent,
-                levels,
-                view_dimension,
-            )
+            let out_format = texture_transcode_format_to_bevy_format(target_format, is_srgb);
+            if log::STATIC_MAX_LEVEL >= log::LevelFilter::Debug {
+                bevy::log::debug!(
+                    "Transcoded a basisu texture with dst_bytes: {:?}, dst_format: {:?}, extent: {:?}, levels: {:?}, view_dimension: {:?}, in {:?}",
+                    dst_bytes.len(),
+                    out_format,
+                    extent,
+                    levels,
+                    view_dimension,
+                    time.unwrap_unchecked().elapsed()
+                );
+            }
+
+            (dst_bytes, out_format, extent, levels, view_dimension)
         };
         let mut image = Image {
             data: None,
