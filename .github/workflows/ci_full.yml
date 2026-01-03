@@ -18,7 +18,7 @@ env:
 
 jobs:
   build-linux-wasm:
-    name: Build linux,wasm32
+    name: Build linux,wasm
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4

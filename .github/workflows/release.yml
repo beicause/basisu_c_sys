@@ -50,7 +50,7 @@ jobs:
           targets: wasm32-unknown-unknown
 
       - name: Build basisu vendor wasm
-        run: cargo r -p bevy_basisu_loader_sys --bin build-wasm-cli --features build-wasm-cli -- --emcc-flags="-Os -flto=full" --wasm-opt-flags="-Os"
+        run: cargo r -p bevy_basisu_loader_sys --bin build-wasm-cli --features build-wasm-cli -- --emcc-flags="-sEVAL_CTORS -Os -flto=full" --wasm-opt-flags="-Os"
 
       - name: Upload artifact
         uses: actions/upload-artifact@v4

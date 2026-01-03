@@ -227,7 +227,10 @@ static basist::transcoder_texture_format get_target_texture_format(
 			}
 		} break;
 		case basist::basis_tex_format::cETC1S: {
-			if (supported_compressed_formats & TextureCompressionMethod::ETC2) {
+			// Prefer BC7 over ETC2 because on some desktop platforms ETC2 is really slow.
+			if (supported_compressed_formats & TextureCompressionMethod::BC) {
+				return basist::transcoder_texture_format::cTFBC7_RGBA;
+			} else if (supported_compressed_formats & TextureCompressionMethod::ETC2) {
 				switch (channel_type) {
 					case CHANNEL_RGB: {
 						return basist::transcoder_texture_format::cTFETC1_RGB;
@@ -242,8 +245,6 @@ static basist::transcoder_texture_format get_target_texture_format(
 						return basist::transcoder_texture_format::cTFETC2_EAC_RG11;
 					} break;
 				}
-			} else if (supported_compressed_formats & TextureCompressionMethod::BC) {
-				return basist::transcoder_texture_format::cTFBC7_RGBA;
 			} else {
 				return basist::transcoder_texture_format::cTFRGBA32;
 			}
