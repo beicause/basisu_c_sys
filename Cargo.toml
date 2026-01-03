@@ -1,6 +1,6 @@
 [package]
 name = "bevy_basisu_loader"
-version = "0.1.7"
+version = "0.2.0"
 edition = "2024"
 repository.workspace = true
 license.workspace = true
@@ -22,7 +22,7 @@ bevy = { version = "0.17", default-features = false, features = [
 serde = { version = "1", features = ["derive"] }
 thiserror = { version = "2", default-features = false }
 log = { version = "0.4", default-features = false }
-bevy_basisu_loader_sys = { version = "0.1", path = "crates/basisu_sys" }
+bevy_basisu_loader_sys = { version = "0.2", path = "crates/basisu_sys" }
 
 [workspace]
 members = ["crates/*", "examples/test_scene"]
