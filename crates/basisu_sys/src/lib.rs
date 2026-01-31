@@ -1,6 +1,7 @@
 #[expect(
     non_upper_case_globals,
-    reason = "Generated code is OK to have non upper case globals or to be unused"
+    non_camel_case_types,
+    reason = "Generated code is OK to have non upper case globals or non camel case enums"
 )]
 #[cfg_attr(
     all(
@@ -10,14 +11,16 @@
     ),
     expect(
         unused,
-        reason = "Generated code for wasm32 is OK to have unused functions"
+        reason = "On wasm32 we use js bindings so native functions are unused"
     )
 )]
 mod transcoding {
     include!(concat!(env!("OUT_DIR"), "/transcoding.rs"));
 }
 
-pub use transcoding::{ChannelType, TextureCompressionMethod, TextureTranscodedFormat, Transcoder};
+pub use transcoding::{
+    ChannelType, SupportedTextureCompressionMethods, TextureTranscodedFormat, Transcoder,
+};
 
 #[cfg(not(all(
     target_arch = "wasm32",

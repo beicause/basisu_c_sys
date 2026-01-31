@@ -113,6 +113,45 @@ fn setup(
             * Transform::from_rotation(Quat::from_rotation_y(45.0)),
     ));
 
+    commands.spawn((
+        ImageNode {
+            image: asset_server.load("wikipedia_xuastc_ldr_6x6.basisu_ktx2"),
+            ..Default::default()
+        },
+        Node {
+            position_type: PositionType::Absolute,
+            top: px(12),
+            right: px(12),
+            width: px(256),
+            max_width: px(256),
+            max_height: px(256),
+            ..default()
+        },
+    ));
+
+    commands.spawn((
+        ImageNode {
+            image: asset_server.load("kodim20_astc_ldr_8x8.basisu_ktx2"),
+            ..Default::default()
+        },
+        Node {
+            position_type: PositionType::Absolute,
+            top: px(12 + 256),
+            right: px(12),
+            width: px(256),
+            max_width: px(256),
+            max_height: px(256),
+            ..default()
+        },
+    ));
+
+    commands.spawn((Node {
+        position_type: PositionType::Absolute,
+        top: px(12),
+        left: px(12),
+        ..default()
+    },));
+
     // UI
     commands.spawn((
         Text::new("Press Q, E (or ArrowLeft, ArrowRight) to rotate camera."),
