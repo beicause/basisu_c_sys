@@ -9,11 +9,11 @@ A cross-platform, size-optimized Bevy plugin that provides a KTX2 Basis Universa
 
 Although Bevy's `ImageLoader` has built-in support for Basis Universal textures via the [`basis-universal-rs`](https://github.com/aclysma/basis-universal-rs) crate, it has some limitations:
 1. It uses a relatively old version of Basis Universal
-2. No support for UASTC HDR yet
+2. No support for UASTC HDR yet, either ASTC, XUASTC which added in basis universal v2
 3. No support for Web. Bevy can't be compiled to `wasm32-unknown-emscripten` and `basis-universal-rs` can't be compiled to `wasm32-unknown-unknown`
 4. It compiles both the encoder and transcoder and includes transcoding formats not supported by wgpu, which increases binary size
 
-This plugin adds a loader for Basis Universal KTX2 textures with support for ETC1S, UASTC LDR and USATC HDR, and web support through JavaScript glue to call [Basis Universal](https://github.com/BinomialLLC/basis_universal/) C++ library compiled with Emscripten which includes only the transcoder and necessary transcoding formats.
+This plugin adds a loader for Basis Universal KTX2 textures with support for all formats supported by basis universal v2.0.2 (ETC1S, UASTC, ASTC, XUASTC), and web support through JavaScript glue to call [Basis Universal](https://github.com/BinomialLLC/basis_universal/) C++ library compiled with Emscripten which includes only the transcoder and necessary transcoding formats.
 
 This doesn't include BasisU encoder. To encode textures to `.ktx2`, use the command line tool in [Basis Universal](https://github.com/BinomialLLC/basis_universal/?tab=readme-ov-file#compressing-and-unpacking-ktx2basis-files) repo.
 
@@ -37,7 +37,7 @@ pub fn main() {
 }
 ```
 
-1. Load ktx2 basis universal textures. Supports ETC1S and UASTC and `D2`, `D2Array` and `Cube` texture types. Only supports KTX2 format (zstd compression is supported). No support for `.basis` format.
+1. Load ktx2 basis universal textures. Supports `D2`, `D2Array` and `Cube` texture types. Only supports KTX2 format (zstd compression is supported). No support for `.basis` format.
 ```rs
     let image_handle = asset_server.load("gl_skybox_etc1s_cubemap_mips_12.basisu_ktx2");
 ```

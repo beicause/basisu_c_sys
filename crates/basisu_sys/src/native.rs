@@ -1,7 +1,7 @@
 #![expect(clippy::missing_safety_doc, reason = "TODO")]
 
 use crate::ChannelType;
-use crate::TextureCompressionMethod;
+use crate::SupportedTextureCompressionMethods;
 use crate::TextureTranscodedFormat;
 use crate::Transcoder;
 
@@ -19,7 +19,7 @@ pub use crate::transcoding::c_ktx2_transcoder_new as ktx2_transcoder_new;
 pub unsafe fn ktx2_transcoder_transcode_image(
     transcoder: *mut Transcoder,
     data: Vec<u8>,
-    supported_compressed_formats: TextureCompressionMethod,
+    supported_compressed_formats: SupportedTextureCompressionMethods,
     channel_type_hint: ChannelType,
     force_transcode_target: TextureTranscodedFormat,
 ) -> bool {

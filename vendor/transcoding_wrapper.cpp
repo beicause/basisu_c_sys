@@ -1,7 +1,7 @@
 #include "transcoding_wrapper.hpp"
 #include "basis_universal/transcoder/basisu_transcoder.h"
 
-enum TextureCompressionMethod : unsigned char;
+enum SupportedTextureCompressionMethods : unsigned char;
 
 static ChannelType channel_id_to_type(bool is_uastc,
 		basist::ktx2_df_channel_id channel_id0,
@@ -9,7 +9,7 @@ static ChannelType channel_id_to_type(bool is_uastc,
 
 static basist::transcoder_texture_format get_target_texture_format(
 		basist::basis_tex_format basis_format, ChannelType channel_type,
-		TextureCompressionMethod supported_compressed_formats);
+		SupportedTextureCompressionMethods supported_compressed_formats);
 
 extern "C" {
 void c_basisu_transcoder_init() {
@@ -62,7 +62,7 @@ static bool c_ktx2_transcoder_get_texture_info(Transcoder *transcoder, TextureTr
 	return true;
 }
 
-static void c_ktx2_transcoder_get_target_format(Transcoder *transcoder, TextureCompressionMethod supported_compressed_formats, ChannelType channel_type_hint, bool *r_is_srgb, TextureTranscodedFormat *r_format) {
+static void c_ktx2_transcoder_get_target_format(Transcoder *transcoder, SupportedTextureCompressionMethods supported_compressed_formats, ChannelType channel_type_hint, bool *r_is_srgb, TextureTranscodedFormat *r_format) {
 	basist::ktx2_transcoder *inner = transcoder->inner;
 
 	basist::ktx2_df_channel_id channel_id0 = inner->get_dfd_channel_id0();
@@ -76,7 +76,7 @@ static void c_ktx2_transcoder_get_target_format(Transcoder *transcoder, TextureC
 
 bool c_ktx2_transcoder_transcode_image(
 		Transcoder *transcoder, const unsigned char *data, unsigned int data_size,
-		TextureCompressionMethod supported_compressed_formats, ChannelType channel_type_hint, TextureTranscodedFormat force_transcode_target) {
+		SupportedTextureCompressionMethods supported_compressed_formats, ChannelType channel_type_hint, TextureTranscodedFormat force_transcode_target) {
 	basist::ktx2_transcoder *inner = transcoder->inner;
 	inner->init(data, data_size);
 	inner->start_transcoding();
@@ -175,35 +175,171 @@ static ChannelType channel_id_to_type(bool is_uastc,
 // Select target format according to https://github.com/KhronosGroup/3D-Formats-Guidelines/blob/main/KTXDeveloperGuide.md.
 static basist::transcoder_texture_format get_target_texture_format(
 		basist::basis_tex_format basis_format, ChannelType channel_type,
-		TextureCompressionMethod supported_compressed_formats) {
+		SupportedTextureCompressionMethods supported_compressed_formats) {
 	switch (basis_format) {
+		// HDR formats
 		case basist::basis_tex_format::cUASTC_HDR_4x4: {
-			if (supported_compressed_formats & TextureCompressionMethod::ASTC_HDR) {
+			if (supported_compressed_formats & SupportedTextureCompressionMethods::ASTC_HDR) {
 				return basist::transcoder_texture_format::cTFASTC_HDR_4x4_RGBA;
-			} else if (supported_compressed_formats & TextureCompressionMethod::BC) {
+			} else if (supported_compressed_formats & SupportedTextureCompressionMethods::BC) {
 				return basist::transcoder_texture_format::cTFBC6H;
 			} else {
 				return basist::transcoder_texture_format::cTFRGBA_HALF;
 			}
 		} break;
 
-		case basist::basis_tex_format::cASTC_HDR_6x6_INTERMEDIATE:
+		case basist::basis_tex_format::cUASTC_HDR_6x6_INTERMEDIATE:
 		case basist::basis_tex_format::cASTC_HDR_6x6: {
-			if (supported_compressed_formats & TextureCompressionMethod::ASTC_HDR) {
+			if (supported_compressed_formats & SupportedTextureCompressionMethods::ASTC_HDR) {
 				return basist::transcoder_texture_format::cTFASTC_HDR_6x6_RGBA;
-			} else if (supported_compressed_formats & TextureCompressionMethod::BC) {
+			} else if (supported_compressed_formats & SupportedTextureCompressionMethods::BC) {
 				return basist::transcoder_texture_format::cTFBC6H;
 			} else {
 				return basist::transcoder_texture_format::cTFRGBA_HALF;
 			}
 		} break;
 
-		case basist::basis_tex_format::cUASTC4x4: {
-			if (supported_compressed_formats & TextureCompressionMethod::ASTC_LDR) {
-				return basist::transcoder_texture_format::cTFASTC_4x4_RGBA;
-			} else if (supported_compressed_formats & TextureCompressionMethod::BC) {
+		// XUASTC (supercompressed) LDR variants (the standard ASTC block sizes)
+		case basist::basis_tex_format::cXUASTC_LDR_4x4:
+		case basist::basis_tex_format::cXUASTC_LDR_5x4:
+		case basist::basis_tex_format::cXUASTC_LDR_5x5:
+		case basist::basis_tex_format::cXUASTC_LDR_6x5:
+
+		case basist::basis_tex_format::cXUASTC_LDR_6x6:
+		case basist::basis_tex_format::cXUASTC_LDR_8x5:
+		case basist::basis_tex_format::cXUASTC_LDR_8x6:
+		case basist::basis_tex_format::cXUASTC_LDR_10x5:
+
+		case basist::basis_tex_format::cXUASTC_LDR_10x6:
+		case basist::basis_tex_format::cXUASTC_LDR_8x8:
+		case basist::basis_tex_format::cXUASTC_LDR_10x8:
+		case basist::basis_tex_format::cXUASTC_LDR_10x10:
+
+		case basist::basis_tex_format::cXUASTC_LDR_12x10:
+		case basist::basis_tex_format::cXUASTC_LDR_12x12:
+
+		// Standard (non-supercompressed) ASTC LDR variants (the standard ASTC block sizes)
+		case basist::basis_tex_format::cASTC_LDR_4x4:
+		case basist::basis_tex_format::cASTC_LDR_5x4:
+		case basist::basis_tex_format::cASTC_LDR_5x5:
+		case basist::basis_tex_format::cASTC_LDR_6x5:
+
+		case basist::basis_tex_format::cASTC_LDR_6x6:
+		case basist::basis_tex_format::cASTC_LDR_8x5:
+		case basist::basis_tex_format::cASTC_LDR_8x6:
+		case basist::basis_tex_format::cASTC_LDR_10x5:
+
+		case basist::basis_tex_format::cASTC_LDR_10x6:
+		case basist::basis_tex_format::cASTC_LDR_8x8:
+		case basist::basis_tex_format::cASTC_LDR_10x8:
+		case basist::basis_tex_format::cASTC_LDR_10x10:
+
+		case basist::basis_tex_format::cASTC_LDR_12x10:
+		case basist::basis_tex_format::cASTC_LDR_12x12: {
+			if (supported_compressed_formats & SupportedTextureCompressionMethods::ASTC_LDR) {
+				switch (basis_format) {
+					case basist::basis_tex_format::cXUASTC_LDR_4x4:
+					case basist::basis_tex_format::cASTC_LDR_4x4: {
+						return basist::transcoder_texture_format::cTFASTC_LDR_4x4_RGBA;
+					} break;
+
+					case basist::basis_tex_format::cXUASTC_LDR_5x4:
+					case basist::basis_tex_format::cASTC_LDR_5x4: {
+						return basist::transcoder_texture_format::cTFASTC_LDR_5x4_RGBA;
+					} break;
+
+					case basist::basis_tex_format::cXUASTC_LDR_5x5:
+					case basist::basis_tex_format::cASTC_LDR_5x5: {
+						return basist::transcoder_texture_format::cTFASTC_LDR_5x5_RGBA;
+					} break;
+
+					case basist::basis_tex_format::cXUASTC_LDR_6x5:
+					case basist::basis_tex_format::cASTC_LDR_6x5: {
+						return basist::transcoder_texture_format::cTFASTC_LDR_6x5_RGBA;
+					} break;
+
+					case basist::basis_tex_format::cXUASTC_LDR_6x6:
+					case basist::basis_tex_format::cASTC_LDR_6x6: {
+						return basist::transcoder_texture_format::cTFASTC_LDR_6x6_RGBA;
+					} break;
+
+					case basist::basis_tex_format::cXUASTC_LDR_8x5:
+					case basist::basis_tex_format::cASTC_LDR_8x5: {
+						return basist::transcoder_texture_format::cTFASTC_LDR_8x5_RGBA;
+					} break;
+
+					case basist::basis_tex_format::cXUASTC_LDR_8x6:
+					case basist::basis_tex_format::cASTC_LDR_8x6: {
+						return basist::transcoder_texture_format::cTFASTC_LDR_8x6_RGBA;
+					} break;
+
+					case basist::basis_tex_format::cXUASTC_LDR_10x5:
+					case basist::basis_tex_format::cASTC_LDR_10x5: {
+						return basist::transcoder_texture_format::cTFASTC_LDR_10x5_RGBA;
+					} break;
+
+					case basist::basis_tex_format::cXUASTC_LDR_10x6:
+					case basist::basis_tex_format::cASTC_LDR_10x6: {
+						return basist::transcoder_texture_format::cTFASTC_LDR_10x6_RGBA;
+					} break;
+
+					case basist::basis_tex_format::cXUASTC_LDR_8x8:
+					case basist::basis_tex_format::cASTC_LDR_8x8: {
+						return basist::transcoder_texture_format::cTFASTC_LDR_8x8_RGBA;
+					} break;
+
+					case basist::basis_tex_format::cXUASTC_LDR_10x8:
+					case basist::basis_tex_format::cASTC_LDR_10x8: {
+						return basist::transcoder_texture_format::cTFASTC_LDR_10x8_RGBA;
+					} break;
+
+					case basist::basis_tex_format::cXUASTC_LDR_10x10:
+					case basist::basis_tex_format::cASTC_LDR_10x10: {
+						return basist::transcoder_texture_format::cTFASTC_LDR_10x10_RGBA;
+					} break;
+
+					case basist::basis_tex_format::cXUASTC_LDR_12x10:
+					case basist::basis_tex_format::cASTC_LDR_12x10: {
+						return basist::transcoder_texture_format::cTFASTC_LDR_12x10_RGBA;
+					} break;
+
+					case basist::basis_tex_format::cXUASTC_LDR_12x12:
+					case basist::basis_tex_format::cASTC_LDR_12x12: {
+						return basist::transcoder_texture_format::cTFASTC_LDR_12x12_RGBA;
+					} break;
+					default:
+						abort();
+				}
+			} else if (supported_compressed_formats & SupportedTextureCompressionMethods::BC) {
 				return basist::transcoder_texture_format::cTFBC7_RGBA;
-			} else if (supported_compressed_formats & TextureCompressionMethod::ETC2) {
+			} else if (supported_compressed_formats & SupportedTextureCompressionMethods::ETC2) {
+				switch (channel_type) {
+					case CHANNEL_RGB: {
+						return basist::transcoder_texture_format::cTFETC1_RGB;
+					} break;
+					case CHANNEL_RGBA:
+					case CHANNEL_UNDEFINED: {
+						return basist::transcoder_texture_format::cTFETC2_RGBA;
+					} break;
+					case CHANNEL_R: {
+						return basist::transcoder_texture_format::cTFETC2_EAC_R11;
+					} break;
+					case CHANNEL_RG: {
+						return basist::transcoder_texture_format::cTFETC2_EAC_RG11;
+					} break;
+				}
+			} else {
+				return basist::transcoder_texture_format::cTFRGBA32;
+			}
+		} break;
+
+		// Original LDR formats
+		case basist::basis_tex_format::cUASTC_LDR_4x4: {
+			if (supported_compressed_formats & SupportedTextureCompressionMethods::ASTC_LDR) {
+				return basist::transcoder_texture_format::cTFASTC_4x4_RGBA;
+			} else if (supported_compressed_formats & SupportedTextureCompressionMethods::BC) {
+				return basist::transcoder_texture_format::cTFBC7_RGBA;
+			} else if (supported_compressed_formats & SupportedTextureCompressionMethods::ETC2) {
 				switch (channel_type) {
 					case CHANNEL_RGB: {
 						return basist::transcoder_texture_format::cTFETC1_RGB;
@@ -225,7 +361,7 @@ static basist::transcoder_texture_format get_target_texture_format(
 		} break;
 		case basist::basis_tex_format::cETC1S: {
 			// Prefer BC7 over ETC2 because on some desktop platforms ETC2 is really slow.
-			if (supported_compressed_formats & TextureCompressionMethod::BC) {
+			if (supported_compressed_formats & SupportedTextureCompressionMethods::BC) {
 				switch (channel_type) {
 					case CHANNEL_RGB: {
 						return basist::transcoder_texture_format::cTFBC7_RGBA;
@@ -243,7 +379,7 @@ static basist::transcoder_texture_format get_target_texture_format(
 						abort();
 					}
 				}
-			} else if (supported_compressed_formats & TextureCompressionMethod::ETC2) {
+			} else if (supported_compressed_formats & SupportedTextureCompressionMethods::ETC2) {
 				switch (channel_type) {
 					case CHANNEL_RGB: {
 						return basist::transcoder_texture_format::cTFETC1_RGB;
