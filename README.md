@@ -13,7 +13,7 @@ Although Bevy's `ImageLoader` has built-in support for Basis Universal textures 
 3. No support for Web. Bevy can't be compiled to `wasm32-unknown-emscripten` and `basis-universal-rs` can't be compiled to `wasm32-unknown-unknown`
 4. It compiles both the encoder and transcoder and includes transcoding formats not supported by wgpu, which increases binary size
 
-This plugin adds a loader for Basis Universal KTX2 textures with support for all formats supported by basis universal v2.0.2 (ETC1S, UASTC, ASTC, XUASTC), and web support through JavaScript glue to call [Basis Universal](https://github.com/BinomialLLC/basis_universal/) C++ library compiled with Emscripten which includes only the transcoder and necessary transcoding formats.
+This plugin adds a loader for Basis Universal KTX2 textures with support for all formats supported by basis universal (ETC1S, UASTC, ASTC, XUASTC), and web support through JavaScript glue to call [Basis Universal](https://github.com/BinomialLLC/basis_universal/) C++ library compiled with Emscripten which includes only the transcoder and necessary transcoding formats.
 
 This doesn't include BasisU encoder. To encode textures to `.ktx2`, use the command line tool in [Basis Universal](https://github.com/BinomialLLC/basis_universal/?tab=readme-ov-file#compressing-and-unpacking-ktx2basis-files) repo.
 
@@ -23,7 +23,7 @@ Web demo: https://beicause.github.io/bevy_basisu_loader/
 
 1. Add the Cargo dependency:
 ```toml
-bevy_basisu_loader = "0.2"
+bevy_basisu_loader = "0.3"
 ```
 
 2. Add `BasisuLoaderPlugin`:
@@ -65,9 +65,10 @@ cargo r -p bevy_basisu_loader_sys --bin build-wasm-cli --features build-wasm-cli
 
 ## Bevy version compatibility
 
-| `bevy` | `bevy_basisu_loader` |
-| ------ | -------------------- |
-| 0.17   | 0.1, 0.2             |
+| `bevy` | `bevy_basisu_loader` | `basis_universal` |
+| ------ | -------------------- | ----------------- |
+| 0.18   | 0.3                  | v2_0_2            |
+| 0.17   | 0.1, 0.2             | v1_60_snapshot    |
 
 ## License
 
