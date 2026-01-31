@@ -8,12 +8,12 @@
 A cross-platform, size-optimized Bevy plugin that provides a KTX2 Basis Universal texture loader.
 
 Although Bevy's `ImageLoader` has built-in support for Basis Universal textures via the [`basis-universal-rs`](https://github.com/aclysma/basis-universal-rs) crate, it has some limitations:
-1. It uses a relatively old version of Basis Universal
-2. No support for UASTC HDR yet, either ASTC, XUASTC which added in basis universal v2
-3. No support for Web. Bevy can't be compiled to `wasm32-unknown-emscripten` and `basis-universal-rs` can't be compiled to `wasm32-unknown-unknown`
-4. It compiles both the encoder and transcoder and includes transcoding formats not supported by wgpu, which increases binary size
+1. It uses a relatively old version of [Basis Universal][].
+2. No support for UASTC HDR yet, either ASTC, XUASTC which are added in basis universal v2.
+3. No support for Web. Bevy can't be compiled to `wasm32-unknown-emscripten` and `basis-universal-rs` can't be compiled to `wasm32-unknown-unknown`.
+4. It compiles both the encoder and transcoder and includes transcoding formats not supported by wgpu, which increases binary size.
 
-This plugin adds a loader for Basis Universal KTX2 textures with support for all formats supported by basis universal (ETC1S, UASTC, ASTC, XUASTC), and web support through JavaScript glue to call [Basis Universal](https://github.com/BinomialLLC/basis_universal/) C++ library compiled with Emscripten which includes only the transcoder and necessary transcoding formats.
+This plugin adds a loader for Basis Universal KTX2 textures with support for all formats supported by basis universal (ETC1S, UASTC, ASTC, XUASTC), and web support through JavaScript glue to call [Basis Universal][] C++ library compiled with Emscripten which includes only the transcoder and necessary transcoding formats.
 
 This doesn't include BasisU encoder. To encode textures to `.ktx2`, use the command line tool in [Basis Universal](https://github.com/BinomialLLC/basis_universal/?tab=readme-ov-file#compressing-and-unpacking-ktx2basis-files) repo.
 
@@ -78,3 +78,5 @@ Except where noted (below and/or in individual files), all code in this reposito
 * Apache License, Version 2.0 ([LICENSE-APACHE](LICENSE-APACHE) or [http://www.apache.org/licenses/LICENSE-2.0](http://www.apache.org/licenses/LICENSE-2.0))
 
 at your option.
+
+[Basis Universal]: https://github.com/BinomialLLC/basis_universal/
