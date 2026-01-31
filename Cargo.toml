@@ -13,7 +13,7 @@ repository = "https://github.com/beicause/bevy_basisu_loader"
 license = "MIT OR Apache-2.0"
 
 [dependencies]
-bevy = { version = "0.17", default-features = false, features = [
+bevy = { version = "0.18", default-features = false, features = [
   "bevy_asset",
   "bevy_image",
   "bevy_render",
