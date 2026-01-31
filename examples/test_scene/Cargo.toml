@@ -9,5 +9,5 @@ name = "test_scene_lib"
 crate-type = ["lib", "cdylib"]
 
 [dependencies]
-bevy = { version = "0.17" }
+bevy = { version = "0.18" }
 bevy_basisu_loader = { path = "../.." }
