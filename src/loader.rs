@@ -10,6 +10,7 @@ use bevy_basisu_loader_sys::{TextureCompressionMethod, TextureTranscodedFormat};
 use serde::{Deserialize, Serialize};
 use thiserror::Error;
 
+#[derive(TypePath)]
 pub struct BasisuLoader {
     supported_compressed_formats: TextureCompressionMethod,
 }
