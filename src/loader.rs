@@ -6,29 +6,29 @@ use bevy::render::render_resource::{
     TextureFormat, TextureUsages, TextureViewDescriptor, TextureViewDimension,
     WgpuFeatures as Features,
 };
-use bevy_basisu_loader_sys::{TextureCompressionMethod, TextureTranscodedFormat};
+use bevy_basisu_loader_sys::{SupportedTextureCompressionMethods, TextureTranscodedFormat};
 use serde::{Deserialize, Serialize};
 use thiserror::Error;
 
 #[derive(TypePath)]
 pub struct BasisuLoader {
-    supported_compressed_formats: TextureCompressionMethod,
+    supported_compressed_formats: SupportedTextureCompressionMethods,
 }
 
 impl BasisuLoader {
     pub fn from_features(features: Features) -> Self {
-        let mut supported_compressed_formats = TextureCompressionMethod::NONE;
+        let mut supported_compressed_formats = SupportedTextureCompressionMethods::NONE;
         if features.contains(Features::TEXTURE_COMPRESSION_ASTC) {
-            supported_compressed_formats |= TextureCompressionMethod::ASTC_LDR;
+            supported_compressed_formats |= SupportedTextureCompressionMethods::ASTC_LDR;
         }
         if features.contains(Features::TEXTURE_COMPRESSION_ASTC_HDR) {
-            supported_compressed_formats |= TextureCompressionMethod::ASTC_HDR;
+            supported_compressed_formats |= SupportedTextureCompressionMethods::ASTC_HDR;
         }
         if features.contains(Features::TEXTURE_COMPRESSION_BC) {
-            supported_compressed_formats |= TextureCompressionMethod::BC;
+            supported_compressed_formats |= SupportedTextureCompressionMethods::BC;
         }
         if features.contains(Features::TEXTURE_COMPRESSION_ETC2) {
-            supported_compressed_formats |= TextureCompressionMethod::ETC2;
+            supported_compressed_formats |= SupportedTextureCompressionMethods::ETC2;
         }
         Self {
             supported_compressed_formats,
@@ -45,6 +45,11 @@ pub enum ChannelType {
     Rgb,
     Rg,
     R,
+}
+
+const fn channel_type_to_channel_type_sys(t: ChannelType) -> bevy_basisu_loader_sys::ChannelType {
+    // SAFETY: Both repr are u8
+    unsafe { core::mem::transmute(t) }
 }
 
 /// Settings for loading an [`Image`] using an [`BasisuLoader`].
@@ -118,7 +123,7 @@ impl AssetLoader for BasisuLoader {
                 transcoder,
                 data,
                 self.supported_compressed_formats,
-                bevy_basisu_loader_sys::ChannelType(settings.channel_type_hint as u8),
+                channel_type_to_channel_type_sys(settings.channel_type_hint),
                 texture_bevy_format_to_transcode_format(settings.force_transcode_target),
             ) {
                 return Err(BasisuLoaderError::TranscodingError(
@@ -263,9 +268,60 @@ fn texture_transcode_format_to_bevy_format(
             block: AstcBlock::B6x6,
             channel: AstcChannel::Hdr,
         },
+        TextureTranscodedFormat::cTFASTC_LDR_5x4_RGBA => TextureFormat::Astc {
+            block: AstcBlock::B5x4,
+            channel: AstcChannel::Unorm,
+        },
+        TextureTranscodedFormat::cTFASTC_LDR_5x5_RGBA => TextureFormat::Astc {
+            block: AstcBlock::B5x5,
+            channel: AstcChannel::Unorm,
+        },
+        TextureTranscodedFormat::cTFASTC_LDR_6x5_RGBA => TextureFormat::Astc {
+            block: AstcBlock::B6x5,
+            channel: AstcChannel::Unorm,
+        },
+        TextureTranscodedFormat::cTFASTC_LDR_6x6_RGBA => TextureFormat::Astc {
+            block: AstcBlock::B6x6,
+            channel: AstcChannel::Unorm,
+        },
+        TextureTranscodedFormat::cTFASTC_LDR_8x5_RGBA => TextureFormat::Astc {
+            block: AstcBlock::B8x5,
+            channel: AstcChannel::Unorm,
+        },
+        TextureTranscodedFormat::cTFASTC_LDR_8x6_RGBA => TextureFormat::Astc {
+            block: AstcBlock::B8x6,
+            channel: AstcChannel::Unorm,
+        },
+        TextureTranscodedFormat::cTFASTC_LDR_10x5_RGBA => TextureFormat::Astc {
+            block: AstcBlock::B10x5,
+            channel: AstcChannel::Unorm,
+        },
+        TextureTranscodedFormat::cTFASTC_LDR_10x6_RGBA => TextureFormat::Astc {
+            block: AstcBlock::B10x6,
+            channel: AstcChannel::Unorm,
+        },
+        TextureTranscodedFormat::cTFASTC_LDR_8x8_RGBA => TextureFormat::Astc {
+            block: AstcBlock::B8x8,
+            channel: AstcChannel::Unorm,
+        },
+        TextureTranscodedFormat::cTFASTC_LDR_10x8_RGBA => TextureFormat::Astc {
+            block: AstcBlock::B10x8,
+            channel: AstcChannel::Unorm,
+        },
+        TextureTranscodedFormat::cTFASTC_LDR_10x10_RGBA => TextureFormat::Astc {
+            block: AstcBlock::B10x10,
+            channel: AstcChannel::Unorm,
+        },
+        TextureTranscodedFormat::cTFASTC_LDR_12x10_RGBA => TextureFormat::Astc {
+            block: AstcBlock::B12x10,
+            channel: AstcChannel::Unorm,
+        },
+        TextureTranscodedFormat::cTFASTC_LDR_12x12_RGBA => TextureFormat::Astc {
+            block: AstcBlock::B12x12,
+            channel: AstcChannel::Unorm,
+        },
         TextureTranscodedFormat::cTFTotalTextureFormats => unreachable!(),
         TextureTranscodedFormat::cTFBC7_ALT => unreachable!(),
-        _ => unreachable!(),
     };
     if is_srgb {
         fmt = fmt.add_srgb_suffix();

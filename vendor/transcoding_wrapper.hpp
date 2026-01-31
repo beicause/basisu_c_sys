@@ -32,8 +32,8 @@ enum TextureTranscodedFormat : unsigned int {
 	cTFPVRTC1_4_RGB = 8, // Opaque only, RGB or alpha if cDecodeFlagsTranscodeAlphaDataToOpaqueFormats flag is specified, nearly lowest quality of any texture format.
 	cTFPVRTC1_4_RGBA = 9, // Opaque+alpha, most useful for simple opacity maps. If .basis file doesn't have alpha cTFPVRTC1_4_RGB will be used instead. Lowest quality of any supported texture format.
 
-	// ASTC (mobile, Intel devices, hopefully all desktop GPU's one day)
-	cTFASTC_4x4_RGBA = 10, // LDR. Opaque+alpha, ASTC 4x4, alpha channel will be opaque for opaque .basis files.
+	// ASTC (mobile, some Intel CPU's, hopefully all desktop GPU's one day)
+	cTFASTC_LDR_4x4_RGBA = 10, // LDR. Opaque+alpha, ASTC 4x4, alpha channel will be opaque for opaque .basis files.
 	// LDR: Transcoder uses RGB/RGBA/L/LA modes, void extent, and up to two ([0,47] and [0,255]) endpoint precisions.
 
 	// ATC (mobile, Adreno devices, this is a niche format)
@@ -68,7 +68,22 @@ enum TextureTranscodedFormat : unsigned int {
 
 	cTFASTC_HDR_6x6_RGBA = 27, // HDR, RGBA (currently our ASTC HDR 6x6 encodes are only RGB), unsigned
 
-	cTFTotalTextureFormats = 28,
+	// The remaining LDR ASTC block sizes, excluding 4x4 (which is above). There are 14 total valid ASTC LDR/HDR block sizes.
+	cTFASTC_LDR_5x4_RGBA = 28,
+	cTFASTC_LDR_5x5_RGBA = 29,
+	cTFASTC_LDR_6x5_RGBA = 30,
+	cTFASTC_LDR_6x6_RGBA = 31,
+	cTFASTC_LDR_8x5_RGBA = 32,
+	cTFASTC_LDR_8x6_RGBA = 33,
+	cTFASTC_LDR_10x5_RGBA = 34,
+	cTFASTC_LDR_10x6_RGBA = 35,
+	cTFASTC_LDR_8x8_RGBA = 36,
+	cTFASTC_LDR_10x8_RGBA = 37,
+	cTFASTC_LDR_10x10_RGBA = 38,
+	cTFASTC_LDR_12x10_RGBA = 39,
+	cTFASTC_LDR_12x12_RGBA = 40,
+
+	cTFTotalTextureFormats = 41,
 
 	// ----- The following are old/legacy enums for compatibility with code compiled against previous versions
 	cTFETC1 = cTFETC1_RGB,
@@ -78,19 +93,21 @@ enum TextureTranscodedFormat : unsigned int {
 	cTFBC4 = cTFBC4_R,
 	cTFBC5 = cTFBC5_RG,
 
-	// Previously, the caller had some control over which BC7 mode the transcoder output. We've simplified this due to UASTC, which supports numerous modes.
+	// Previously, the caller had some control over which BC7 mode the transcoder output. We've simplified this due to UASTC LDR 4x4, which supports numerous modes.
 	cTFBC7_M6_RGB = cTFBC7_RGBA, // Opaque only, RGB or alpha if cDecodeFlagsTranscodeAlphaDataToOpaqueFormats flag is specified. Highest quality of all the non-ETC1 formats.
 	cTFBC7_M5_RGBA = cTFBC7_RGBA, // Opaque+alpha, alpha channel will be opaque for opaque .basis files
 	cTFBC7_M6_OPAQUE_ONLY = cTFBC7_RGBA,
 	cTFBC7_M5 = cTFBC7_RGBA,
 	cTFBC7_ALT = 7,
 
-	cTFASTC_4x4 = cTFASTC_4x4_RGBA,
+	cTFASTC_4x4 = cTFASTC_LDR_4x4_RGBA,
 
 	cTFATC_RGBA_INTERPOLATED_ALPHA = cTFATC_RGBA,
+
+	cTFASTC_4x4_RGBA = cTFASTC_LDR_4x4_RGBA
 };
 
-enum TextureCompressionMethod : unsigned char {
+enum SupportedTextureCompressionMethods : unsigned char {
 	NONE = 0,
 	ASTC_LDR = 1 << 0,
 	ASTC_HDR = 1 << 1,
@@ -120,7 +137,7 @@ Transcoder *c_ktx2_transcoder_new();
 void c_ktx2_transcoder_delete(Transcoder *transcoder);
 
 bool c_ktx2_transcoder_transcode_image(Transcoder *transcoder, const unsigned char *data, unsigned int data_size,
-		TextureCompressionMethod supported_compressed_formats, ChannelType channel_type_hint, TextureTranscodedFormat force_transcode_target);
+		SupportedTextureCompressionMethods supported_compressed_formats, ChannelType channel_type_hint, TextureTranscodedFormat force_transcode_target);
 
 unsigned char *c_ktx2_transcoder_get_r_dst_buf(Transcoder *transcoder);
 unsigned int c_ktx2_transcoder_get_r_dst_buf_len(Transcoder *transcoder);

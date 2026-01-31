@@ -7,7 +7,7 @@ use js_sys::Reflect;
 use js_sys::Uint8Array;
 
 use crate::ChannelType;
-use crate::TextureCompressionMethod;
+use crate::SupportedTextureCompressionMethods;
 use crate::TextureTranscodedFormat;
 use crate::Transcoder;
 
@@ -15,7 +15,7 @@ mod bindings_sys {
     use super::Transcoder;
     use js_sys::Uint8Array;
     use wasm_bindgen::prelude::wasm_bindgen;
-    type TextureCompressionMethodRepr = u8;
+    type SupportedTextureCompressionMethodsRepr = u8;
     type TextureTranscodedFormatRepr = u32;
     type ChannelTypeRepr = u8;
 
@@ -43,7 +43,7 @@ mod bindings_sys {
             transcoder: *mut Transcoder,
             data: usize,
             data_len: u32,
-            supported_compressed_formats: TextureCompressionMethodRepr,
+            supported_compressed_formats: SupportedTextureCompressionMethodsRepr,
             channel_type_hint: ChannelTypeRepr,
             force_transcode_target: TextureTranscodedFormatRepr,
         ) -> bool;
@@ -168,10 +168,13 @@ pub unsafe fn ktx2_transcoder_get_r_levels(transcoder: *mut Transcoder) -> u32 {
 pub unsafe fn ktx2_transcoder_get_r_target_format(
     transcoder: *mut Transcoder,
 ) -> TextureTranscodedFormat {
-    TextureTranscodedFormat(BASISU_VENDOR_INSTANCE.with(|inst| {
-        let inst = inst.get().unwrap();
-        inst.js_ktx2_transcoder_get_r_target_format(transcoder)
-    }))
+    // SAFETY: Both repr are u32
+    unsafe {
+        core::mem::transmute(BASISU_VENDOR_INSTANCE.with(|inst| {
+            let inst = inst.get().unwrap();
+            inst.js_ktx2_transcoder_get_r_target_format(transcoder)
+        }))
+    }
 }
 pub unsafe fn ktx2_transcoder_get_r_width(transcoder: *mut Transcoder) -> u32 {
     BASISU_VENDOR_INSTANCE.with(|inst| {
@@ -189,7 +192,7 @@ pub unsafe fn ktx2_transcoder_new() -> *mut Transcoder {
 pub unsafe fn ktx2_transcoder_transcode_image(
     transcoder: *mut Transcoder,
     data: Vec<u8>,
-    supported_compressed_formats: TextureCompressionMethod,
+    supported_compressed_formats: SupportedTextureCompressionMethods,
     channel_type_hint: ChannelType,
     force_transcode_target: TextureTranscodedFormat,
 ) -> bool {
@@ -204,8 +207,10 @@ pub unsafe fn ktx2_transcoder_transcode_image(
             ptr,
             len,
             supported_compressed_formats.0,
-            channel_type_hint.0,
-            force_transcode_target.0,
+            // SAFETY: Both repr are u8
+            unsafe { core::mem::transmute(channel_type_hint) },
+            // SAFETY: Both repr are u32
+            unsafe { core::mem::transmute(force_transcode_target) },
         );
         inst.js_basisu_free(ptr);
         result

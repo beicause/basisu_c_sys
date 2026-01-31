@@ -1,4 +1,4 @@
-const FLAGS: [&str; 7] = [
+const FLAGS: [&str; 8] = [
     "-fno-exceptions",
     "-Wno-unused-function",
     "-Wno-unused-const-variable",
@@ -6,6 +6,7 @@ const FLAGS: [&str; 7] = [
     "-Wno-unused-variable",
     "-Wno-unused-value",
     "-Wno-deprecated",
+    "-Wno-type-limits",
 ];
 // Disable PVRTC1/2, ATC, FXT1 as wgpu does not support them.
 const DEFINES: [(&str, &str); 5] = [
@@ -53,7 +54,7 @@ fn bindgen() {
         .parse_callbacks(Box::new(bindgen::CargoCallbacks::new()))
         .allowlist_type("Transcoder")
         .allowlist_type("TextureTranscodedFormat")
-        .allowlist_type("TextureCompressionMethod")
+        .allowlist_type("SupportedTextureCompressionMethods")
         .allowlist_function("c_basisu_transcoder_init")
         .allowlist_function("c_ktx2_transcoder_new")
         .allowlist_function("c_ktx2_transcoder_delete")
@@ -68,9 +69,9 @@ fn bindgen() {
         .allowlist_function("c_ktx2_transcoder_get_r_target_format")
         .allowlist_function("c_ktx2_transcoder_get_r_is_srgb")
         .opaque_type("Transcoder")
-        .bitfield_enum("TextureCompressionMethod")
-        .newtype_enum("TextureTranscodedFormat")
-        .newtype_enum("ChannelType")
+        .bitfield_enum("SupportedTextureCompressionMethods")
+        .rustified_enum("TextureTranscodedFormat")
+        .rustified_enum("ChannelType")
         .generate()
         .expect("Unable to generate bindings")
         .write_to_file(binding_file)
