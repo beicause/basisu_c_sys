@@ -72,5 +72,6 @@ jobs:
         uses: softprops/action-gh-release@v2
         with:
           files: |
-            crates/basisu_sys/wasm/*
+            crates/basisu_sys/wasm/basisu_vendor.js
+            crates/basisu_sys/wasm/basisu_vendor.wasm
           token: ${{ secrets.GITHUB_TOKEN }}
