@@ -1,1 +1,1 @@
-The `basis_universal` directory is part of the [basis_universal](https://github.com/BinomialLLC/basis_universal) repository, managed by the `update-basis-universal.sh` script.
+The `basis_universal` directory contains a part of the [Basis Universal](https://github.com/BinomialLLC/basis_universal) source code for transcoding. It is updated using the `update-basis-universal.sh` script.
