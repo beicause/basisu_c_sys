@@ -8,7 +8,7 @@
 A cross-platform, size-optimized Bevy plugin that provides a KTX2 Basis Universal texture loader.
 
 Although Bevy's `ImageLoader` has built-in support for Basis Universal textures via the [`basis-universal-rs`](https://github.com/aclysma/basis-universal-rs) crate, it has some limitations:
-1. It uses a relatively old version of [Basis Universal][].
+1. It uses a very old version of [Basis Universal][].
 2. No support for UASTC HDR yet, either ASTC, XUASTC which are added in basis universal v2.
 3. No support for Web. Bevy can't be compiled to `wasm32-unknown-emscripten` and `basis-universal-rs` can't be compiled to `wasm32-unknown-unknown`.
 4. It compiles both the encoder and transcoder and includes transcoding formats not supported by wgpu, which increases binary size.
@@ -44,9 +44,8 @@ pub fn main() {
 
 ⚠️Note: you have to rename the file extension to `.basisu_ktx2` to load it with this `BasisuLoader`. This is a limitations of bevy because otherwise bevy will load `.ktx2` file with its `ImageLoader`.
 
-⚠️Note: The compressed texture dimensions must be a multiplier of block size. See https://github.com/gfx-rs/wgpu/issues/7677 for more context.  
-block_size = 4, for etc1s/uastc_ldr/uastc_hdr_4x4  
-block_size = 4 or 6 (so both of them need to be satisfied), for uastc_hdr_6x6  
+⚠️Note: The compressed texture dimensions must be a multiplier of block size. See https://github.com/gfx-rs/wgpu/issues/7677 for more context. Also because basisu can transcode to textures with different block size on different platforms,
+the texture dimensions should satisfy all possible block sizes. For example, XUASTC 6x6 can transcode to ASTC 6x6 and BC7, so its dimensions should be a multiplier of 12.
 
 ## Implementation details
 
