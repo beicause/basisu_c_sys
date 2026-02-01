@@ -74,7 +74,6 @@ pub struct BasisuLoaderSettings {
     ///
     /// Only set this if you know what you're doing and use this with caution, it will fail if the transcode target is not supported by Basis Universal or the texture format is not supported by the device.
     /// Srgb-ness is ignored and will be determined by `is_srgb`.
-    #[serde(skip)]
     pub force_transcode_target: Option<TextureFormat>,
 }
 
