@@ -1,5 +1,9 @@
 # Change Log
 
+## v0.4.1
+
+- Update README.md
+
 ## v0.4.0
 
 - The supported file extension of `BasisuLoader` is changed from `.basisu_ktx2` to `.basisu.ktx2`
@@ -16,4 +20,4 @@
 ## v0.3.0
 
 - Update bevy to 0.18
-- Update basis_universal to v2.0.2, support the new ASTC LDR 4x4-12x12 and XUASTC LDR 4x4-12x12 formats in basis_universal v2.
+- Update basis_universal to v2.0.2, support the new ASTC LDR 4x4-12x12 and XUASTC LDR 4x4-12x12 formats in basis_universal v2.0.
