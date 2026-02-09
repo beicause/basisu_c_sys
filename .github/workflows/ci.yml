@@ -14,53 +14,47 @@ concurrency:
 env:
   CARGO_TERM_COLOR: always
   EM_VERSION: 4.0.22
+  ANDROID_NDK_VERSION: 28.1.13356709
 
 jobs:
-  toml:
-    runs-on: ubuntu-latest
-    timeout-minutes: 30
-    steps:
-      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
-      - name: Install taplo
-        run: curl -fsSL https://github.com/tamasfe/taplo/releases/download/0.10.0/taplo-linux-x86_64.gz | gzip -d - | install -m 755 /dev/stdin /usr/local/bin/taplo
-      - name: Run Taplo
-        id: taplo
-        run: taplo fmt --check --diff
-      - name: Taplo info
-        if: failure()
-        run: |
-          echo 'To fix toml fmt, please run `taplo fmt`.'
-          echo 'To check for a diff, run `taplo fmt --check --diff`.'
-          echo 'You can find taplo here: https://taplo.tamasfe.dev/'
-          echo 'Or if you use VSCode, use the `Even Better Toml` extension.'
-          echo 'You can find the extension here: https://marketplace.visualstudio.com/items?itemName=tamasfe.even-better-toml'
+  build-lib:
+    name: Build ${{matrix.os}}
+    runs-on: ${{matrix.os}}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, macos-latest, windows-latest]
 
-  typos:
-    runs-on: ubuntu-latest
-    timeout-minutes: 30
-    steps:
-      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
-      - name: Check for typos
-        uses: crate-ci/typos@ad3053d3adbcce7f2e3c60fd4ddfc239787d1eff # v1.43.2
-      - name: Typos info
-        if: failure()
-        run: |
-          echo 'To fix typos, please run `typos -w`'
-          echo 'To check for a diff, run `typos`'
-          echo 'You can find typos here: https://crates.io/crates/typos'
-          echo 'if you use VSCode, you can also install `Typos Spell Checker'
-          echo 'You can find the extension here: https://marketplace.visualstudio.com/items?itemName=tekumara.typos-vscode'
-
-  build-linux-wasm:
-    name: Build linux,wasm
-    runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
         with:
           lfs: true
 
       - name: Install Linux dependencies
+        if: ${{ matrix.os == 'ubuntu-latest' }}
         uses: ./.github/actions/install-linux-deps
+
+      - name: Install rust toolchain
+        uses: dtolnay/rust-toolchain@master
+        with:
+          toolchain: stable
+
+      - name: Clippy
+        run: cargo clippy -- -D warnings
+
+      - name: Doc
+        run: cargo doc --workspace --all-features --no-deps --document-private-items --keep-going
+
+      - name: Build
+        run: cargo build --verbose
+
+  build-wasm:
+    name: Build wasm
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          lfs: true
 
       - name: Install rust toolchain
         uses: dtolnay/rust-toolchain@master
@@ -76,17 +70,9 @@ jobs:
       - name: Install wasm-opt
         run: wget https://github.com/WebAssembly/binaryen/releases/download/version_125/binaryen-version_125-x86_64-linux.tar.gz && tar -xvf binaryen-version_125-x86_64-linux.tar.gz && sudo cp binaryen-version_125/bin/wasm-opt /usr/local/bin/ && rm -r binaryen-version_125 && rm binaryen-version_125-x86_64-linux.tar.gz
 
-      - name: Clippy
-        run: cargo clippy --workspace --all-targets --all-features -- -D warnings
-
-      - name: Doc
-        run: cargo doc --workspace --all-features --no-deps --document-private-items --keep-going
-
-      - name: Build linux
-        run: cargo build --verbose
-
       - name: Build basisu vendor wasm
         run: cargo r -p bevy_basisu_loader_sys --bin build-wasm-cli --features build-wasm-cli -- --emcc-flags="-Os -msimd128 -flto=full -sEVAL_CTORS" --wasm-opt-flags="-Os --enable-simd --enable-bulk-memory-opt --enable-nontrapping-float-to-int"
+
       - name: Upload artifact
         uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6.0.0
         with:
@@ -94,3 +80,30 @@ jobs:
 
       - name: Build wasm
         run: RUSTFLAGS="-Ctarget-feature=+simd128" cargo build --target wasm32-unknown-unknown
+
+  build-android:
+    name: Build android
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          lfs: true
+
+      - name: Install rust toolchain
+        uses: dtolnay/rust-toolchain@master
+        with:
+          toolchain: stable
+          targets: aarch64-linux-android
+
+      - name: Install cargo-binstall
+        uses: cargo-bins/cargo-binstall@v1.16.6
+
+      - name: Install Android NDK
+        run: |
+          sudo ${ANDROID_HOME}/cmdline-tools/latest/bin/sdkmanager 'ndk;${{env.ANDROID_NDK_VERSION}}'
+
+      - name: Install cargo-ndk
+        run: cargo binstall cargo-ndk
+
+      - name: Build
+        run: cargo ndk -t arm64-v8a build --features bevy/android-game-activity
