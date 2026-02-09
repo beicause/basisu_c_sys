@@ -44,14 +44,7 @@ pub fn build_wasm_cmd() {
 
     if let Some(flags) = user_args.wasm_opt_flags {
         let mut wasm_opt_cmd = std::process::Command::new("wasm-opt");
-        wasm_opt_cmd.args([
-            "--enable-simd",
-            "--enable-bulk-memory-opt",
-            "--enable-nontrapping-float-to-int",
-            "wasm/basisu_vendor.wasm",
-            "-o",
-            "wasm/basisu_vendor.wasm",
-        ]);
+        wasm_opt_cmd.args(["wasm/basisu_vendor.wasm", "-o", "wasm/basisu_vendor.wasm"]);
 
         wasm_opt_cmd.args(flags.split(" ").filter(|s| !s.is_empty()));
 

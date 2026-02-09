@@ -57,15 +57,14 @@ jobs:
         run: cargo binstall --force wasm-bindgen-cli
 
       - name: Build basisu vendor wasm
-        run: cargo r -p bevy_basisu_loader_sys --bin build-wasm-cli --features build-wasm-cli -- --emcc-flags="-sEVAL_CTORS -Os -flto=full" --wasm-opt-flags="-Os"
-
+        run: cargo r -p bevy_basisu_loader_sys --bin build-wasm-cli --features build-wasm-cli -- --emcc-flags="-Os -msimd128 -flto=full -sEVAL_CTORS" --wasm-opt-flags="-Os --enable-simd --enable-bulk-memory-opt --enable-nontrapping-float-to-int"
       - name: Upload artifact
         uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6.0.0
         with:
           path: crates/basisu_sys/wasm/
 
       - name: Build
-        run: cargo b -p test_scene --target wasm32-unknown-unknown --profile web_release
+        run: RUSTFLAGS="-Ctarget-feature=+simd128" cargo b -p test_scene --target wasm32-unknown-unknown --profile web_release
 
       - name: Wasm bindgen
         run: wasm-bindgen --out-name wasm_example --out-dir web/target/ --target web target/wasm32-unknown-unknown/web_release/test_scene.wasm
