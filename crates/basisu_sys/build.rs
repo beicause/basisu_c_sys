@@ -98,7 +98,6 @@ fn compile_basisu_static() {
 
 fn gen_wasm_build_cmd() {
     let wasm_args = [
-        "-msimd128",
         "-sSTRICT",
         "-sEXPORT_ES6",
         "-sINCOMING_MODULE_JS_API=wasmBinary",
