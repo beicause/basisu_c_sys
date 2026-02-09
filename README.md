@@ -39,10 +39,10 @@ pub fn main() {
 
 1. Load ktx2 basis universal textures. Supports `D2`, `D2Array` and `Cube` texture types. Only supports KTX2 format (zstd compression is supported). No support for `.basis` format.
 ```rs
-    let image_handle = asset_server.load("gl_skybox_etc1s_cubemap_mips_12.basisu_ktx2");
+    let image_handle = asset_server.load("gl_skybox_etc1s_cubemap_mips_12.basisu.ktx2");
 ```
 
-⚠️Note: you have to rename the file extension to `.basisu_ktx2` to load it with this `BasisuLoader`. This is a limitations of bevy because otherwise bevy will load `.ktx2` file with its `ImageLoader`.
+⚠️Note: you have to rename the file extension to `.basisu.ktx2` to load it with this `BasisuLoader`. This is a limitations of bevy because otherwise bevy will load `.ktx2` file with its `ImageLoader`.
 
 ⚠️Note: The compressed texture dimensions must be a multiplier of block size. See https://github.com/gfx-rs/wgpu/issues/7677 for more context. Also because basisu can transcode to textures with different block size on different platforms,
 the texture dimensions should satisfy all possible block sizes. For example, XUASTC 6x6 can transcode to ASTC 6x6 and BC7, so its dimensions should be a multiplier of 12.

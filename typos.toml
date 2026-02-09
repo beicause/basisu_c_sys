@@ -1,0 +1,12 @@
+[files]
+extend-exclude = [
+  "*.pbxproj",                # metadata file
+  "*.patch",                  # Automatically generated files that should not be manually modified.
+  "*.bin",                    # Binary files
+  ".git/",                    # Version control files
+  "vendor/basis_universal/*", # BasisU source code
+]
+ignore-hidden = false
+
+[default]
+locale = "en-us"
