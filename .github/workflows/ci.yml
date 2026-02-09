@@ -21,8 +21,6 @@ jobs:
     timeout-minutes: 30
     steps:
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
-        with:
-          persist-credentials: false
       - name: Install taplo
         run: curl -fsSL https://github.com/tamasfe/taplo/releases/download/0.10.0/taplo-linux-x86_64.gz | gzip -d - | install -m 755 /dev/stdin /usr/local/bin/taplo
       - name: Run Taplo
@@ -42,8 +40,6 @@ jobs:
     timeout-minutes: 30
     steps:
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
-        with:
-          persist-credentials: false
       - name: Check for typos
         uses: crate-ci/typos@ad3053d3adbcce7f2e3c60fd4ddfc239787d1eff # v1.43.2
       - name: Typos info
@@ -59,7 +55,7 @@ jobs:
     name: Build linux,wasm
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
         with:
           lfs: true
 
@@ -83,13 +79,19 @@ jobs:
       - name: Clippy
         run: cargo clippy --workspace --all-targets --all-features -- -D warnings
 
-      - name: Build
+      - name: Doc
+        run: cargo doc --workspace --all-features --no-deps --document-private-items --keep-going
+
+      - name: Build linux
         run: cargo build --verbose
 
       - name: Build basisu vendor wasm
         run: cargo r -p bevy_basisu_loader_sys --bin build-wasm-cli --features build-wasm-cli -- --emcc-flags="-Os -flto=full" --wasm-opt-flags="-Os"
 
       - name: Upload artifact
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6.0.0
         with:
           path: crates/basisu_sys/wasm/
+
+      - name: Build wasm
+        run: cargo build --target wasm32-unknown-unknown
