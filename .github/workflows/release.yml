@@ -16,10 +16,6 @@ permissions:
   contents: write
   id-token: write
 
-concurrency:
-  group: "release"
-  cancel-in-progress: false
-
 env:
   CARGO_TERM_COLOR: always
   EM_VERSION: 4.0.22
