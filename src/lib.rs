@@ -7,17 +7,21 @@ pub use loader::*;
 
 /// Provides a loader for Basis Universal KTX2 textures.
 ///
-/// The file extension must be `.basisu_ktx2` to use this loader. Supports KTX2 UASTC/ETC1S format. Zstd supercompression is supported even if bevy's zstd feature is disabled. No support for `.basis` files.
+/// The file extension must be `.basisu.ktx2` to use this loader. Supports KTX2 UASTC/ETC1S format. Zstd supercompression is supported even if bevy's zstd feature is disabled. No support for `.basis` files.
 ///
 /// Transcode Target Selection:
-/// - ETC1S: Bc7Rgba/Bc5Rg/Bc4R > Etc2Rgba8/Etc2Rgb8/EacRg11/EacR11 > Rgba8
-/// - UASTC LDR: Astc > Bc7Rgba > Etc2Rgba8/Etc2Rgb8/EacRg11/EacR11 > Rgba8
-/// - UASTC HDR: Astc > Bc6hRgbUfloat > Rgba16Float
+///
+/// | BasisU format                  | target selection                                                |
+/// | ------------------------------ | -------------------------------------------------------------- |
+/// | ETC1S                          | Bc7Rgba/Bc5Rg/Bc4R > Etc2Rgba8/Etc2Rgb8/EacRg11/EacR11 > Rgba8 |
+/// | UASTC_LDR, ASTC_LDR, XUASTC_LDR| Astc > Bc7Rgba > Etc2Rgba8/Etc2Rgb8/EacRg11/EacR11 > Rgba8     |
+/// | UASTC_HDR, ASTC_HDR            | Astc > Bc6hRgbUfloat > Rgba16Float                             |
+///
 pub struct BasisuLoaderPlugin;
 
 impl Plugin for BasisuLoaderPlugin {
     fn build(&self, app: &mut App) {
-        app.preregister_asset_loader::<BasisuLoader>(&["basisu_ktx2"])
+        app.preregister_asset_loader::<BasisuLoader>(&["basisu.ktx2"])
             .add_systems(PreStartup, || {
                 #[cfg(all(
                     target_arch = "wasm32",

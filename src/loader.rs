@@ -222,7 +222,7 @@ impl AssetLoader for BasisuLoader {
     }
 
     fn extensions(&self) -> &[&str] {
-        &["basisu_ktx2"]
+        &["basisu.ktx2"]
     }
 }
 
