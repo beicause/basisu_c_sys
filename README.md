@@ -22,8 +22,8 @@ Web demo: https://beicause.github.io/bevy_basisu_loader/
 ## Usage
 
 1. Add the Cargo dependency:
-```toml
-bevy_basisu_loader = "0.3"
+```sh
+cargo add bevy_basisu_loader
 ```
 
 2. Add `BasisuLoaderPlugin`:
@@ -47,6 +47,15 @@ pub fn main() {
 ⚠️Note: The compressed texture dimensions must be a multiplier of block size. See https://github.com/gfx-rs/wgpu/issues/7677 for more context. Also because basisu can transcode to textures with different block size on different platforms,
 the texture dimensions should satisfy all possible block sizes. For example, XUASTC 6x6 can transcode to ASTC 6x6 and BC7, so its dimensions should be a multiplier of 12.
 
+## Run on web
+
+TLDR: Just build your bevy application to `wasm32-unknown-unknown` normally.
+
+The prebuilt wasm in `crates/basisu_sys/wasm` is automatically embedded in binary when building `wasm32-unknown-unknown`. It was prebuilt through CI with:
+```sh
+cargo r -p bevy_basisu_loader_sys --bin build-wasm-cli --features build-wasm-cli -- --emcc-flags="-Os -msimd128 -flto=full -sEVAL_CTORS" --wasm-opt-flags="-Os --enable-simd --enable-bulk-memory-opt --enable-nontrapping-float-to-int"
+```
+
 ## Implementation details
 
 To run on web, this repo uses a solution:
@@ -56,15 +65,6 @@ The `crates/basisu_sys/` contains a high level wrapper of the basis universal C+
 For native platforms, it just builds and statically links the C++ library.
 
 For web, it contains a tool to build basisu vendor using Emscripten and produce js and wasm files. The basisu wrapper is designed so that it does not need to share memory with main Wasm module, instead its memory is copied from/into main Wasm module through javascript. When building this plugin targeting `wasm32-unknown-unknown`, the basisu vendor js and wasm files will be embedded into binary and is called through `wasm-bindgen` and `js-sys`.
-
-## Run on web
-
-TLDR: Just build your bevy application to `wasm32-unknown-unknown` normally.
-
-The prebuilt wasm in `crates/basisu_sys/wasm` is automatically embedded in binary when building. It was prebuilt through CI with:
-```sh
-cargo r -p bevy_basisu_loader_sys --bin build-wasm-cli --features build-wasm-cli -- --emcc-flags="-Os -msimd128 -flto=full -sEVAL_CTORS" --wasm-opt-flags="-Os --enable-simd --enable-bulk-memory-opt --enable-nontrapping-float-to-int"
-```
 
 ## Bevy version compatibility
 
