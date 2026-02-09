@@ -7,11 +7,11 @@ pub use loader::*;
 
 /// Provides a loader for Basis Universal KTX2 textures.
 ///
-/// The file extension must be `.basisu.ktx2` to use this loader. Supports KTX2 UASTC/ETC1S format. Zstd supercompression is supported even if bevy's zstd feature is disabled. No support for `.basis` files.
+/// The file extension must be `.basisu.ktx2` to use this loader. All basis universal compressed formats (ETC1S, UASTC, XUASTC) are supported. Zstd supercompression is always supported. No support for `.basis` files.
 ///
 /// Transcode Target Selection:
 ///
-/// | BasisU format                  | target selection                                                |
+/// | BasisU format                  | target selection                                               |
 /// | ------------------------------ | -------------------------------------------------------------- |
 /// | ETC1S                          | Bc7Rgba/Bc5Rg/Bc4R > Etc2Rgba8/Etc2Rgb8/EacRg11/EacR11 > Rgba8 |
 /// | UASTC_LDR, ASTC_LDR, XUASTC_LDR| Astc > Bc7Rgba > Etc2Rgba8/Etc2Rgb8/EacRg11/EacR11 > Rgba8     |
