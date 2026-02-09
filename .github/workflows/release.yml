@@ -30,8 +30,7 @@ jobs:
     name: Release ${{ (github.event_name == 'workflow_dispatch' && inputs.dry_run && '(Dry Run)') || '' }}
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout
-        uses: actions/checkout@v4
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
         with:
           lfs: true
 
@@ -53,7 +52,7 @@ jobs:
         run: cargo r -p bevy_basisu_loader_sys --bin build-wasm-cli --features build-wasm-cli -- --emcc-flags="-sEVAL_CTORS -Os -flto=full" --wasm-opt-flags="-Os"
 
       - name: Upload artifact
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6.0.0
         with:
           path: |
             crates/basisu_sys/wasm/basisu_vendor.js
