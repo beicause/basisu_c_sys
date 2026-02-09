@@ -38,7 +38,7 @@ fn setup(
     mut meshes: ResMut<Assets<Mesh>>,
     mut materials: ResMut<Assets<StandardMaterial>>,
 ) {
-    let skybox_handle = asset_server.load("gl_skybox_etc1s_cubemap_mips_12.basisu_ktx2");
+    let skybox_handle = asset_server.load("gl_skybox_etc1s_cubemap_mips_12.basisu.ktx2");
     // camera
     commands.spawn((
         Camera3d::default(),
@@ -56,7 +56,7 @@ fn setup(
     commands.spawn((
         Mesh3d(meshes.add(Rectangle::new(1.0, 1.0).mesh().build())),
         MeshMaterial3d(materials.add(StandardMaterial {
-            base_color_texture: Some(asset_server.load("tough_uastc_ldr_4x4_mips_11.basisu_ktx2")),
+            base_color_texture: Some(asset_server.load("tough_uastc_ldr_4x4_mips_11.basisu.ktx2")),
             unlit: true,
             ..Default::default()
         })),
@@ -66,7 +66,7 @@ fn setup(
     commands.spawn((
         Mesh3d(meshes.add(Rectangle::new(0.644 * 3.0, 0.874 * 3.0).mesh().build())),
         MeshMaterial3d(materials.add(StandardMaterial {
-            base_color_texture: Some(asset_server.load("desk_uastc_hdr_6x6_mips_10.basisu_ktx2")),
+            base_color_texture: Some(asset_server.load("desk_uastc_hdr_6x6_mips_10.basisu.ktx2")),
             unlit: true,
             ..Default::default()
         })),
@@ -78,7 +78,7 @@ fn setup(
         MeshMaterial3d(materials.add(StandardMaterial {
             uv_transform: Affine2::from_scale(Vec2::new(2., 2.)),
             base_color_texture: Some(asset_server.load_with_settings(
-                "desk_uastc_hdr_4x4_mips_10.basisu_ktx2",
+                "desk_uastc_hdr_4x4_mips_10.basisu.ktx2",
                 |s: &mut BasisuLoaderSettings| {
                     s.force_transcode_target = Some(TextureFormat::Rgb9e5Ufloat);
                     s.sampler =
@@ -100,7 +100,7 @@ fn setup(
         Mesh3d(meshes.add(Rectangle::new(1.0, 1.0).mesh().build())),
         MeshMaterial3d(materials.add(StandardMaterial {
             base_color_texture: Some(asset_server.load_with_settings(
-                "alpha0_etc1s.basisu_ktx2",
+                "alpha0_etc1s.basisu.ktx2",
                 |s: &mut BasisuLoaderSettings| {
                     s.channel_type_hint = bevy_basisu_loader::ChannelType::Rg;
                 },
@@ -115,7 +115,7 @@ fn setup(
 
     commands.spawn((
         ImageNode {
-            image: asset_server.load("wikipedia_xuastc_ldr_6x6.basisu_ktx2"),
+            image: asset_server.load("wikipedia_xuastc_ldr_6x6.basisu.ktx2"),
             ..Default::default()
         },
         Node {
@@ -131,7 +131,7 @@ fn setup(
 
     commands.spawn((
         ImageNode {
-            image: asset_server.load("kodim20_astc_ldr_8x8.basisu_ktx2"),
+            image: asset_server.load("kodim20_astc_ldr_8x8.basisu.ktx2"),
             ..Default::default()
         },
         Node {
