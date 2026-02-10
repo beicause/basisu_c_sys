@@ -1,5 +1,7 @@
 #![expect(clippy::missing_safety_doc, reason = "TODO")]
 
+use alloc::{vec, vec::Vec};
+
 use crate::ChannelType;
 use crate::SupportedTextureCompressionMethods;
 use crate::TextureTranscodedFormat;
@@ -39,6 +41,6 @@ pub unsafe fn ktx2_transcoder_get_r_dst_buf(transcoder: *mut Transcoder) -> Vec<
     let ptr = unsafe { crate::transcoding::c_ktx2_transcoder_get_r_dst_buf(transcoder) };
     let len = unsafe { crate::transcoding::c_ktx2_transcoder_get_r_dst_buf_len(transcoder) };
     let mut ret = vec![0; len as usize];
-    unsafe { std::ptr::copy_nonoverlapping(ptr, ret.as_mut_ptr(), len as usize) };
+    unsafe { core::ptr::copy_nonoverlapping(ptr, ret.as_mut_ptr(), len as usize) };
     ret
 }
