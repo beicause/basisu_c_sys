@@ -49,8 +49,7 @@ fn setup(
         Camera3d::default(),
         Hdr,
         Tonemapping::None,
-        Msaa::Off,
-        Transform::from_xyz(0.0, 0.0, 0.0).looking_at(Vec3::ZERO, Vec3::Y),
+        Transform::from_xyz(0.0, 0.0, 3.0).looking_at(Vec3::ZERO, Vec3::Y),
         Skybox {
             image: skybox_handle.clone(),
             brightness: 1000.0,
@@ -65,7 +64,7 @@ fn setup(
             unlit: true,
             ..Default::default()
         })),
-        Transform::from_xyz(-1.0, 0.0, -2.5),
+        Transform::from_xyz(-1.0, 1.0, -2.5),
     ));
 
     commands.spawn((
@@ -75,7 +74,7 @@ fn setup(
             unlit: true,
             ..Default::default()
         })),
-        Transform::from_xyz(1.0, 0.0, -5.0),
+        Transform::from_xyz(1.0, 1.0, -5.0),
     ));
 
     commands.spawn((
@@ -97,8 +96,7 @@ fn setup(
             unlit: true,
             ..Default::default()
         })),
-        Transform::from_xyz(3.0, 0.0, -3.0)
-            * Transform::from_rotation(Quat::from_rotation_y(-45.0)),
+        Transform::from_xyz(3.0, 1.0, -5.0).with_rotation(Quat::from_rotation_y(-0.5)),
     ));
 
     commands.spawn((
@@ -114,48 +112,33 @@ fn setup(
             unlit: true,
             ..Default::default()
         })),
-        Transform::from_xyz(-2.0, 0.0, -2.0)
-            * Transform::from_rotation(Quat::from_rotation_y(45.0)),
+        Transform::from_xyz(-2.0, 1.0, -2.0).with_rotation(Quat::from_rotation_y(0.5)),
     ));
 
     commands.spawn((
-        ImageNode {
-            image: asset_server.load("wikipedia_xuastc_ldr_6x6.basisu.ktx2"),
+        Node {
+            display: Display::Flex,
+            flex_direction: FlexDirection::Row,
+            column_gap: px(8),
+            position_type: PositionType::Absolute,
+            bottom: px(8),
+            right: px(8),
+            left: px(8),
+            width: percent(100),
+            height: percent(25),
             ..Default::default()
         },
-        Node {
-            position_type: PositionType::Absolute,
-            top: px(12),
-            right: px(12),
-            width: px(256),
-            max_width: px(256),
-            max_height: px(256),
-            ..default()
-        },
+        children![
+            ImageNode {
+                image: asset_server.load("wikipedia_xuastc_ldr_6x6.basisu.ktx2"),
+                ..Default::default()
+            },
+            ImageNode {
+                image: asset_server.load("kodim20_astc_ldr_8x8.basisu.ktx2"),
+                ..Default::default()
+            },
+        ],
     ));
-
-    commands.spawn((
-        ImageNode {
-            image: asset_server.load("kodim20_astc_ldr_8x8.basisu.ktx2"),
-            ..Default::default()
-        },
-        Node {
-            position_type: PositionType::Absolute,
-            top: px(12 + 256),
-            right: px(12),
-            width: px(256),
-            max_width: px(256),
-            max_height: px(256),
-            ..default()
-        },
-    ));
-
-    commands.spawn((Node {
-        position_type: PositionType::Absolute,
-        top: px(12),
-        left: px(12),
-        ..default()
-    },));
 
     // UI
     commands.spawn((
