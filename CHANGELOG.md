@@ -1,5 +1,9 @@
 # Change Log
 
+## v0.4.2
+
+- Guarantee basisu wasm is initialized during plugin adding.
+
 ## v0.4.1
 
 - Update README.md
