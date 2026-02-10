@@ -56,7 +56,7 @@ jobs:
       - name: Install wasm-bindgen
         run: cargo binstall --force wasm-bindgen-cli
 
-      - name: Build basisu vendor wasm
+      - name: Build vendored basisu to wasm
         run: cargo r -p bevy_basisu_loader_sys --bin build-wasm-cli --features build-wasm-cli -- --emcc-flags="-Os -msimd128 -flto=full -sEVAL_CTORS" --wasm-opt-flags="-Os --enable-simd --enable-bulk-memory-opt --enable-nontrapping-float-to-int"
       - name: Upload artifact
         uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6.0.0

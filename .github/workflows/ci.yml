@@ -70,7 +70,7 @@ jobs:
       - name: Install wasm-opt
         run: wget https://github.com/WebAssembly/binaryen/releases/download/version_125/binaryen-version_125-x86_64-linux.tar.gz && tar -xvf binaryen-version_125-x86_64-linux.tar.gz && sudo cp binaryen-version_125/bin/wasm-opt /usr/local/bin/ && rm -r binaryen-version_125 && rm binaryen-version_125-x86_64-linux.tar.gz
 
-      - name: Build basisu vendor wasm
+      - name: Build vendored basisu to wasm
         run: cargo r -p bevy_basisu_loader_sys --bin build-wasm-cli --features build-wasm-cli -- --emcc-flags="-Os -msimd128 -flto=full -sEVAL_CTORS" --wasm-opt-flags="-Os --enable-simd --enable-bulk-memory-opt --enable-nontrapping-float-to-int"
 
       - name: Upload artifact

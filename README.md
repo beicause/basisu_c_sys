@@ -64,7 +64,7 @@ The `crates/basisu_sys/` contains a high level wrapper of the basis universal C+
 
 For native platforms, it just builds and statically links the C++ library.
 
-For web, it contains a tool to build basisu vendor using Emscripten and produce js and wasm files. The basisu wrapper is designed so that it does not need to share memory with main Wasm module, instead its memory is copied from/into main Wasm module through javascript. When building this plugin targeting `wasm32-unknown-unknown`, the basisu vendor js and wasm files are embedded into binary and is called through `wasm-bindgen` and `js-sys`.
+For web, it contains a tool to build vendored basisu using Emscripten and produce js and wasm files. The basisu wrapper is designed so that it does not need to share memory with main Wasm module, instead its memory is copied from/into main Wasm module through javascript. When building this plugin targeting `wasm32-unknown-unknown`, the basisu js and wasm files are embedded into binary and is called through `wasm-bindgen` and `js-sys`.
 
 ## Bevy version compatibility
 
