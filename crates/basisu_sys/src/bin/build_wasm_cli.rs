@@ -26,7 +26,7 @@ pub fn build_wasm_cmd() {
     }
 
     println!(
-        "Building basisu vendor wasm: {:#?}",
+        "Building vendored basisu to wasm: {:#?}",
         [emcc_cmd.get_program()]
             .iter()
             .map(|s| s.to_string_lossy().to_string())
@@ -39,7 +39,7 @@ pub fn build_wasm_cmd() {
     if !exit_status.success() {
         panic!("emcc didn't exit with success status: {}", exit_status);
     } else {
-        println!("Build basisu vendor wasm successfully");
+        println!("Build vendored basisu to wasm successfully");
     }
 
     if let Some(flags) = user_args.wasm_opt_flags {
@@ -49,7 +49,7 @@ pub fn build_wasm_cmd() {
         wasm_opt_cmd.args(flags.split(" ").filter(|s| !s.is_empty()));
 
         println!(
-            "Optimizing basisu vendor wasm: {:#?}",
+            "Optimizing basisu wasm: {:#?}",
             [wasm_opt_cmd.get_program()]
                 .iter()
                 .map(|s| s.to_string_lossy().to_string())
@@ -66,7 +66,7 @@ pub fn build_wasm_cmd() {
         if !exit_status.success() {
             panic!("wasm-opt didn't exit with success status: {}", exit_status);
         } else {
-            println!("Optimize basisu vendor wasm successfully");
+            println!("Optimize basisu wasm successfully");
         }
     }
 }

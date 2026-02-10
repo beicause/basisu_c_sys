@@ -1,6 +1,16 @@
 use bevy::prelude::*;
 use bevy::render::{RenderApp, renderer::RenderDevice};
 
+#[cfg(all(
+    target_arch = "wasm32",
+    target_vendor = "unknown",
+    target_os = "unknown",
+))]
+use bevy::platform::sync::{
+    Arc,
+    atomic::{AtomicBool, Ordering},
+};
+
 mod loader;
 
 pub use loader::*;
@@ -9,7 +19,7 @@ pub use loader::*;
 ///
 /// The file extension must be `.basisu.ktx2` to use this loader. All basis universal compressed formats (ETC1S, UASTC, XUASTC) are supported. Zstd supercompression is always supported. No support for `.basis` files.
 ///
-/// Transcode Target Selection:
+/// Default transcode target selection:
 ///
 /// | BasisU format                  | target selection                                               |
 /// | ------------------------------ | -------------------------------------------------------------- |
@@ -19,33 +29,63 @@ pub use loader::*;
 ///
 pub struct BasisuLoaderPlugin;
 
+#[cfg(all(
+    target_arch = "wasm32",
+    target_vendor = "unknown",
+    target_os = "unknown",
+))]
+#[derive(Resource, Clone, Deref)]
+struct BasisuWasmReady(Arc<AtomicBool>);
+
 impl Plugin for BasisuLoaderPlugin {
     fn build(&self, app: &mut App) {
-        app.preregister_asset_loader::<BasisuLoader>(&["basisu.ktx2"])
-            .add_systems(PreStartup, || {
-                #[cfg(all(
-                    target_arch = "wasm32",
-                    target_vendor = "unknown",
-                    target_os = "unknown",
-                ))]
-                bevy::tasks::IoTaskPool::get()
-                    .spawn_local(async {
-                        bevy_basisu_loader_sys::basisu_sys_init_vendor().await;
-                        unsafe { bevy_basisu_loader_sys::basisu_transcoder_init() };
-                    })
-                    .detach();
-                #[cfg(not(all(
-                    target_arch = "wasm32",
-                    target_vendor = "unknown",
-                    target_os = "unknown",
-                )))]
-                unsafe {
-                    bevy_basisu_loader_sys::basisu_transcoder_init()
-                };
-            });
+        #[cfg(all(
+            target_arch = "wasm32",
+            target_vendor = "unknown",
+            target_os = "unknown",
+        ))]
+        {
+            let ready = BasisuWasmReady(Arc::new(AtomicBool::new(false)));
+            let r = ready.clone();
+            bevy::tasks::IoTaskPool::get()
+                .spawn_local(async move {
+                    bevy_basisu_loader_sys::basisu_sys_init_vendor().await;
+                    unsafe { bevy_basisu_loader_sys::basisu_transcoder_init() };
+                    r.store(true, Ordering::Release);
+                    bevy::log::debug!("Basisu wasm initialized")
+                })
+                .detach();
+            app.insert_resource(ready);
+        }
+        #[cfg(not(all(
+            target_arch = "wasm32",
+            target_vendor = "unknown",
+            target_os = "unknown",
+        )))]
+        unsafe {
+            bevy_basisu_loader_sys::basisu_transcoder_init()
+        };
+        app.preregister_asset_loader::<BasisuLoader>(&["basisu.ktx2"]);
+    }
+
+    #[cfg(all(
+        target_arch = "wasm32",
+        target_vendor = "unknown",
+        target_os = "unknown",
+    ))]
+    fn ready(&self, app: &App) -> bool {
+        app.world()
+            .resource::<BasisuWasmReady>()
+            .load(Ordering::Acquire)
     }
 
     fn finish(&self, app: &mut App) {
+        #[cfg(all(
+            target_arch = "wasm32",
+            target_vendor = "unknown",
+            target_os = "unknown",
+        ))]
+        app.world_mut().remove_resource::<BasisuWasmReady>();
         let device = app
             .sub_app_mut(RenderApp)
             .world()

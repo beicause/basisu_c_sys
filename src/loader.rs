@@ -72,7 +72,7 @@ pub struct BasisuLoaderSettings {
     pub channel_type_hint: ChannelType,
     /// Forcibly transcode to a specific [`TextureFormat`]. If `None` the target format is selected automatically.
     ///
-    /// Only set this if you know what you're doing and use this with caution, it will fail if the transcode target is not supported by Basis Universal or the texture format is not supported by the device.
+    /// One use case is transcoding HDR textures to [`TextureFormat::Rgb9e5Ufloat`]. Use this with caution, it will fail if the transcode target is not supported by Basis Universal or the texture format is not supported by the device.
     /// The srgb-ness of the texture format is ignored and will be determined by `is_srgb`.
     pub force_transcode_target: Option<TextureFormat>,
 }
