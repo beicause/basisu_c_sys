@@ -1,4 +1,5 @@
 use bevy::{
+    asset::AssetMetaCheck,
     core_pipeline::{Skybox, tonemapping::Tonemapping},
     log::LogPlugin,
     math::Affine2,
@@ -20,6 +21,10 @@ pub fn main() {
                         ..default()
                     }),
                     ..default()
+                })
+                .set(AssetPlugin {
+                    meta_check: AssetMetaCheck::Never,
+                    ..Default::default()
                 })
                 .set(LogPlugin {
                     filter: "bevy_basisu_loader=debug".to_string(),
