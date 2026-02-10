@@ -1,3 +1,13 @@
+#![cfg_attr(
+    not(all(
+        target_arch = "wasm32",
+        target_vendor = "unknown",
+        target_os = "unknown",
+    )),
+    no_std
+)]
+extern crate alloc;
+
 #[expect(
     non_upper_case_globals,
     non_camel_case_types,
@@ -11,7 +21,7 @@
     ),
     expect(
         unused,
-        reason = "On wasm32 we use js bindings so native functions are unused"
+        reason = "On wasm32 we use js bindings thus native functions are expected to be unused"
     )
 )]
 mod transcoding {

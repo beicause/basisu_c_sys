@@ -61,27 +61,27 @@ mod bindings_sys {
         pub fn js_ktx2_transcoder_get_r_width(
             this: &BasisuVendor,
             transcoder: *mut Transcoder,
-        ) -> ::std::os::raw::c_uint;
+        ) -> ::core::ffi::c_uint;
         #[wasm_bindgen(method,js_name=_c_ktx2_transcoder_get_r_height)]
         pub fn js_ktx2_transcoder_get_r_height(
             this: &BasisuVendor,
             transcoder: *mut Transcoder,
-        ) -> ::std::os::raw::c_uint;
+        ) -> ::core::ffi::c_uint;
         #[wasm_bindgen(method,js_name=_c_ktx2_transcoder_get_r_levels)]
         pub fn js_ktx2_transcoder_get_r_levels(
             this: &BasisuVendor,
             transcoder: *mut Transcoder,
-        ) -> ::std::os::raw::c_uint;
+        ) -> ::core::ffi::c_uint;
         #[wasm_bindgen(method,js_name=_c_ktx2_transcoder_get_r_layers)]
         pub fn js_ktx2_transcoder_get_r_layers(
             this: &BasisuVendor,
             transcoder: *mut Transcoder,
-        ) -> ::std::os::raw::c_uint;
+        ) -> ::core::ffi::c_uint;
         #[wasm_bindgen(method,js_name=_c_ktx2_transcoder_get_r_faces)]
         pub fn js_ktx2_transcoder_get_r_faces(
             this: &BasisuVendor,
             transcoder: *mut Transcoder,
-        ) -> ::std::os::raw::c_uint;
+        ) -> ::core::ffi::c_uint;
         #[wasm_bindgen(method,js_name=_c_ktx2_transcoder_get_r_target_format)]
         pub fn js_ktx2_transcoder_get_r_target_format(
             this: &BasisuVendor,
