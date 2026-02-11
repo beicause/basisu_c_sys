@@ -73,7 +73,7 @@
 				z-index: 2;
 			}
 		</style>
-		<title>Bevy BasisU Loader Example (WebGL2)</title>
+		<title>Bevy BasisU Loader Example (WebGPU)</title>
 	</head>
 	<div class="game-container">
 		<div class="lds-dual-ring"></div>
@@ -82,11 +82,11 @@
 		</canvas>
 	</div>
 	<script type="module">
-		import init from "./target/webgl2/test_scene.js";
+		import init from "./target/webgpu/test_scene.js";
 		init();
 	</script>
 	<a
-		href="./webgpu.html"
+		href="./index.html"
 		style="
 			position: absolute;
 			top: 16px;
@@ -94,6 +94,6 @@
 			z-index: 3;
 			font-size: 1.25rem;
 		"
-		>Go to WebGPU demo</a
+		>Go to WebGL2 demo</a
 	>
 </html>
