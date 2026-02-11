@@ -63,14 +63,23 @@ jobs:
         with:
           path: crates/basisu_sys/wasm/
 
-      - name: Build
+      - name: Build webgl2
         run: RUSTFLAGS="-Ctarget-feature=+simd128" cargo b -p test_scene --target wasm32-unknown-unknown --profile web_release
 
-      - name: Wasm bindgen
-        run: wasm-bindgen --out-name wasm_example --out-dir web/target/ --target web target/wasm32-unknown-unknown/web_release/test_scene.wasm
+      - name: Wasm bindgen webgl2
+        run: wasm-bindgen --out-name test_scene --out-dir web/target/webgl2/ --target web target/wasm32-unknown-unknown/web_release/test_scene.wasm
 
-      - name: Optimize wasm
-        run: wasm-opt --enable-simd --enable-bulk-memory-opt --enable-nontrapping-float-to-int -Os ./web/target/wasm_example_bg.wasm -o ./web/target/wasm_example_bg.wasm
+      - name: Optimize wasm webgl2
+        run: wasm-opt --enable-simd --enable-bulk-memory-opt --enable-nontrapping-float-to-int -Os ./web/target/webgl2/test_scene_bg.wasm -o ./web/target/webgl2/test_scene_bg.wasm
+
+      - name: Build webgpu
+        run: RUSTFLAGS="-Ctarget-feature=+simd128" cargo b -p test_scene --features bevy/webgpu --target wasm32-unknown-unknown --profile web_release
+
+      - name: Wasm bindgen webgpu
+        run: wasm-bindgen --out-name test_scene --out-dir web/target/webgpu/ --target web target/wasm32-unknown-unknown/web_release/test_scene.wasm
+
+      - name: Optimize wasm webgpu
+        run: wasm-opt --enable-simd --enable-bulk-memory-opt --enable-nontrapping-float-to-int -Os ./web/target/webgpu/test_scene_bg.wasm -o ./web/target/webgpu/test_scene_bg.wasm
 
       - name: Setup Pages
         uses: actions/configure-pages@v5
