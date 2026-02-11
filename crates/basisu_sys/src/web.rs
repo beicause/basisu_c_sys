@@ -110,7 +110,7 @@ mod bindings_vendor {
 const BASISU_VENDOR_WASM: &[u8] = include_bytes!("../wasm/basisu_vendor.wasm");
 
 thread_local! {
-    static BASISU_VENDOR_INSTANCE: OnceCell<bindings_sys::BasisuVendor> = const{ OnceCell::new() };
+    static BASISU_VENDOR_INSTANCE: OnceCell<bindings_sys::BasisuVendor> = OnceCell::new();
 }
 
 pub async fn basisu_sys_init_vendor() {

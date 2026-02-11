@@ -54,7 +54,7 @@ jobs:
           targets: wasm32-unknown-unknown
 
       - name: Install wasm-bindgen
-        run: cargo binstall --force wasm-bindgen-cli
+        run: cargo binstall --version ^0.2 --force wasm-bindgen-cli
 
       - name: Build vendored basisu to wasm
         run: cargo r -p bevy_basisu_loader_sys --bin build-wasm-cli --features build-wasm-cli -- --emcc-flags="-Os -msimd128 -flto=full -sEVAL_CTORS" --wasm-opt-flags="-Os --enable-simd --enable-bulk-memory-opt --enable-nontrapping-float-to-int"
