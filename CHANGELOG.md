@@ -1,5 +1,9 @@
 # Change Log
 
+## Unreleased
+
+-
+
 ## v0.4.2
 
 - Guarantee basisu wasm is initialized during plugin adding.
