@@ -22,7 +22,7 @@ concurrency:
 
 env:
   CARGO_TERM_COLOR: always
-  EM_VERSION: 4.0.22
+  EM_VERSION: 5.0.0
 
 jobs:
   # Single deploy job since we're just deploying

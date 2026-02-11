@@ -13,7 +13,7 @@ concurrency:
 
 env:
   CARGO_TERM_COLOR: always
-  EM_VERSION: 4.0.22
+  EM_VERSION: 5.0.0
   ANDROID_NDK_VERSION: 28.1.13356709
 
 jobs:
