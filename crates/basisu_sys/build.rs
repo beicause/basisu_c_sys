@@ -1,4 +1,4 @@
-const FLAGS: [&str; 8] = [
+const FLAGS: &[&str] = &[
     "-fno-exceptions",
     "-Wno-unused-function",
     "-Wno-unused-const-variable",
@@ -9,7 +9,7 @@ const FLAGS: [&str; 8] = [
     "-Wno-type-limits",
 ];
 // Disable PVRTC1/2, ATC, FXT1 as wgpu does not support them.
-const DEFINES: [(&str, &str); 5] = [
+const DEFINES: &[(&str, &str)] = &[
     // ("BASISU_FORCE_DEVEL_MESSAGES", "1"),
     // ("BASISD_SUPPORT_KTX2", "1"),
     // ("BASISD_SUPPORT_KTX2_ZSTD", "1"),
@@ -29,10 +29,10 @@ const DEFINES: [(&str, &str); 5] = [
     ("BASISD_SUPPORT_PVRTC2", "0"),
     // ("BASISD_SUPPORT_UASTC_HDR", "1"),
 ];
-const SRCS: [&str; 3] = [
+const SRCS: &[&str] = &[
     "vendor/basis_universal/transcoder/basisu_transcoder.cpp",
-    "vendor/transcoding_wrapper.cpp",
     "vendor/basis_universal/zstd/zstddeclib.c",
+    "vendor/transcoding_wrapper.cpp",
 ];
 
 fn main() {
@@ -91,9 +91,9 @@ fn compile_basisu_static() {
         build.flag_if_supported(f);
     }
     for (define, value) in DEFINES {
-        build.define(define, value);
+        build.define(define, *value);
     }
-    build.files(&SRCS).compile("basisu_vendor");
+    build.files(SRCS).compile("basisu_vendor");
 }
 
 fn gen_wasm_build_cmd() {
@@ -124,8 +124,7 @@ fn gen_wasm_build_cmd() {
     std::fs::write(
         std::path::PathBuf::from(std::env::var("OUT_DIR").unwrap()).join("build_wasm_emcc_args.rs"),
         format!(
-            "const DEFAULT_EMCC_ARGS: [&str; {}] = {:?};",
-            default_emcc_args.len(),
+            "const DEFAULT_EMCC_ARGS: &[&str] = &{:?};",
             default_emcc_args
         ),
     )
