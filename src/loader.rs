@@ -68,11 +68,13 @@ pub struct BasisuLoaderSettings {
     /// The channel type hint for transcode target selection.
     ///
     /// If [`ChannelType::Auto`], it will be determined by the KTX2 data format descriptor channel type.
-    /// Note: This will be ignored when the transcode target format is not ETC2 or BC4/BC5 so it usually has no effect for UASTC textures. See [`BasisuLoaderPlugin`](crate::BasisuLoaderPlugin) for more information about the transcode targets.
+    /// Note: This will be ignored when the transcode target format is not ETC2 or BC4/BC5 so it usually only has effect for ETC1S textures.
+    /// See [`BasisuLoaderPlugin`](crate::BasisuLoaderPlugin) for more information about target selection.
     pub channel_type_hint: ChannelType,
     /// Forcibly transcode to a specific [`TextureFormat`]. If `None` the target format is selected automatically.
     ///
-    /// One use case is transcoding HDR textures to [`TextureFormat::Rgb9e5Ufloat`]. Use this with caution, it will fail if the transcode target is not supported by Basis Universal or the texture format is not supported by the device.
+    /// Use this with caution! It will fail if the transcode target is not supported by Basis Universal or the texture format is not supported by the device.
+    /// One use case is transcoding HDR textures to [`TextureFormat::Rgb9e5Ufloat`].
     /// The srgb-ness of the texture format is ignored and will be determined by `is_srgb`.
     pub force_transcode_target: Option<TextureFormat>,
 }
