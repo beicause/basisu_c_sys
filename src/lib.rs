@@ -21,7 +21,7 @@ pub use loader::*;
 ///
 /// Default transcode target selection:
 ///
-/// | BasisU format                  | target selection                                               |
+/// | BasisU format                  | Target selection                                               |
 /// | ------------------------------ | -------------------------------------------------------------- |
 /// | ETC1S                          | Bc7Rgba/Bc5Rg/Bc4R > Etc2Rgba8/Etc2Rgb8/EacRg11/EacR11 > Rgba8 |
 /// | UASTC_LDR, ASTC_LDR, XUASTC_LDR| Astc > Bc7Rgba > Etc2Rgba8/Etc2Rgb8/EacRg11/EacR11 > Rgba8     |
