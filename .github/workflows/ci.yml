@@ -103,7 +103,7 @@ jobs:
 
       - name: Install cargo-ndk
         run: cargo binstall cargo-ndk
-  
+
       - name: Build
         run: export ANDROID_NDK_HOME=${ANDROID_HOME}/ndk/${{env.ANDROID_NDK_VERSION}} &&
           export ANDROID_NDK_ROOT=${ANDROID_NDK_HOME} &&
