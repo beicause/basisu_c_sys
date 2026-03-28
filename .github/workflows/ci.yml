@@ -106,7 +106,7 @@ jobs:
         run: cargo binstall cargo-ndk
 
       - name: Set NDK home
-        run: export ANDROID_NDK_HOME=${ANDROID_HOME}/ndk/${env.ANDROID_NDK_VERSION} && export ANDROID_NDK_ROOT=${ANDROID_NDK_HOME}
+        run: export ANDROID_NDK_HOME=${ANDROID_HOME}/ndk/${{env.ANDROID_NDK_VERSION}} && export ANDROID_NDK_ROOT=${ANDROID_NDK_HOME}
         
       - name: Build
         run: cargo ndk-env -t arm64-v8a && cargo ndk -t arm64-v8a build --features bevy/android-game-activity
