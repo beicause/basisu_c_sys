@@ -1,4 +1,5 @@
 const FLAGS: &[&str] = &[
+    "-Werror",
     "-fno-exceptions",
     "-Wno-unused-function",
     "-Wno-unused-const-variable",
@@ -7,6 +8,7 @@ const FLAGS: &[&str] = &[
     "-Wno-unused-value",
     "-Wno-deprecated",
     "-Wno-type-limits",
+    "-Wno-stringop-overflow",
 ];
 // Disable PVRTC1/2, ATC, FXT1 as wgpu does not support them.
 const DEFINES: &[(&str, &str)] = &[
@@ -113,7 +115,7 @@ fn gen_wasm_build_cmd() {
     ];
     let mut cmd = std::process::Command::new("em++");
     cmd.args(["-xc++", "-std=c++17"])
-        .args(FLAGS)
+        .args(FLAGS.iter().filter(|f| **f != "-Wno-stringop-overflow"))
         .args(
             DEFINES
                 .iter()
