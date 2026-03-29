@@ -6,7 +6,7 @@ use bevy::render::render_resource::{
     TextureFormat, TextureUsages, TextureViewDescriptor, TextureViewDimension,
     WgpuFeatures as Features,
 };
-use bevy_basisu_loader_sys::{SupportedTextureCompressionMethods, TextureTranscodedFormat};
+use bevy_basisu_loader_sys::{SupportedTextureCompressionMethods, TranscodedTextureFormat};
 use serde::{Deserialize, Serialize};
 use thiserror::Error;
 
@@ -106,9 +106,8 @@ impl AssetLoader for BasisuLoader {
     ) -> Result<Self::Asset, Self::Error> {
         let mut data = Vec::new();
         reader.read_to_end(&mut data).await?;
-
-        // SAFETY: Ensure the transcoding code is correct.
-        let (out_data, out_format, extent, levels, view_dimension) = unsafe {
+        let src_bytes = data.len();
+        let (out_data, out_format, extent, levels, view_dimension) = {
             let _span = bevy::log::info_span!("Transcoding BasisU Texture").entered();
             let time = if log::STATIC_MAX_LEVEL >= log::LevelFilter::Debug {
                 Some(bevy::platform::time::Instant::now())
@@ -116,74 +115,62 @@ impl AssetLoader for BasisuLoader {
                 None
             };
 
-            let transcoder = bevy_basisu_loader_sys::ktx2_transcoder_new();
-            if transcoder.is_null() {
-                return Err(BasisuLoaderError::TranscodingError("ktx2_transcoder_new"));
-            }
-            if !bevy_basisu_loader_sys::ktx2_transcoder_transcode_image(
-                transcoder,
+            let Some(result) = bevy_basisu_loader_sys::basisu_transcode(
                 data,
                 self.supported_compressed_formats,
                 channel_type_to_channel_type_sys(settings.channel_type_hint),
                 texture_bevy_format_to_transcode_format(settings.force_transcode_target),
-            ) {
-                return Err(BasisuLoaderError::TranscodingError(
-                    "ktx2_transcoder_transcode_image",
-                ));
-            }
+            ) else {
+                return Err(BasisuLoaderError::TranscodingError("basisu_transcode"));
+            };
 
-            let is_srgb =
-                settings
-                    .is_srgb
-                    .unwrap_or(bevy_basisu_loader_sys::ktx2_transcoder_get_r_is_srgb(
-                        transcoder,
-                    ));
-            let target_format =
-                bevy_basisu_loader_sys::ktx2_transcoder_get_r_target_format(transcoder);
-
-            let width = bevy_basisu_loader_sys::ktx2_transcoder_get_r_width(transcoder);
-            let height = bevy_basisu_loader_sys::ktx2_transcoder_get_r_height(transcoder);
-            let levels = bevy_basisu_loader_sys::ktx2_transcoder_get_r_levels(transcoder);
-            let layers = bevy_basisu_loader_sys::ktx2_transcoder_get_r_layers(transcoder);
-            let faces = bevy_basisu_loader_sys::ktx2_transcoder_get_r_faces(transcoder);
-            let dst_bytes = bevy_basisu_loader_sys::ktx2_transcoder_get_r_dst_buf(transcoder);
-
-            let view_dimension = if layers == 0 {
-                if faces == 1 {
+            let view_dimension = if result.layers == 0 {
+                if result.faces == 1 {
                     TextureViewDimension::D2
-                } else if faces == 6 {
+                } else if result.faces == 6 {
                     TextureViewDimension::Cube
                 } else {
                     unreachable!()
                 }
-            } else if faces == 1 {
+            } else if result.faces == 1 {
                 TextureViewDimension::D2Array
-            } else if faces == 6 {
+            } else if result.faces == 6 {
                 TextureViewDimension::CubeArray
             } else {
                 unreachable!()
             };
             let extent = Extent3d {
-                width,
-                height,
-                depth_or_array_layers: layers.max(1) * faces,
+                width: result.width,
+                height: result.height,
+                depth_or_array_layers: result.layers.max(1) * result.faces,
             };
 
-            bevy_basisu_loader_sys::ktx2_transcoder_delete(transcoder);
-            let out_format = texture_transcode_format_to_bevy_format(target_format, is_srgb);
+            let out_format = texture_transcode_format_to_bevy_format(
+                result.target_format,
+                settings.is_srgb.unwrap_or(result.is_srgb),
+            );
+
             if log::STATIC_MAX_LEVEL >= log::LevelFilter::Debug {
                 bevy::log::debug!(
-                    "Transcoded a basisu texture with dst_bytes: {:?}, dst_format: {:?}, extent: {:?}, levels: {:?}, view_dimension: {:?}, in {:?}",
-                    dst_bytes.len(),
+                    "Transcoded a basisu texture with src_bytes: {:?}, src_format: {:?}, dst_bytes: {:?}, dst_format: {:?}, extent: {:?}, levels: {:?}, view_dimension: {:?}, in {:?}",
+                    src_bytes,
+                    result.basis_format,
+                    result.data.len(),
                     out_format,
                     extent,
-                    levels,
+                    result.levels,
                     view_dimension,
-                    time.unwrap_unchecked().elapsed()
+                    time.unwrap().elapsed()
                 );
             }
 
-            (dst_bytes, out_format, extent, levels, view_dimension)
+            (
+                result.data,
+                out_format,
+                extent,
+                result.levels,
+                view_dimension,
+            )
         };
         let mut image = Image {
             data: None,
@@ -229,100 +216,100 @@ impl AssetLoader for BasisuLoader {
 }
 
 fn texture_transcode_format_to_bevy_format(
-    transcoded: TextureTranscodedFormat,
+    transcoded: TranscodedTextureFormat,
     is_srgb: bool,
 ) -> TextureFormat {
     let mut fmt = match transcoded {
-        TextureTranscodedFormat::cTFETC1_RGB => TextureFormat::Etc2Rgb8Unorm,
-        TextureTranscodedFormat::cTFETC2_RGBA => TextureFormat::Etc2Rgba8Unorm,
-        TextureTranscodedFormat::cTFBC1_RGB => TextureFormat::Bc1RgbaUnorm,
-        TextureTranscodedFormat::cTFBC3_RGBA => TextureFormat::Bc3RgbaUnorm,
-        TextureTranscodedFormat::cTFBC4_R => TextureFormat::Bc4RUnorm,
-        TextureTranscodedFormat::cTFBC5_RG => TextureFormat::Bc5RgUnorm,
-        TextureTranscodedFormat::cTFBC7_RGBA => TextureFormat::Bc7RgbaUnorm,
-        TextureTranscodedFormat::cTFPVRTC1_4_RGB => unreachable!(),
-        TextureTranscodedFormat::cTFPVRTC1_4_RGBA => unreachable!(),
-        TextureTranscodedFormat::cTFASTC_4x4_RGBA => TextureFormat::Astc {
+        TranscodedTextureFormat::cTFETC1_RGB => TextureFormat::Etc2Rgb8Unorm,
+        TranscodedTextureFormat::cTFETC2_RGBA => TextureFormat::Etc2Rgba8Unorm,
+        TranscodedTextureFormat::cTFBC1_RGB => TextureFormat::Bc1RgbaUnorm,
+        TranscodedTextureFormat::cTFBC3_RGBA => TextureFormat::Bc3RgbaUnorm,
+        TranscodedTextureFormat::cTFBC4_R => TextureFormat::Bc4RUnorm,
+        TranscodedTextureFormat::cTFBC5_RG => TextureFormat::Bc5RgUnorm,
+        TranscodedTextureFormat::cTFBC7_RGBA => TextureFormat::Bc7RgbaUnorm,
+        TranscodedTextureFormat::cTFPVRTC1_4_RGB => unreachable!(),
+        TranscodedTextureFormat::cTFPVRTC1_4_RGBA => unreachable!(),
+        TranscodedTextureFormat::cTFASTC_4x4_RGBA => TextureFormat::Astc {
             block: AstcBlock::B4x4,
             channel: AstcChannel::Unorm,
         },
-        TextureTranscodedFormat::cTFATC_RGB => unreachable!(),
-        TextureTranscodedFormat::cTFATC_RGBA => unreachable!(),
-        TextureTranscodedFormat::cTFFXT1_RGB => unreachable!(),
-        TextureTranscodedFormat::cTFPVRTC2_4_RGB => unreachable!(),
-        TextureTranscodedFormat::cTFPVRTC2_4_RGBA => unreachable!(),
-        TextureTranscodedFormat::cTFETC2_EAC_R11 => TextureFormat::EacR11Unorm,
-        TextureTranscodedFormat::cTFETC2_EAC_RG11 => TextureFormat::EacRg11Unorm,
-        TextureTranscodedFormat::cTFBC6H => TextureFormat::Bc6hRgbUfloat,
-        TextureTranscodedFormat::cTFASTC_HDR_4x4_RGBA => TextureFormat::Astc {
+        TranscodedTextureFormat::cTFATC_RGB => unreachable!(),
+        TranscodedTextureFormat::cTFATC_RGBA => unreachable!(),
+        TranscodedTextureFormat::cTFFXT1_RGB => unreachable!(),
+        TranscodedTextureFormat::cTFPVRTC2_4_RGB => unreachable!(),
+        TranscodedTextureFormat::cTFPVRTC2_4_RGBA => unreachable!(),
+        TranscodedTextureFormat::cTFETC2_EAC_R11 => TextureFormat::EacR11Unorm,
+        TranscodedTextureFormat::cTFETC2_EAC_RG11 => TextureFormat::EacRg11Unorm,
+        TranscodedTextureFormat::cTFBC6H => TextureFormat::Bc6hRgbUfloat,
+        TranscodedTextureFormat::cTFASTC_HDR_4x4_RGBA => TextureFormat::Astc {
             block: AstcBlock::B4x4,
             channel: AstcChannel::Hdr,
         },
-        TextureTranscodedFormat::cTFRGBA32 => TextureFormat::Rgba8Unorm,
-        TextureTranscodedFormat::cTFRGB565 => unreachable!(),
-        TextureTranscodedFormat::cTFBGR565 => unreachable!(),
-        TextureTranscodedFormat::cTFRGBA4444 => unreachable!(),
-        TextureTranscodedFormat::cTFRGB_HALF => unreachable!(),
-        TextureTranscodedFormat::cTFRGBA_HALF => TextureFormat::Rgba16Float,
-        TextureTranscodedFormat::cTFRGB_9E5 => TextureFormat::Rgb9e5Ufloat,
-        TextureTranscodedFormat::cTFASTC_HDR_6x6_RGBA => TextureFormat::Astc {
+        TranscodedTextureFormat::cTFRGBA32 => TextureFormat::Rgba8Unorm,
+        TranscodedTextureFormat::cTFRGB565 => unreachable!(),
+        TranscodedTextureFormat::cTFBGR565 => unreachable!(),
+        TranscodedTextureFormat::cTFRGBA4444 => unreachable!(),
+        TranscodedTextureFormat::cTFRGB_HALF => unreachable!(),
+        TranscodedTextureFormat::cTFRGBA_HALF => TextureFormat::Rgba16Float,
+        TranscodedTextureFormat::cTFRGB_9E5 => TextureFormat::Rgb9e5Ufloat,
+        TranscodedTextureFormat::cTFASTC_HDR_6x6_RGBA => TextureFormat::Astc {
             block: AstcBlock::B6x6,
             channel: AstcChannel::Hdr,
         },
-        TextureTranscodedFormat::cTFASTC_LDR_5x4_RGBA => TextureFormat::Astc {
+        TranscodedTextureFormat::cTFASTC_LDR_5x4_RGBA => TextureFormat::Astc {
             block: AstcBlock::B5x4,
             channel: AstcChannel::Unorm,
         },
-        TextureTranscodedFormat::cTFASTC_LDR_5x5_RGBA => TextureFormat::Astc {
+        TranscodedTextureFormat::cTFASTC_LDR_5x5_RGBA => TextureFormat::Astc {
             block: AstcBlock::B5x5,
             channel: AstcChannel::Unorm,
         },
-        TextureTranscodedFormat::cTFASTC_LDR_6x5_RGBA => TextureFormat::Astc {
+        TranscodedTextureFormat::cTFASTC_LDR_6x5_RGBA => TextureFormat::Astc {
             block: AstcBlock::B6x5,
             channel: AstcChannel::Unorm,
         },
-        TextureTranscodedFormat::cTFASTC_LDR_6x6_RGBA => TextureFormat::Astc {
+        TranscodedTextureFormat::cTFASTC_LDR_6x6_RGBA => TextureFormat::Astc {
             block: AstcBlock::B6x6,
             channel: AstcChannel::Unorm,
         },
-        TextureTranscodedFormat::cTFASTC_LDR_8x5_RGBA => TextureFormat::Astc {
+        TranscodedTextureFormat::cTFASTC_LDR_8x5_RGBA => TextureFormat::Astc {
             block: AstcBlock::B8x5,
             channel: AstcChannel::Unorm,
         },
-        TextureTranscodedFormat::cTFASTC_LDR_8x6_RGBA => TextureFormat::Astc {
+        TranscodedTextureFormat::cTFASTC_LDR_8x6_RGBA => TextureFormat::Astc {
             block: AstcBlock::B8x6,
             channel: AstcChannel::Unorm,
         },
-        TextureTranscodedFormat::cTFASTC_LDR_10x5_RGBA => TextureFormat::Astc {
+        TranscodedTextureFormat::cTFASTC_LDR_10x5_RGBA => TextureFormat::Astc {
             block: AstcBlock::B10x5,
             channel: AstcChannel::Unorm,
         },
-        TextureTranscodedFormat::cTFASTC_LDR_10x6_RGBA => TextureFormat::Astc {
+        TranscodedTextureFormat::cTFASTC_LDR_10x6_RGBA => TextureFormat::Astc {
             block: AstcBlock::B10x6,
             channel: AstcChannel::Unorm,
         },
-        TextureTranscodedFormat::cTFASTC_LDR_8x8_RGBA => TextureFormat::Astc {
+        TranscodedTextureFormat::cTFASTC_LDR_8x8_RGBA => TextureFormat::Astc {
             block: AstcBlock::B8x8,
             channel: AstcChannel::Unorm,
         },
-        TextureTranscodedFormat::cTFASTC_LDR_10x8_RGBA => TextureFormat::Astc {
+        TranscodedTextureFormat::cTFASTC_LDR_10x8_RGBA => TextureFormat::Astc {
             block: AstcBlock::B10x8,
             channel: AstcChannel::Unorm,
         },
-        TextureTranscodedFormat::cTFASTC_LDR_10x10_RGBA => TextureFormat::Astc {
+        TranscodedTextureFormat::cTFASTC_LDR_10x10_RGBA => TextureFormat::Astc {
             block: AstcBlock::B10x10,
             channel: AstcChannel::Unorm,
         },
-        TextureTranscodedFormat::cTFASTC_LDR_12x10_RGBA => TextureFormat::Astc {
+        TranscodedTextureFormat::cTFASTC_LDR_12x10_RGBA => TextureFormat::Astc {
             block: AstcBlock::B12x10,
             channel: AstcChannel::Unorm,
         },
-        TextureTranscodedFormat::cTFASTC_LDR_12x12_RGBA => TextureFormat::Astc {
+        TranscodedTextureFormat::cTFASTC_LDR_12x12_RGBA => TextureFormat::Astc {
             block: AstcBlock::B12x12,
             channel: AstcChannel::Unorm,
         },
-        TextureTranscodedFormat::cTFTotalTextureFormats => unreachable!(),
-        TextureTranscodedFormat::cTFBC7_ALT => unreachable!(),
+        TranscodedTextureFormat::cTFTotalTextureFormats => unreachable!(),
+        TranscodedTextureFormat::cTFBC7_ALT => unreachable!(),
     };
     if is_srgb {
         fmt = fmt.add_srgb_suffix();
@@ -332,37 +319,37 @@ fn texture_transcode_format_to_bevy_format(
 
 fn texture_bevy_format_to_transcode_format(
     format: Option<TextureFormat>,
-) -> TextureTranscodedFormat {
+) -> TranscodedTextureFormat {
     let Some(format) = format else {
-        return TextureTranscodedFormat::cTFTotalTextureFormats;
+        return TranscodedTextureFormat::cTFTotalTextureFormats;
     };
     let format = format.remove_srgb_suffix();
     match format {
-        TextureFormat::Etc2Rgb8Unorm => TextureTranscodedFormat::cTFETC1_RGB,
-        TextureFormat::Etc2Rgba8Unorm => TextureTranscodedFormat::cTFETC2_RGBA,
-        TextureFormat::Bc1RgbaUnorm => TextureTranscodedFormat::cTFBC1_RGB,
-        TextureFormat::Bc3RgbaUnorm => TextureTranscodedFormat::cTFBC3_RGBA,
-        TextureFormat::Bc4RUnorm => TextureTranscodedFormat::cTFBC4_R,
-        TextureFormat::Bc5RgUnorm => TextureTranscodedFormat::cTFBC5_RG,
-        TextureFormat::Bc7RgbaUnorm => TextureTranscodedFormat::cTFBC7_RGBA,
+        TextureFormat::Etc2Rgb8Unorm => TranscodedTextureFormat::cTFETC1_RGB,
+        TextureFormat::Etc2Rgba8Unorm => TranscodedTextureFormat::cTFETC2_RGBA,
+        TextureFormat::Bc1RgbaUnorm => TranscodedTextureFormat::cTFBC1_RGB,
+        TextureFormat::Bc3RgbaUnorm => TranscodedTextureFormat::cTFBC3_RGBA,
+        TextureFormat::Bc4RUnorm => TranscodedTextureFormat::cTFBC4_R,
+        TextureFormat::Bc5RgUnorm => TranscodedTextureFormat::cTFBC5_RG,
+        TextureFormat::Bc7RgbaUnorm => TranscodedTextureFormat::cTFBC7_RGBA,
         TextureFormat::Astc {
             block: AstcBlock::B4x4,
             channel: AstcChannel::Unorm,
-        } => TextureTranscodedFormat::cTFASTC_4x4_RGBA,
-        TextureFormat::EacR11Unorm => TextureTranscodedFormat::cTFETC2_EAC_R11,
-        TextureFormat::EacRg11Unorm => TextureTranscodedFormat::cTFETC2_EAC_RG11,
-        TextureFormat::Bc6hRgbUfloat => TextureTranscodedFormat::cTFBC6H,
+        } => TranscodedTextureFormat::cTFASTC_4x4_RGBA,
+        TextureFormat::EacR11Unorm => TranscodedTextureFormat::cTFETC2_EAC_R11,
+        TextureFormat::EacRg11Unorm => TranscodedTextureFormat::cTFETC2_EAC_RG11,
+        TextureFormat::Bc6hRgbUfloat => TranscodedTextureFormat::cTFBC6H,
         TextureFormat::Astc {
             block: AstcBlock::B4x4,
             channel: AstcChannel::Hdr,
-        } => TextureTranscodedFormat::cTFASTC_HDR_4x4_RGBA,
-        TextureFormat::Rgba8Unorm => TextureTranscodedFormat::cTFRGBA32,
-        TextureFormat::Rgba16Float => TextureTranscodedFormat::cTFRGBA_HALF,
-        TextureFormat::Rgb9e5Ufloat => TextureTranscodedFormat::cTFRGB_9E5,
+        } => TranscodedTextureFormat::cTFASTC_HDR_4x4_RGBA,
+        TextureFormat::Rgba8Unorm => TranscodedTextureFormat::cTFRGBA32,
+        TextureFormat::Rgba16Float => TranscodedTextureFormat::cTFRGBA_HALF,
+        TextureFormat::Rgb9e5Ufloat => TranscodedTextureFormat::cTFRGB_9E5,
         TextureFormat::Astc {
             block: AstcBlock::B6x6,
             channel: AstcChannel::Hdr,
-        } => TextureTranscodedFormat::cTFASTC_HDR_6x6_RGBA,
+        } => TranscodedTextureFormat::cTFASTC_HDR_6x6_RGBA,
         _ => unreachable!(),
     }
 }
