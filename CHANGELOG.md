@@ -2,7 +2,7 @@
 
 ## Unreleased
 
--
+- Update basis universal to v2.1.0
 
 ## v0.4.2
 
