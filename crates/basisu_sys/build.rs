@@ -5,8 +5,6 @@ const FLAGS: &[&str] = &[
     "-Wno-unused-const-variable",
     "-Wno-unused-but-set-variable",
     "-Wno-unused-variable",
-    "-Wno-unused-value",
-    "-Wno-deprecated",
     "-Wno-type-limits",
     "-Wno-stringop-overflow",
 ];
@@ -94,7 +92,15 @@ fn compile_basisu_static() {
     if target_os == "android" {
         build.cpp_link_stdlib("c++_static");
     }
-    build.cpp(true).std("c++17");
+    build.cpp(true).std("c++17").flag("-xc++");
+    if build.get_compiler().is_like_gnu()
+        && ["2", "3"].contains(&std::env::var("OPT_LEVEL").unwrap().as_str())
+    {
+        // gcc optimizations make basis universal don't work properly and cause artifacts
+        // when transcoding astc/uastc -> bcn. Limit it to -Os.
+        // Tested with gcc 15.2.1 on Linux.
+        build.opt_level_str("s");
+    }
     for f in FLAGS {
         build.flag_if_supported(f);
     }
