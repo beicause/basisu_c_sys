@@ -8,6 +8,14 @@ use bevy::{
 };
 use bevy_basisu_loader::{BasisuLoaderPlugin, BasisuLoaderSettings};
 
+const IMAGE_PATH_ALPHA0: &str = "alpha0_etc1s_mips.basisu.ktx2";
+const IMAGE_PATH_DESK1: &str = "desk_uastc_hdr_4x4.basisu.ktx2";
+const IMAGE_PATH_DESK2: &str = "desk_uastc_hdr_6x6_mips.basisu.ktx2";
+const IMAGE_PATH_KODIM20: &str = "kodim20_astc_ldr_8x8_mips.basisu.ktx2";
+const IMAGE_PATH_SKYBOX: &str = "skybox_xuastc_ldr_8x8_cubemap_mips.basisu.ktx2";
+const IMAGE_PATH_TOUGH: &str = "tough_uastc_ldr_4x4.basisu.ktx2";
+const IMAGE_PATH_WIKIPEDIA: &str = "wikipedia_xuastc_ldr_6x6_mips.basisu.ktx2";
+
 #[bevy_main]
 pub fn main() {
     App::new()
@@ -43,7 +51,7 @@ fn setup(
     mut meshes: ResMut<Assets<Mesh>>,
     mut materials: ResMut<Assets<StandardMaterial>>,
 ) {
-    let skybox_handle = asset_server.load("gl_skybox_etc1s_cubemap_mips_12.basisu.ktx2");
+    let skybox_handle = asset_server.load(IMAGE_PATH_SKYBOX);
     // camera
     commands.spawn((
         Camera3d::default(),
@@ -60,7 +68,7 @@ fn setup(
     commands.spawn((
         Mesh3d(meshes.add(Rectangle::new(1.0, 1.0).mesh().build())),
         MeshMaterial3d(materials.add(StandardMaterial {
-            base_color_texture: Some(asset_server.load("tough_uastc_ldr_4x4_mips_11.basisu.ktx2")),
+            base_color_texture: Some(asset_server.load(IMAGE_PATH_TOUGH)),
             unlit: true,
             ..Default::default()
         })),
@@ -70,7 +78,7 @@ fn setup(
     commands.spawn((
         Mesh3d(meshes.add(Rectangle::new(0.644 * 3.0, 0.874 * 3.0).mesh().build())),
         MeshMaterial3d(materials.add(StandardMaterial {
-            base_color_texture: Some(asset_server.load("desk_uastc_hdr_6x6_mips_10.basisu.ktx2")),
+            base_color_texture: Some(asset_server.load(IMAGE_PATH_DESK1)),
             unlit: true,
             ..Default::default()
         })),
@@ -82,7 +90,7 @@ fn setup(
         MeshMaterial3d(materials.add(StandardMaterial {
             uv_transform: Affine2::from_scale(Vec2::new(2., 2.)),
             base_color_texture: Some(asset_server.load_with_settings(
-                "desk_uastc_hdr_4x4_mips_10.basisu.ktx2",
+                IMAGE_PATH_DESK2,
                 |s: &mut BasisuLoaderSettings| {
                     s.force_transcode_target = Some(TextureFormat::Rgb9e5Ufloat);
                     s.sampler =
@@ -103,7 +111,7 @@ fn setup(
         Mesh3d(meshes.add(Rectangle::new(1.0, 1.0).mesh().build())),
         MeshMaterial3d(materials.add(StandardMaterial {
             base_color_texture: Some(asset_server.load_with_settings(
-                "alpha0_etc1s.basisu.ktx2",
+                IMAGE_PATH_ALPHA0,
                 |s: &mut BasisuLoaderSettings| {
                     s.channel_type_hint = bevy_basisu_loader::ChannelType::Rg;
                 },
@@ -130,11 +138,11 @@ fn setup(
         },
         children![
             ImageNode {
-                image: asset_server.load("wikipedia_xuastc_ldr_6x6.basisu.ktx2"),
+                image: asset_server.load(IMAGE_PATH_WIKIPEDIA),
                 ..Default::default()
             },
             ImageNode {
-                image: asset_server.load("kodim20_astc_ldr_8x8.basisu.ktx2"),
+                image: asset_server.load(IMAGE_PATH_KODIM20),
                 ..Default::default()
             },
         ],
