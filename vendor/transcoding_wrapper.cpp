@@ -106,24 +106,13 @@ bool c_ktx2_transcoder_transcode_image_write_buffer(Transcoder *transcoder, unsi
 					return false;
 				}
 
-				uint32_t total_dst_blocks_or_pixels;
-				if (basist::basis_transcoder_format_is_uncompressed(transcode_format)) {
-					total_dst_blocks_or_pixels = level_info.m_orig_width * level_info.m_orig_height;
-				} else {
-					const uint32_t dst_block_width = basist::basis_get_block_width(transcode_format);
-					const uint32_t dst_block_height = basist::basis_get_block_height(transcode_format);
-
-					// Take into account the destination format's block width/height.
-					const uint32_t num_dst_blocks_x = (level_info.m_orig_width + dst_block_width - 1) / dst_block_width;
-					const uint32_t num_dst_blocks_y = (level_info.m_orig_height + dst_block_height - 1) / dst_block_height;
-					total_dst_blocks_or_pixels = num_dst_blocks_x * num_dst_blocks_y;
-				}
-
-				if (!inner->transcode_image_level(level_index, layer_index, face_index, out, total_dst_blocks_or_pixels, transcode_format)) {
+				const uint32_t total_bytes = basist::basis_compute_transcoded_image_size_in_bytes(transcode_format, level_info.m_orig_width, level_info.m_orig_height);
+				const uint32_t bytes_per_block = basist::basis_get_bytes_per_block_or_pixel(transcode_format);
+				const uint32_t total_blocks = total_bytes / bytes_per_block;
+				if (!inner->transcode_image_level(level_index, layer_index, face_index, out, total_blocks, transcode_format)) {
 					return false;
 				}
 
-				uint32_t total_bytes = basist::basis_compute_transcoded_image_size_in_bytes(transcode_format, level_info.m_orig_width, level_info.m_orig_height);
 				out += total_bytes;
 			}
 		}
