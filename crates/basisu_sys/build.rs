@@ -101,6 +101,9 @@ fn compile_basisu_static() {
     for (define, value) in DEFINES {
         build.define(define, *value);
     }
+    // FIXME: This works around a bug.
+    // With -O2 or -O3, the transcoded astc/uastc -> bcn textures have many artifacts, especially when -mipmap is enabled. But with -Os the results are much better.
+    build.opt_level_str("s");
     build.files(SRCS).compile("basisu_vendor");
 }
 
