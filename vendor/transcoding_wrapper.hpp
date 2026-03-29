@@ -14,7 +14,7 @@ enum ChannelType : unsigned char {
 };
 
 // This enum must be in sync with the `basist::transcoder_texture_format`.
-enum TextureTranscodedFormat : unsigned int {
+enum TranscodedTextureFormat : int {
 	// Compressed formats
 
 	// ETC1-2
@@ -107,6 +107,58 @@ enum TextureTranscodedFormat : unsigned int {
 	cTFASTC_4x4_RGBA = cTFASTC_LDR_4x4_RGBA
 };
 
+// This enum must be in sync with the `basist::basis_tex_format`.
+enum class BasisTextureFormat : int {
+	// Original LDR formats
+	cETC1S = 0,
+	cUASTC_LDR_4x4 = 1,
+
+	// HDR formats
+	cUASTC_HDR_4x4 = 2,
+	cASTC_HDR_6x6 = 3,
+	cUASTC_HDR_6x6_INTERMEDIATE = 4, // TODO: rename to UASTC_HDR_6x6
+
+	// XUASTC (supercompressed) LDR variants (the standard ASTC block sizes)
+	cXUASTC_LDR_4x4 = 5,
+	cXUASTC_LDR_5x4 = 6,
+	cXUASTC_LDR_5x5 = 7,
+	cXUASTC_LDR_6x5 = 8,
+
+	cXUASTC_LDR_6x6 = 9,
+	cXUASTC_LDR_8x5 = 10,
+	cXUASTC_LDR_8x6 = 11,
+	cXUASTC_LDR_10x5 = 12,
+
+	cXUASTC_LDR_10x6 = 13,
+	cXUASTC_LDR_8x8 = 14,
+	cXUASTC_LDR_10x8 = 15,
+	cXUASTC_LDR_10x10 = 16,
+
+	cXUASTC_LDR_12x10 = 17,
+	cXUASTC_LDR_12x12 = 18,
+
+	// Standard (non-supercompressed) ASTC LDR variants (the standard ASTC block sizes)
+	cASTC_LDR_4x4 = 19,
+	cASTC_LDR_5x4 = 20,
+	cASTC_LDR_5x5 = 21,
+	cASTC_LDR_6x5 = 22,
+
+	cASTC_LDR_6x6 = 23,
+	cASTC_LDR_8x5 = 24,
+	cASTC_LDR_8x6 = 25,
+	cASTC_LDR_10x5 = 26,
+
+	cASTC_LDR_10x6 = 27,
+	cASTC_LDR_8x8 = 28,
+	cASTC_LDR_10x8 = 29,
+	cASTC_LDR_10x10 = 30,
+
+	cASTC_LDR_12x10 = 31,
+	cASTC_LDR_12x12 = 32,
+
+	cTotalFormats
+};
+
 enum SupportedTextureCompressionMethods : unsigned char {
 	NONE = 0,
 	ASTC_LDR = 1 << 0,
@@ -126,7 +178,8 @@ struct Transcoder {
 	unsigned int r_levels;
 	unsigned int r_layers;
 	unsigned int r_faces;
-	TextureTranscodedFormat r_target_format;
+	BasisTextureFormat r_basis_format;
+	TranscodedTextureFormat r_target_format;
 	bool r_is_srgb;
 };
 
@@ -136,8 +189,8 @@ Transcoder *c_ktx2_transcoder_new();
 
 void c_ktx2_transcoder_delete(Transcoder *transcoder);
 
-bool c_ktx2_transcoder_transcode_image(Transcoder *transcoder, const unsigned char *data, unsigned int data_size,
-		SupportedTextureCompressionMethods supported_compressed_formats, ChannelType channel_type_hint, TextureTranscodedFormat force_transcode_target);
+bool c_ktx2_transcoder_transcode_image_alloc_dst(Transcoder *transcoder, const unsigned char *data, unsigned int data_size,
+		SupportedTextureCompressionMethods supported_compressed_formats, ChannelType channel_type_hint, TranscodedTextureFormat force_transcode_target);
 
 unsigned char *c_ktx2_transcoder_get_r_dst_buf(Transcoder *transcoder);
 unsigned int c_ktx2_transcoder_get_r_dst_buf_len(Transcoder *transcoder);
@@ -146,6 +199,12 @@ unsigned int c_ktx2_transcoder_get_r_height(Transcoder *transcoder);
 unsigned int c_ktx2_transcoder_get_r_levels(Transcoder *transcoder);
 unsigned int c_ktx2_transcoder_get_r_layers(Transcoder *transcoder);
 unsigned int c_ktx2_transcoder_get_r_faces(Transcoder *transcoder);
-TextureTranscodedFormat c_ktx2_transcoder_get_r_target_format(Transcoder *transcoder);
+TranscodedTextureFormat c_ktx2_transcoder_get_r_target_format(Transcoder *transcoder);
+BasisTextureFormat c_ktx2_transcoder_get_r_basis_format(Transcoder *transcoder);
 bool c_ktx2_transcoder_get_r_is_srgb(Transcoder *transcoder);
+
+bool c_ktx2_transcoder_transcode_image_get_info(Transcoder *transcoder, const unsigned char *data, unsigned int data_size,
+		SupportedTextureCompressionMethods supported_compressed_formats, ChannelType channel_type_hint, TranscodedTextureFormat force_transcode_target);
+
+bool c_ktx2_transcoder_transcode_image_write_buffer(Transcoder *transcoder, unsigned char *dst_buffer);
 }

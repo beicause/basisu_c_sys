@@ -49,8 +49,7 @@ impl Plugin for BasisuLoaderPlugin {
             let r = ready.clone();
             bevy::tasks::IoTaskPool::get()
                 .spawn_local(async move {
-                    bevy_basisu_loader_sys::basisu_sys_init_vendor().await;
-                    unsafe { bevy_basisu_loader_sys::basisu_transcoder_init() };
+                    bevy_basisu_loader_sys::basisu_init().await;
                     r.store(true, Ordering::Release);
                     bevy::log::debug!("Basisu wasm initialized")
                 })
@@ -62,9 +61,7 @@ impl Plugin for BasisuLoaderPlugin {
             target_vendor = "unknown",
             target_os = "unknown",
         )))]
-        unsafe {
-            bevy_basisu_loader_sys::basisu_transcoder_init()
-        };
+        bevy::tasks::block_on(bevy_basisu_loader_sys::basisu_init());
         app.preregister_asset_loader::<BasisuLoader>(&["basisu.ktx2"]);
     }
 
