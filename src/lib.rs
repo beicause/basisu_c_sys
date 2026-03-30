@@ -8,7 +8,7 @@ use bevy::render::{RenderApp, renderer::RenderDevice};
 ))]
 use bevy::platform::sync::{
     Arc,
-    atomic::{AtomicBool, Ordering},
+    atomic::{AtomicUsize, Ordering},
 };
 
 mod loader;
@@ -35,7 +35,7 @@ pub struct BasisuLoaderPlugin;
     target_os = "unknown",
 ))]
 #[derive(Resource, Clone, Deref)]
-struct BasisuWasmReady(Arc<AtomicBool>);
+struct BasisuWasmReady(Arc<AtomicUsize>);
 
 impl Plugin for BasisuLoaderPlugin {
     fn build(&self, app: &mut App) {
@@ -45,12 +45,12 @@ impl Plugin for BasisuLoaderPlugin {
             target_os = "unknown",
         ))]
         {
-            let ready = BasisuWasmReady(Arc::new(AtomicBool::new(false)));
+            let ready = BasisuWasmReady(Arc::new(AtomicUsize::new(0)));
             let r = ready.clone();
             bevy::tasks::IoTaskPool::get()
                 .spawn_local(async move {
                     bevy_basisu_loader_sys::basisu_init().await;
-                    r.store(true, Ordering::Release);
+                    r.store(1, Ordering::Release);
                     bevy::log::debug!("Basisu wasm initialized")
                 })
                 .detach();
@@ -74,6 +74,7 @@ impl Plugin for BasisuLoaderPlugin {
         app.world()
             .resource::<BasisuWasmReady>()
             .load(Ordering::Acquire)
+            != 0
     }
 
     fn finish(&self, app: &mut App) {

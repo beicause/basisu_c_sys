@@ -53,32 +53,12 @@ fn bindgen() {
         .header("vendor/transcoding_wrapper.hpp")
         .use_core()
         .parse_callbacks(Box::new(bindgen::CargoCallbacks::new()))
-        .allowlist_type("Transcoder")
-        .allowlist_type("TranscodedTextureFormat")
-        .allowlist_type("BasisTextureFormat")
-        .allowlist_type("SupportedTextureCompressionMethods")
-        .allowlist_type("ChannelType")
         .opaque_type("Transcoder")
         .rustified_enum("TranscodedTextureFormat")
         .rustified_enum("BasisTextureFormat")
         .bitfield_enum("SupportedTextureCompressionMethods")
         .rustified_enum("ChannelType")
-        .allowlist_function("c_basisu_transcoder_init")
-        .allowlist_function("c_ktx2_transcoder_new")
-        .allowlist_function("c_ktx2_transcoder_delete")
-        .allowlist_function("c_ktx2_transcoder_transcode_image_alloc_dst")
-        .allowlist_function("c_ktx2_transcoder_get_r_dst_buf")
-        .allowlist_function("c_ktx2_transcoder_get_r_dst_buf_len")
-        .allowlist_function("c_ktx2_transcoder_get_r_width")
-        .allowlist_function("c_ktx2_transcoder_get_r_height")
-        .allowlist_function("c_ktx2_transcoder_get_r_levels")
-        .allowlist_function("c_ktx2_transcoder_get_r_layers")
-        .allowlist_function("c_ktx2_transcoder_get_r_faces")
-        .allowlist_function("c_ktx2_transcoder_get_r_target_format")
-        .allowlist_function("c_ktx2_transcoder_get_r_basis_format")
-        .allowlist_function("c_ktx2_transcoder_get_r_is_srgb")
-        .allowlist_function("c_ktx2_transcoder_transcode_image_get_info")
-        .allowlist_function("c_ktx2_transcoder_transcode_image_write_buffer")
+        .blocklist_type("basist::ktx2_transcoder")
         .generate()
         .expect("Unable to generate bindings")
         .write_to_file(binding_file)
@@ -112,7 +92,25 @@ fn gen_wasm_build_cmd() {
         "-sINCOMING_MODULE_JS_API=wasmBinary",
         "-sALLOW_MEMORY_GROWTH",
         "-sEXPORTED_RUNTIME_METHODS=HEAPU8",
-        "-sEXPORTED_FUNCTIONS=_malloc,_free,_c_basisu_transcoder_init,_c_ktx2_transcoder_new,_c_ktx2_transcoder_delete,_c_ktx2_transcoder_transcode_image_alloc_dst,_c_ktx2_transcoder_get_r_dst_buf,_c_ktx2_transcoder_get_r_dst_buf_len,_c_ktx2_transcoder_get_r_width,_c_ktx2_transcoder_get_r_height,_c_ktx2_transcoder_get_r_levels,_c_ktx2_transcoder_get_r_layers,_c_ktx2_transcoder_get_r_faces,_c_ktx2_transcoder_get_r_target_format,_c_ktx2_transcoder_get_r_basis_format,_c_ktx2_transcoder_get_r_is_srgb",
+        "-sEXPORTED_FUNCTIONS=\
+        _malloc,\
+        _free,\
+        _c_basisu_transcoder_init,\
+        _c_ktx2_transcoder_new,\
+        _c_ktx2_transcoder_delete,\
+        _c_ktx2_transcoder_transcode_image_get_info,\
+        _c_ktx2_transcoder_transcode_image_compute_target_bytes,\
+        _c_ktx2_transcoder_transcode_image_alloc_and_write,\
+        _c_ktx2_transcoder_get_r_dst_buf,\
+        _c_ktx2_transcoder_get_r_dst_buf_len,\
+        _c_ktx2_transcoder_get_r_width,\
+        _c_ktx2_transcoder_get_r_height,\
+        _c_ktx2_transcoder_get_r_levels,\
+        _c_ktx2_transcoder_get_r_layers,\
+        _c_ktx2_transcoder_get_r_faces,\
+        _c_ktx2_transcoder_get_r_preferred_target,\
+        _c_ktx2_transcoder_get_r_basis_format,\
+        _c_ktx2_transcoder_get_r_is_srgb",
     ];
     let mut cmd = std::process::Command::new("em++");
     cmd.args(["-xc++", "-std=c++17"])

@@ -7,33 +7,41 @@ pub use crate::transcoding::c_ktx2_transcoder_get_r_height as ktx2_transcoder_ge
 pub use crate::transcoding::c_ktx2_transcoder_get_r_is_srgb as ktx2_transcoder_get_r_is_srgb;
 pub use crate::transcoding::c_ktx2_transcoder_get_r_layers as ktx2_transcoder_get_r_layers;
 pub use crate::transcoding::c_ktx2_transcoder_get_r_levels as ktx2_transcoder_get_r_levels;
-pub use crate::transcoding::c_ktx2_transcoder_get_r_target_format as ktx2_transcoder_get_r_target_format;
+pub use crate::transcoding::c_ktx2_transcoder_get_r_preferred_target as ktx2_transcoder_get_r_preferred_target;
 pub use crate::transcoding::c_ktx2_transcoder_get_r_width as ktx2_transcoder_get_r_width;
 pub use crate::transcoding::c_ktx2_transcoder_new as ktx2_transcoder_new;
-pub use crate::transcoding::c_ktx2_transcoder_transcode_image_get_info as ktx2_transcoder_transcode_image_get_info;
-pub use crate::transcoding::c_ktx2_transcoder_transcode_image_write_buffer as ktx2_transcoder_transcode_image_write_buffer;
+pub use crate::transcoding::c_ktx2_transcoder_transcode_image_compute_target_bytes as ktx2_transcoder_transcode_image_compute_target_bytes;
+pub use crate::transcoding::c_ktx2_transcoder_transcode_image_write as ktx2_transcoder_transcode_image_write;
 
-#[cfg(test)]
-pub unsafe fn ktx2_transcoder_transcode_image_alloc_dst(
+pub unsafe fn ktx2_transcoder_transcode_image_get_info(
     transcoder: *mut crate::transcoding::Transcoder,
-    data: alloc::vec::Vec<u8>,
+    data: &[u8],
     supported_compressed_formats: crate::SupportedTextureCompressionMethods,
     channel_type_hint: crate::ChannelType,
-    force_transcode_target: crate::TranscodedTextureFormat,
-) -> bool {
+) {
     unsafe {
-        crate::transcoding::c_ktx2_transcoder_transcode_image_alloc_dst(
+        crate::transcoding::c_ktx2_transcoder_transcode_image_get_info(
             transcoder,
             data.as_ptr(),
-            u32::try_from(data.len()).unwrap(),
+            data.len() as u32,
             supported_compressed_formats,
             channel_type_hint,
-            force_transcode_target,
         )
-    }
+    };
 }
 
 #[cfg(test)]
+#[cfg_attr(
+    not(test),
+    expect(unused, reason = "On native we use direct buffer writing")
+)]
+pub use crate::transcoding::c_ktx2_transcoder_transcode_image_alloc_and_write as ktx2_transcoder_transcode_image_alloc_and_write;
+
+#[cfg(test)]
+#[cfg_attr(
+    not(test),
+    expect(unused, reason = "On native we use direct buffer writing")
+)]
 pub unsafe fn ktx2_transcoder_get_r_dst_buf(
     transcoder: *mut crate::transcoding::Transcoder,
 ) -> alloc::vec::Vec<u8> {
@@ -43,3 +51,8 @@ pub unsafe fn ktx2_transcoder_get_r_dst_buf(
     unsafe { core::ptr::copy_nonoverlapping(ptr, ret.as_mut_ptr(), len as usize) };
     ret
 }
+
+#[expect(unused, reason = "On native we use direct buffer writing")]
+pub use crate::transcoding::c_ktx2_transcoder_get_r_dst_buf;
+#[expect(unused, reason = "On native we use direct buffer writing")]
+pub use crate::transcoding::c_ktx2_transcoder_transcode_image_alloc_and_write;
