@@ -14,7 +14,7 @@ const IMAGE_PATH_DESK2: &str = "desk_uastc_hdr_6x6_mips.basisu.ktx2";
 const IMAGE_PATH_KODIM20: &str = "kodim20_astc_ldr_8x8_mips.basisu.ktx2";
 const IMAGE_PATH_SKYBOX: &str = "skybox_xuastc_ldr_8x8_cubemap_mips.basisu.ktx2";
 const IMAGE_PATH_TOUGH: &str = "tough_uastc_ldr_4x4.basisu.ktx2";
-const IMAGE_PATH_WIKIPEDIA: &str = "wikipedia_xuastc_ldr_6x6_mips.basisu.ktx2";
+const IMAGE_PATH_WIKIPEDIA: &str = "wikipedia_xuastc_ldr_8x8_mips.basisu.ktx2";
 
 #[bevy_main]
 pub fn main() {

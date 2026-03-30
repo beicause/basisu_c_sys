@@ -30,3 +30,6 @@ bindgen = "0.72"
 name = "build-wasm-cli"
 path = "src/bin/build_wasm_cli.rs"
 required-features = ["build-wasm-cli"]
+
+[dev-dependencies]
+insta = "1.47.1"
