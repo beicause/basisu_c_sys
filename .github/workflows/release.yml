@@ -56,6 +56,7 @@ jobs:
 
       - uses: katyo/publish-crates@v2
         with:
+          args: --allow-dirty # TODO: cargo doesn't respect `.gitignore`. See issue https://github.com/rust-lang/cargo/issues/16547
           registry-token: ${{ steps.auth.outputs.token }}
           dry-run: ${{ env.DRY_RUN }}
 
