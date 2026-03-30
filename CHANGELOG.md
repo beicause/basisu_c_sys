@@ -2,7 +2,13 @@
 
 ## Unreleased
 
+-
+
+## v0.4.3
+
 - Update basis universal to v2.1.0
+- `bevy_basisu_loader_sys` crate APIs are simplified and safe.
+- `bevy_basisu_loader_sys` crate gets snapshot tests.
 
 ## v0.4.2
 
