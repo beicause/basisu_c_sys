@@ -17,8 +17,6 @@ This plugin adds a loader for Basis Universal KTX2 textures with support for all
 
 Note: This doesn't include BasisU encoder. To encode textures to `.ktx2`, use the command line tool in [Basis Universal](https://github.com/BinomialLLC/basis_universal/?tab=readme-ov-file#compressing-and-unpacking-ktx2basis-files) repo.
 
-Web demo: https://beicause.github.io/bevy_basisu_loader/
-
 ## Usage
 
 1. Add the Cargo dependency:
@@ -47,6 +45,10 @@ pub fn main() {
 ⚠️Note: The compressed texture dimensions must be a multiplier of block size. See https://github.com/gfx-rs/wgpu/issues/7677 for more context. Also because basisu can transcode to textures with different block size on different platforms,
 the texture dimensions should satisfy all possible block sizes. For example, XUASTC 6x6 can transcode to ASTC 6x6 and BC7, so its dimensions should be a multiplier of 12.
 
+## Test status of this repository
+
+This repository contains snapshot tests for decoding BasisU textures in CI. Also a web demo is deployed: https://beicause.github.io/bevy_basisu_loader
+
 ## Run on web
 
 TLDR: Just build your bevy application to `wasm32-unknown-unknown` normally.
@@ -55,8 +57,6 @@ The prebuilt wasm in `crates/basisu_sys/wasm` is automatically embedded in binar
 ```sh
 cargo r -p bevy_basisu_loader_sys --bin build-wasm-cli --features build-wasm-cli -- --emcc-flags="-Os -msimd128 -flto=full -sEVAL_CTORS" --wasm-opt-flags="-Os --enable-simd --enable-bulk-memory-opt --enable-nontrapping-float-to-int"
 ```
-
-## Implementation details
 
 To run on web, this repo uses a solution:
 

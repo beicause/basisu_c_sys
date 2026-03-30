@@ -37,15 +37,26 @@ mod bindings_sys {
         pub fn js_ktx2_transcoder_new(this: &BasisuVendor) -> *mut Transcoder;
         #[wasm_bindgen(method,js_name=_c_ktx2_transcoder_delete)]
         pub fn js_ktx2_transcoder_delete(this: &BasisuVendor, transcoder: *mut Transcoder);
-        #[wasm_bindgen(method,js_name=_c_ktx2_transcoder_transcode_image_alloc_dst)]
-        pub fn js_ktx2_transcoder_transcode_image_alloc_dst(
+        #[wasm_bindgen(method,js_name=_c_ktx2_transcoder_transcode_image_get_info)]
+        pub fn js_ktx2_transcoder_transcode_image_get_info(
             this: &BasisuVendor,
             transcoder: *mut Transcoder,
             data: usize,
             data_len: u32,
             supported_compressed_formats: SupportedTextureCompressionMethodsRepr,
             channel_type_hint: ChannelTypeRepr,
-            force_transcode_target: TranscodedTextureFormatRepr,
+        );
+        #[wasm_bindgen(method,js_name=_c_ktx2_transcoder_transcode_image_compute_target_bytes)]
+        pub fn js_ktx2_transcoder_transcode_image_compute_target_bytes(
+            this: &BasisuVendor,
+            transcoder: *mut Transcoder,
+            transcode_target: TranscodedTextureFormatRepr,
+        ) -> bool;
+        #[wasm_bindgen(method,js_name=_c_ktx2_transcoder_transcode_image_alloc_and_write)]
+        pub fn js_ktx2_transcoder_transcode_image_alloc_and_write(
+            this: &BasisuVendor,
+            transcoder: *mut Transcoder,
+            transcode_target: TranscodedTextureFormatRepr,
         ) -> bool;
         #[wasm_bindgen(method,js_name=_c_ktx2_transcoder_get_r_dst_buf)]
         pub fn js_ktx2_transcoder_get_r_dst_buf(
@@ -82,8 +93,8 @@ mod bindings_sys {
             this: &BasisuVendor,
             transcoder: *mut Transcoder,
         ) -> ::core::ffi::c_uint;
-        #[wasm_bindgen(method,js_name=_c_ktx2_transcoder_get_r_target_format)]
-        pub fn js_ktx2_transcoder_get_r_target_format(
+        #[wasm_bindgen(method,js_name=_c_ktx2_transcoder_get_r_preferred_target)]
+        pub fn js_ktx2_transcoder_get_r_preferred_target(
             this: &BasisuVendor,
             transcoder: *mut Transcoder,
         ) -> TranscodedTextureFormatRepr;
@@ -170,14 +181,14 @@ pub unsafe fn ktx2_transcoder_get_r_levels(transcoder: *mut Transcoder) -> u32 {
         inst.js_ktx2_transcoder_get_r_levels(transcoder)
     })
 }
-pub unsafe fn ktx2_transcoder_get_r_target_format(
+pub unsafe fn ktx2_transcoder_get_r_preferred_target(
     transcoder: *mut Transcoder,
 ) -> TranscodedTextureFormat {
     // SAFETY: Both repr are i32
     unsafe {
         core::mem::transmute(BASISU_VENDOR_INSTANCE.with(|inst| {
             let inst = inst.get().unwrap();
-            inst.js_ktx2_transcoder_get_r_target_format(transcoder)
+            inst.js_ktx2_transcoder_get_r_preferred_target(transcoder)
         }))
     }
 }
@@ -205,31 +216,66 @@ pub unsafe fn ktx2_transcoder_new() -> *mut Transcoder {
     })
 }
 
-pub unsafe fn ktx2_transcoder_transcode_image_alloc_dst(
+pub unsafe fn ktx2_transcoder_transcode_image_get_info(
     transcoder: *mut Transcoder,
-    data: Vec<u8>,
+    data: &[u8],
     supported_compressed_formats: SupportedTextureCompressionMethods,
     channel_type_hint: ChannelType,
-    force_transcode_target: TranscodedTextureFormat,
-) -> bool {
+) -> usize {
     BASISU_VENDOR_INSTANCE.with(|inst| {
         let inst = inst.get().unwrap();
-        let len = u32::try_from(data.len()).unwrap();
-        let ptr = inst.js_basisu_malloc(len as usize);
+        let data_len = data.len() as u32;
+        let ptr = inst.js_basisu_malloc(data_len as usize);
         let heap = inst.js_basisu_heapu8();
-        heap.set(&data.into(), ptr as u32);
-        let result = inst.js_ktx2_transcoder_transcode_image_alloc_dst(
+        heap.set(&Uint8Array::from(data), ptr as u32);
+        inst.js_ktx2_transcoder_transcode_image_get_info(
             transcoder,
             ptr,
-            len,
+            data_len,
             supported_compressed_formats.0,
             // SAFETY: Both repr are u8
             unsafe { core::mem::transmute(channel_type_hint) },
-            // SAFETY: Both repr are i32
-            unsafe { core::mem::transmute(force_transcode_target) },
         );
-        inst.js_basisu_free(ptr);
-        result
+        ptr
+    })
+}
+
+pub unsafe fn ktx2_transcoder_transcode_image_free_wasm_data(data_ptr: usize) {
+    BASISU_VENDOR_INSTANCE.with(|inst| {
+        if data_ptr != 0 {
+            let inst = inst.get().unwrap();
+            inst.js_basisu_free(data_ptr);
+        } else {
+            panic!("Attempt to free null ptr");
+        }
+    })
+}
+
+pub unsafe fn ktx2_transcoder_transcode_image_compute_target_bytes(
+    transcoder: *mut Transcoder,
+    transcode_target: TranscodedTextureFormat,
+) -> bool {
+    BASISU_VENDOR_INSTANCE.with(|inst| {
+        let inst = inst.get().unwrap();
+        inst.js_ktx2_transcoder_transcode_image_compute_target_bytes(
+            transcoder,
+            // SAFETY: Both repr are i32
+            unsafe { core::mem::transmute(transcode_target) },
+        )
+    })
+}
+
+pub unsafe fn ktx2_transcoder_transcode_image_alloc_and_write(
+    transcoder: *mut Transcoder,
+    transcode_target: TranscodedTextureFormat,
+) -> bool {
+    BASISU_VENDOR_INSTANCE.with(|inst| {
+        let inst = inst.get().unwrap();
+        inst.js_ktx2_transcoder_transcode_image_alloc_and_write(
+            transcoder,
+            // SAFETY: Both repr are i32
+            unsafe { core::mem::transmute(transcode_target) },
+        )
     })
 }
 

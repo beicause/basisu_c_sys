@@ -6,7 +6,10 @@ use bevy::render::render_resource::{
     TextureFormat, TextureUsages, TextureViewDescriptor, TextureViewDimension,
     WgpuFeatures as Features,
 };
-use bevy_basisu_loader_sys::{SupportedTextureCompressionMethods, TranscodedTextureFormat};
+use bevy_basisu_loader_sys::{
+    BasisuTranscoder, ChannelType as ChannelTypeSys, SupportedTextureCompressionMethods,
+    TranscodedTextureFormat,
+};
 use serde::{Deserialize, Serialize};
 use thiserror::Error;
 
@@ -47,7 +50,7 @@ pub enum ChannelType {
     R,
 }
 
-const fn channel_type_to_channel_type_sys(t: ChannelType) -> bevy_basisu_loader_sys::ChannelType {
+const fn channel_type_to_channel_type_sys(t: ChannelType) -> ChannelTypeSys {
     // SAFETY: Both repr are u8
     unsafe { core::mem::transmute(t) }
 }
@@ -68,13 +71,14 @@ pub struct BasisuLoaderSettings {
     /// The channel type hint for transcode target selection.
     ///
     /// If [`ChannelType::Auto`], it will be determined by the KTX2 data format descriptor channel type.
-    /// Note: This will be ignored when the transcode target format is not ETC2 or BC4/BC5 so it usually only has effect for ETC1S textures.
-    /// See [`BasisuLoaderPlugin`](crate::BasisuLoaderPlugin) for more information about target selection.
+    ///
+    /// Note: This will be ignored when the transcode target isn't single-channel or dual-channel (like ETC2 or BC4/BC5), so this usually only has effect for ETC1S textures. See [`BasisuLoaderPlugin`](crate::BasisuLoaderPlugin) for more information about target selection.
     pub channel_type_hint: ChannelType,
     /// Forcibly transcode to a specific [`TextureFormat`]. If `None` the target format is selected automatically.
     ///
-    /// Use this with caution! It will fail if the transcode target is not supported by Basis Universal or the texture format is not supported by the device.
-    /// One use case is transcoding HDR textures to [`TextureFormat::Rgb9e5Ufloat`].
+    /// Use this with caution! It will panic if the target format is not supported by the device,
+    /// and will crash if it can't be transcoded by Basis Universal (TODO: This is unsafe).
+    ///
     /// The srgb-ness of the texture format is ignored and will be determined by `is_srgb`.
     pub force_transcode_target: Option<TextureFormat>,
 }
@@ -107,70 +111,70 @@ impl AssetLoader for BasisuLoader {
         let mut data = Vec::new();
         reader.read_to_end(&mut data).await?;
         let src_bytes = data.len();
+
         let (out_data, out_format, extent, levels, view_dimension) = {
-            let _span = bevy::log::info_span!("Transcoding BasisU Texture").entered();
+            let _span = bevy::log::info_span!("transcoding basisu texture").entered();
             let time = if log::STATIC_MAX_LEVEL >= log::LevelFilter::Debug {
                 Some(bevy::platform::time::Instant::now())
             } else {
                 None
             };
-
-            let Some(result) = bevy_basisu_loader_sys::basisu_transcode(
+            let mut transcoder = BasisuTranscoder::new();
+            let info = transcoder.start(
                 data,
                 self.supported_compressed_formats,
                 channel_type_to_channel_type_sys(settings.channel_type_hint),
-                texture_bevy_format_to_transcode_format(settings.force_transcode_target),
-            ) else {
-                return Err(BasisuLoaderError::TranscodingError("basisu_transcode"));
-            };
+            );
 
-            let view_dimension = if result.layers == 0 {
-                if result.faces == 1 {
+            let view_dimension = if info.layers == 0 {
+                if info.faces == 1 {
                     TextureViewDimension::D2
-                } else if result.faces == 6 {
+                } else if info.faces == 6 {
                     TextureViewDimension::Cube
                 } else {
                     unreachable!()
                 }
-            } else if result.faces == 1 {
+            } else if info.faces == 1 {
                 TextureViewDimension::D2Array
-            } else if result.faces == 6 {
+            } else if info.faces == 6 {
                 TextureViewDimension::CubeArray
             } else {
                 unreachable!()
             };
             let extent = Extent3d {
-                width: result.width,
-                height: result.height,
-                depth_or_array_layers: result.layers.max(1) * result.faces,
+                width: info.width,
+                height: info.height,
+                depth_or_array_layers: info.layers.max(1) * info.faces,
             };
-
-            let out_format = texture_transcode_format_to_bevy_format(
-                result.target_format,
-                settings.is_srgb.unwrap_or(result.is_srgb),
+            let target = validate_transcode_target_format(
+                settings.force_transcode_target,
+                self.supported_compressed_formats,
+            )
+            .unwrap_or(info.preferred_target);
+            let out_format = texture_transcode_format_to_wgpu_format(
+                target,
+                settings.is_srgb.unwrap_or(info.is_srgb),
             );
+            let Some(out_data) = transcoder.output(target) else {
+                return Err(BasisuLoaderError::TranscodingError("transcoder.output"));
+            };
 
             if log::STATIC_MAX_LEVEL >= log::LevelFilter::Debug {
                 bevy::log::debug!(
-                    "Transcoded a basisu texture with src_bytes: {:?}, src_format: {:?}, dst_bytes: {:?}, dst_format: {:?}, extent: {:?}, levels: {:?}, view_dimension: {:?}, in {:?}",
-                    src_bytes,
-                    result.basis_format,
-                    result.data.len(),
+                    "Transcoded a basisu texture {:?} -> {:?}, {:?} kb -> {:?} kb, preferred_target {:?}, extents {:?}, levels {:?}, view_dimension {:?}, in {:?}",
+                    info.basis_format,
                     out_format,
+                    src_bytes as f32 / 1000.0,
+                    out_data.len() as f32 / 1000.0,
+                    info.preferred_target,
                     extent,
-                    result.levels,
+                    info.levels,
                     view_dimension,
-                    time.unwrap().elapsed()
+                    time.unwrap().elapsed(),
                 );
             }
 
-            (
-                result.data,
-                out_format,
-                extent,
-                result.levels,
-                view_dimension,
-            )
+            (out_data, out_format, extent, info.levels, view_dimension)
         };
         let mut image = Image {
             data: None,
@@ -215,7 +219,7 @@ impl AssetLoader for BasisuLoader {
     }
 }
 
-fn texture_transcode_format_to_bevy_format(
+fn texture_transcode_format_to_wgpu_format(
     transcoded: TranscodedTextureFormat,
     is_srgb: bool,
 ) -> TextureFormat {
@@ -317,39 +321,84 @@ fn texture_transcode_format_to_bevy_format(
     fmt
 }
 
-fn texture_bevy_format_to_transcode_format(
+fn validate_transcode_target_format(
     format: Option<TextureFormat>,
-) -> TranscodedTextureFormat {
-    let Some(format) = format else {
-        return TranscodedTextureFormat::cTFTotalTextureFormats;
-    };
-    let format = format.remove_srgb_suffix();
-    match format {
-        TextureFormat::Etc2Rgb8Unorm => TranscodedTextureFormat::cTFETC1_RGB,
-        TextureFormat::Etc2Rgba8Unorm => TranscodedTextureFormat::cTFETC2_RGBA,
-        TextureFormat::Bc1RgbaUnorm => TranscodedTextureFormat::cTFBC1_RGB,
-        TextureFormat::Bc3RgbaUnorm => TranscodedTextureFormat::cTFBC3_RGBA,
-        TextureFormat::Bc4RUnorm => TranscodedTextureFormat::cTFBC4_R,
-        TextureFormat::Bc5RgUnorm => TranscodedTextureFormat::cTFBC5_RG,
-        TextureFormat::Bc7RgbaUnorm => TranscodedTextureFormat::cTFBC7_RGBA,
+    supported_methods: SupportedTextureCompressionMethods,
+) -> Option<TranscodedTextureFormat> {
+    let format = format?.remove_srgb_suffix();
+    let target = match format {
+        TextureFormat::Etc2Rgb8Unorm
+            if supported_methods.0 & SupportedTextureCompressionMethods::ETC2.0 != 0 =>
+        {
+            TranscodedTextureFormat::cTFETC1_RGB
+        }
+        TextureFormat::Etc2Rgba8Unorm
+            if supported_methods.0 & SupportedTextureCompressionMethods::ETC2.0 != 0 =>
+        {
+            TranscodedTextureFormat::cTFETC2_RGBA
+        }
+        TextureFormat::Bc1RgbaUnorm
+            if supported_methods.0 & SupportedTextureCompressionMethods::BC.0 != 0 =>
+        {
+            TranscodedTextureFormat::cTFBC1_RGB
+        }
+        TextureFormat::Bc3RgbaUnorm
+            if supported_methods.0 & SupportedTextureCompressionMethods::BC.0 != 0 =>
+        {
+            TranscodedTextureFormat::cTFBC3_RGBA
+        }
+        TextureFormat::Bc4RUnorm
+            if supported_methods.0 & SupportedTextureCompressionMethods::BC.0 != 0 =>
+        {
+            TranscodedTextureFormat::cTFBC4_R
+        }
+        TextureFormat::Bc5RgUnorm
+            if supported_methods.0 & SupportedTextureCompressionMethods::BC.0 != 0 =>
+        {
+            TranscodedTextureFormat::cTFBC5_RG
+        }
+        TextureFormat::Bc7RgbaUnorm
+            if supported_methods.0 & SupportedTextureCompressionMethods::BC.0 != 0 =>
+        {
+            TranscodedTextureFormat::cTFBC7_RGBA
+        }
         TextureFormat::Astc {
             block: AstcBlock::B4x4,
             channel: AstcChannel::Unorm,
-        } => TranscodedTextureFormat::cTFASTC_4x4_RGBA,
-        TextureFormat::EacR11Unorm => TranscodedTextureFormat::cTFETC2_EAC_R11,
-        TextureFormat::EacRg11Unorm => TranscodedTextureFormat::cTFETC2_EAC_RG11,
-        TextureFormat::Bc6hRgbUfloat => TranscodedTextureFormat::cTFBC6H,
+        } if supported_methods.0 & SupportedTextureCompressionMethods::ASTC_LDR.0 != 0 => {
+            TranscodedTextureFormat::cTFASTC_4x4_RGBA
+        }
+        TextureFormat::EacR11Unorm
+            if supported_methods.0 & SupportedTextureCompressionMethods::ETC2.0 != 0 =>
+        {
+            TranscodedTextureFormat::cTFETC2_EAC_R11
+        }
+        TextureFormat::EacRg11Unorm
+            if supported_methods.0 & SupportedTextureCompressionMethods::ETC2.0 != 0 =>
+        {
+            TranscodedTextureFormat::cTFETC2_EAC_RG11
+        }
+        TextureFormat::Bc6hRgbUfloat
+            if supported_methods.0 & SupportedTextureCompressionMethods::BC.0 != 0 =>
+        {
+            TranscodedTextureFormat::cTFBC6H
+        }
         TextureFormat::Astc {
             block: AstcBlock::B4x4,
             channel: AstcChannel::Hdr,
-        } => TranscodedTextureFormat::cTFASTC_HDR_4x4_RGBA,
+        } if supported_methods.0 & SupportedTextureCompressionMethods::ASTC_HDR.0 != 0 => {
+            TranscodedTextureFormat::cTFASTC_HDR_4x4_RGBA
+        }
         TextureFormat::Rgba8Unorm => TranscodedTextureFormat::cTFRGBA32,
         TextureFormat::Rgba16Float => TranscodedTextureFormat::cTFRGBA_HALF,
         TextureFormat::Rgb9e5Ufloat => TranscodedTextureFormat::cTFRGB_9E5,
         TextureFormat::Astc {
             block: AstcBlock::B6x6,
             channel: AstcChannel::Hdr,
-        } => TranscodedTextureFormat::cTFASTC_HDR_6x6_RGBA,
+        } if supported_methods.0 & SupportedTextureCompressionMethods::ASTC_HDR.0 != 0 => {
+            TranscodedTextureFormat::cTFASTC_HDR_6x6_RGBA
+        }
         _ => unreachable!(),
-    }
+    };
+    Some(target)
 }

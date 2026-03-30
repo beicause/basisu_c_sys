@@ -27,8 +27,6 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
-        with:
-          lfs: true
 
       - name: Install Emscripten
         uses: mymindstorm/setup-emsdk@v14
@@ -58,6 +56,7 @@ jobs:
 
       - uses: katyo/publish-crates@v2
         with:
+          args: --allow-dirty # TODO: cargo doesn't respect `.gitignore`. See issue https://github.com/rust-lang/cargo/issues/16547
           registry-token: ${{ steps.auth.outputs.token }}
           dry-run: ${{ env.DRY_RUN }}
 

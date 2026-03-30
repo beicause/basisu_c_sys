@@ -179,7 +179,7 @@ struct Transcoder {
 	unsigned int r_layers;
 	unsigned int r_faces;
 	BasisTextureFormat r_basis_format;
-	TranscodedTextureFormat r_target_format;
+	TranscodedTextureFormat r_preferred_target;
 	bool r_is_srgb;
 };
 
@@ -188,10 +188,6 @@ void c_basisu_transcoder_init();
 Transcoder *c_ktx2_transcoder_new();
 
 void c_ktx2_transcoder_delete(Transcoder *transcoder);
-
-bool c_ktx2_transcoder_transcode_image_alloc_dst(Transcoder *transcoder, const unsigned char *data, unsigned int data_size,
-		SupportedTextureCompressionMethods supported_compressed_formats, ChannelType channel_type_hint, TranscodedTextureFormat force_transcode_target);
-
 unsigned char *c_ktx2_transcoder_get_r_dst_buf(Transcoder *transcoder);
 unsigned int c_ktx2_transcoder_get_r_dst_buf_len(Transcoder *transcoder);
 unsigned int c_ktx2_transcoder_get_r_width(Transcoder *transcoder);
@@ -199,12 +195,16 @@ unsigned int c_ktx2_transcoder_get_r_height(Transcoder *transcoder);
 unsigned int c_ktx2_transcoder_get_r_levels(Transcoder *transcoder);
 unsigned int c_ktx2_transcoder_get_r_layers(Transcoder *transcoder);
 unsigned int c_ktx2_transcoder_get_r_faces(Transcoder *transcoder);
-TranscodedTextureFormat c_ktx2_transcoder_get_r_target_format(Transcoder *transcoder);
+TranscodedTextureFormat c_ktx2_transcoder_get_r_preferred_target(Transcoder *transcoder);
 BasisTextureFormat c_ktx2_transcoder_get_r_basis_format(Transcoder *transcoder);
 bool c_ktx2_transcoder_get_r_is_srgb(Transcoder *transcoder);
 
-bool c_ktx2_transcoder_transcode_image_get_info(Transcoder *transcoder, const unsigned char *data, unsigned int data_size,
-		SupportedTextureCompressionMethods supported_compressed_formats, ChannelType channel_type_hint, TranscodedTextureFormat force_transcode_target);
+void c_ktx2_transcoder_transcode_image_get_info(Transcoder *transcoder, const unsigned char *data, unsigned int data_len,
+		SupportedTextureCompressionMethods supported_compressed_formats, ChannelType channel_type_hint);
 
-bool c_ktx2_transcoder_transcode_image_write_buffer(Transcoder *transcoder, unsigned char *dst_buffer);
+bool c_ktx2_transcoder_transcode_image_compute_target_bytes(Transcoder *transcoder, TranscodedTextureFormat target_format);
+
+bool c_ktx2_transcoder_transcode_image_write(Transcoder *transcoder, TranscodedTextureFormat target_format, unsigned char *dst_buffer);
+
+bool c_ktx2_transcoder_transcode_image_alloc_and_write(Transcoder *transcoder, TranscodedTextureFormat target_format);
 }

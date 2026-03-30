@@ -1,0 +1,6 @@
+---
+source: crates/basisu_sys/src/lib.rs
+expression: result.data
+extension: basisu.ktx2
+snapshot_kind: binary
+---
