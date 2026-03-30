@@ -1,5 +1,4 @@
 *.ktx2 filter=lfs diff=lfs merge=lfs -text
-vendor/basis_universal/**/* filter=lfs diff=lfs merge=lfs -text
 *.wasm filter=lfs diff=lfs merge=lfs -text
 original_assets/**/* filter=lfs diff=lfs merge=lfs -text
 crates/basisu_sys/src/snapshots/* filter=lfs diff=lfs merge=lfs -text
