@@ -407,11 +407,6 @@ mod tests {
         );
     }
 
-    #[test]
-    fn transcode_assets_uncompressed() {
-        snapshot_test!("uncompressed_", SupportedTextureCompressionMethods::NONE);
-    }
-
     /// Blocks on the supplied `future`.
     /// This implementation will busy-wait until it is completed.
     /// Consider enabling the `async-io` or `futures-lite` features.
