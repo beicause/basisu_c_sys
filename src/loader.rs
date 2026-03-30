@@ -161,7 +161,7 @@ impl AssetLoader for BasisuLoader {
 
             if log::STATIC_MAX_LEVEL >= log::LevelFilter::Debug {
                 bevy::log::debug!(
-                    "Transcoded a basisu texture {:?} -> {:?}, {:?} kb -> {:?} kb, preferred_target {:?}, extents {:?}, levels {:?}, view_dimension {:?}, in {:?}",
+                    "Transcoded a basisu texture {:?} -> {:?}, {:?}kb -> {:?}kb, preferred_target {:?}, extents {:?}, levels {:?}, view_dimension {:?}, in {:?}",
                     info.basis_format,
                     out_format,
                     src_bytes as f32 / 1000.0,
