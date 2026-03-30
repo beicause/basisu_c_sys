@@ -4,7 +4,7 @@
 
 -
 
-## v0.4.4
+## v0.4.3
 
 - Update basis universal to v2.1.0
 - `bevy_basisu_loader_sys` crate APIs are simplified and safe.
