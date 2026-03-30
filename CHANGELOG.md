@@ -2,7 +2,13 @@
 
 ## Unreleased
 
+-
+
+## v0.4.4
+
 - Update basis universal to v2.1.0
+- `bevy_basisu_loader_sys` crate APIs are simplified and safe.
+- `bevy_basisu_loader_sys` crate gets snapshot tests.
 
 ## v0.4.2
 
@@ -20,10 +26,6 @@
 ## v0.3.2
 
 - Serde `BasisuLoaderSettings::force_transcode_target`
-
-## v0.3.1
-
-- Bump version to fix release CI
 
 ## v0.3.0
 
