@@ -44,11 +44,15 @@ static void c_ktx2_transcoder_get_target_format(Transcoder *transcoder, Supporte
 	*r_format = static_cast<TranscodedTextureFormat>(target_format);
 }
 
-void c_ktx2_transcoder_transcode_image_get_info(Transcoder *transcoder, const unsigned char *data, unsigned int data_len,
+bool c_ktx2_transcoder_transcode_image_get_info(Transcoder *transcoder, const unsigned char *data, unsigned int data_len,
 		SupportedTextureCompressionMethods supported_compressed_formats, ChannelType channel_type_hint) {
 	basist::ktx2_transcoder *inner = transcoder->inner;
-	inner->init(data, data_len);
-	inner->start_transcoding();
+	if (!inner->init(data, data_len)) {
+		return false;
+	}
+	if (!inner->start_transcoding()) {
+		return false;
+	}
 
 	c_ktx2_transcoder_get_target_format(transcoder, supported_compressed_formats, channel_type_hint, &transcoder->r_is_srgb, &transcoder->r_preferred_target);
 
@@ -58,6 +62,8 @@ void c_ktx2_transcoder_transcode_image_get_info(Transcoder *transcoder, const un
 	transcoder->r_levels = inner->get_levels();
 	transcoder->r_layers = inner->get_layers();
 	transcoder->r_faces = inner->get_faces();
+
+	return true;
 }
 
 bool c_ktx2_transcoder_transcode_image_compute_target_bytes(Transcoder *transcoder, TranscodedTextureFormat target_format) {
@@ -112,6 +118,9 @@ bool c_ktx2_transcoder_transcode_image_write(Transcoder *transcoder, TranscodedT
 
 bool c_ktx2_transcoder_transcode_image_alloc_and_write(
 		Transcoder *transcoder, TranscodedTextureFormat target_format) {
+	if (transcoder->r_dst_buf) {
+		free(transcoder->r_dst_buf);
+	}
 	transcoder->r_dst_buf = (unsigned char *)malloc(transcoder->r_dst_buf_len);
 	if (!c_ktx2_transcoder_transcode_image_write(transcoder, target_format, transcoder->r_dst_buf)) {
 		return false;

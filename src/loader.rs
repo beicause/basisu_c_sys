@@ -120,11 +120,13 @@ impl AssetLoader for BasisuLoader {
                 None
             };
             let mut transcoder = BasisuTranscoder::new();
-            let info = transcoder.start(
+            let Some(info) = transcoder.start(
                 data,
                 self.supported_compressed_formats,
                 channel_type_to_channel_type_sys(settings.channel_type_hint),
-            );
+            ) else {
+                return Err(BasisuLoaderError::TranscodingError("transcoder.start"));
+            };
 
             let view_dimension = if info.layers == 0 {
                 if info.faces == 1 {
