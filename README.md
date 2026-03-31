@@ -53,14 +53,14 @@ This repository contains snapshot tests for decoding BasisU textures in CI. Also
 
 TLDR: Just build your bevy application to `wasm32-unknown-unknown` normally.
 
-The prebuilt wasm in `crates/bevy_basisu_sys/wasm` is automatically embedded in binary when building `wasm32-unknown-unknown`. It was prebuilt through CI with:
+The prebuilt wasm in `crates/bevy_basisu_loader_sys/wasm` is automatically embedded in binary when building `wasm32-unknown-unknown`. It was prebuilt through CI with:
 ```sh
 cargo r -p bevy_basisu_loader_sys --bin build-wasm-cli --features build-wasm-cli -- --emcc-flags="-Os -msimd128 -flto=full -sEVAL_CTORS" --wasm-opt-flags="-Os --enable-simd --enable-bulk-memory-opt --enable-nontrapping-float-to-int"
 ```
 
 To run on web, this repo uses a solution:
 
-The `crates/bevy_basisu_sys/` contains a high level wrapper of the basis universal C++ library.
+The `crates/bevy_basisu_loader_sys/` contains a high level wrapper of the basis universal C++ library.
 
 For native platforms, it just builds and statically links the C++ library.
 
