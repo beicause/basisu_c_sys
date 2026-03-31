@@ -51,7 +51,7 @@ pub enum ChannelType {
 }
 
 const fn channel_type_to_channel_type_sys(t: ChannelType) -> ChannelTypeSys {
-    // SAFETY: Both repr are u8
+    // SAFETY: Both repr are u8 and always valid.
     unsafe { core::mem::transmute(t) }
 }
 

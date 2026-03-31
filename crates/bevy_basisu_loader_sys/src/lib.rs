@@ -80,6 +80,18 @@ pub async fn basisu_init() {
     BASISU_INITIALIZED.store(1, Ordering::Release);
 }
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct TranscodeInfo {
+    pub width: u32,
+    pub height: u32,
+    pub levels: u32,
+    pub layers: u32,
+    pub faces: u32,
+    pub is_srgb: bool,
+    pub basis_format: BasisTextureFormat,
+    pub preferred_target: TranscodedTextureFormat,
+}
+
 pub struct BasisuTranscoder {
     inner: *mut transcoding::Transcoder,
     #[cfg(not(all(
@@ -210,23 +222,14 @@ impl Drop for BasisuTranscoder {
     }
 }
 
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub struct TranscodeInfo {
-    pub width: u32,
-    pub height: u32,
-    pub levels: u32,
-    pub layers: u32,
-    pub faces: u32,
-    pub is_srgb: bool,
-    pub basis_format: BasisTextureFormat,
-    pub preferred_target: TranscodedTextureFormat,
-}
-
-#[cfg(not(all(
-    target_arch = "wasm32",
-    target_vendor = "unknown",
-    target_os = "unknown",
-)))]
+#[cfg(any(
+    not(all(
+        target_arch = "wasm32",
+        target_vendor = "unknown",
+        target_os = "unknown",
+    )),
+    test
+))]
 fn basisu_transcode_directly_write(
     transcoder: &BasisuTranscoder,
     target_format: TranscodedTextureFormat,
@@ -283,6 +286,9 @@ mod tests {
     use alloc::vec;
     use alloc::{string::ToString, vec::Vec};
 
+    const XUASTC_FILE: &[u8] =
+        include_bytes!("../../../assets/wikipedia_xuastc_ldr_8x8_mips.basisu.ktx2");
+
     #[test]
     #[should_panic]
     fn transcode_before_init() {
@@ -290,39 +296,7 @@ mod tests {
     }
 
     #[test]
-    #[cfg(not(all(
-        target_arch = "wasm32",
-        target_vendor = "unknown",
-        target_os = "unknown",
-    )))]
-    fn transcode_wasm_and_native_eq() {
-        block_on(crate::basisu_init());
-        let mut transcoder = BasisuTranscoder::new();
-        let info = transcoder.start(
-            vec![],
-            SupportedTextureCompressionMethods::NONE,
-            ChannelType::CHANNEL_UNDEFINED,
-        );
-        assert_eq!(
-            crate::basisu_transcode_alloc_and_fetch_dst(&transcoder, info.preferred_target),
-            crate::basisu_transcode_directly_write(&transcoder, info.preferred_target)
-        );
-        let info = transcoder.start(
-            vec![1, 2, 1],
-            SupportedTextureCompressionMethods::BC
-                | SupportedTextureCompressionMethods::ASTC_LDR
-                | SupportedTextureCompressionMethods::ASTC_HDR
-                | SupportedTextureCompressionMethods::ETC2,
-            ChannelType::CHANNEL_UNDEFINED,
-        );
-        assert_eq!(
-            crate::basisu_transcode_alloc_and_fetch_dst(&transcoder, info.preferred_target),
-            crate::basisu_transcode_directly_write(&transcoder, info.preferred_target)
-        );
-    }
-
-    #[test]
-    fn transcode_simple_data() {
+    fn transcode_invalid_data() {
         block_on(crate::basisu_init());
         let mut transcoder = BasisuTranscoder::new();
         let info = transcoder.start(
@@ -366,6 +340,52 @@ mod tests {
         );
     }
 
+    #[test]
+    fn transcode_two_buffer_write_path_eq() {
+        for _ in 0..10 {
+            block_on(crate::basisu_init());
+
+            let mut transcoder = BasisuTranscoder::new();
+            let info = transcoder.start(
+                vec![],
+                SupportedTextureCompressionMethods::NONE,
+                ChannelType::CHANNEL_UNDEFINED,
+            );
+            assert_eq!(
+                crate::basisu_transcode_alloc_and_fetch_dst(&transcoder, info.preferred_target),
+                crate::basisu_transcode_directly_write(&transcoder, info.preferred_target)
+            );
+
+            let info = transcoder.start(
+                vec![1, 2, 1],
+                SupportedTextureCompressionMethods::BC
+                    | SupportedTextureCompressionMethods::ASTC_LDR
+                    | SupportedTextureCompressionMethods::ASTC_HDR
+                    | SupportedTextureCompressionMethods::ETC2,
+                ChannelType::CHANNEL_UNDEFINED,
+            );
+            assert_eq!(
+                crate::basisu_transcode_alloc_and_fetch_dst(&transcoder, info.preferred_target),
+                crate::basisu_transcode_directly_write(&transcoder, info.preferred_target)
+            );
+
+            let info = transcoder.start(
+                XUASTC_FILE.to_vec(),
+                SupportedTextureCompressionMethods::BC
+                    | SupportedTextureCompressionMethods::ASTC_LDR
+                    | SupportedTextureCompressionMethods::ASTC_HDR
+                    | SupportedTextureCompressionMethods::ETC2,
+                ChannelType::CHANNEL_UNDEFINED,
+            );
+            assert_eq!(
+                crate::basisu_transcode_alloc_and_fetch_dst(&transcoder, info.preferred_target),
+                crate::basisu_transcode_directly_write(&transcoder, info.preferred_target)
+            );
+        }
+    }
+
+    // Use macro to make `assert_debug_snapshot` produce correct file name.
+    // See https://github.com/mitsuhiko/insta/issues/357
     macro_rules! snapshot_test {
         ($prefix: expr, $supported_format: expr $(,)?) => {
             let mut path = std::path::PathBuf::new();
