@@ -75,7 +75,7 @@ jobs:
       - name: Upload artifact
         uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6.0.0
         with:
-          path: crates/bevy_basisu_sys/wasm/
+          path: crates/bevy_basisu_loader_sys/wasm/
 
       - name: Build wasm
         run: RUSTFLAGS="-Ctarget-feature=+simd128" cargo build --target wasm32-unknown-unknown
