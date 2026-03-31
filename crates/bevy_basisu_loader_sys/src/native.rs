@@ -19,6 +19,9 @@ pub unsafe fn ktx2_transcoder_transcode_image_get_info(
     supported_compressed_formats: crate::SupportedTextureCompressionMethods,
     channel_type_hint: crate::ChannelType,
 ) -> bool {
+    if data.is_empty() {
+        return false;
+    }
     unsafe {
         crate::transcoding::c_ktx2_transcoder_transcode_image_get_info(
             transcoder,
@@ -44,10 +47,10 @@ pub use crate::transcoding::c_ktx2_transcoder_transcode_image_alloc_and_write as
 )]
 pub unsafe fn ktx2_transcoder_get_r_dst_buf(
     transcoder: *mut crate::transcoding::Transcoder,
-) -> alloc::vec::Vec<u8> {
+) -> Vec<u8> {
     let ptr = unsafe { crate::transcoding::c_ktx2_transcoder_get_r_dst_buf(transcoder) };
     let len = unsafe { crate::transcoding::c_ktx2_transcoder_get_r_dst_buf_len(transcoder) };
-    let mut ret = alloc::vec![0; len as usize];
+    let mut ret = vec![0; len as usize];
     unsafe { core::ptr::copy_nonoverlapping(ptr, ret.as_mut_ptr(), len as usize) };
     ret
 }

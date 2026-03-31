@@ -222,9 +222,12 @@ pub unsafe fn ktx2_transcoder_transcode_image_get_info(
     supported_compressed_formats: SupportedTextureCompressionMethods,
     channel_type_hint: ChannelType,
 ) -> (bool, usize) {
+    let data_len = data.len() as u32;
+    if data_len == 0 {
+        return (false, 0);
+    }
     BASISU_VENDOR_INSTANCE.with(|inst| {
         let inst = inst.get().unwrap();
-        let data_len = data.len() as u32;
         let ptr = inst.js_basisu_malloc(data_len as usize);
         let heap = inst.js_basisu_heapu8();
         heap.set(&Uint8Array::from(data), ptr as u32);

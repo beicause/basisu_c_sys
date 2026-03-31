@@ -1,13 +1,3 @@
-#![cfg_attr(
-    not(all(
-        target_arch = "wasm32",
-        target_vendor = "unknown",
-        target_os = "unknown",
-    )),
-    no_std
-)]
-extern crate alloc;
-
 #[expect(
     non_upper_case_globals,
     non_camel_case_types,
@@ -28,11 +18,11 @@ mod transcoding {
     include!(concat!(env!("OUT_DIR"), "/transcoding.rs"));
 }
 
-use alloc::vec::Vec;
-use core::sync::atomic::{AtomicUsize, Ordering};
 pub use transcoding::{
     BasisTextureFormat, ChannelType, SupportedTextureCompressionMethods, TranscodedTextureFormat,
 };
+
+use async_lock::OnceCell;
 
 #[cfg(not(all(
     target_arch = "wasm32",
@@ -60,24 +50,23 @@ mod web;
 ))]
 use web::*;
 
-static BASISU_INITIALIZED: AtomicUsize = AtomicUsize::new(0);
+static BASISU_INITIALIZED: OnceCell<()> = OnceCell::new();
 
 /// Init basisu global data. Must be called before transcoding.
 pub async fn basisu_init() {
-    if BASISU_INITIALIZED.load(Ordering::Acquire) != 0 {
-        return;
-    }
-
-    #[cfg(all(
-        target_arch = "wasm32",
-        target_vendor = "unknown",
-        target_os = "unknown",
-    ))]
-    basisu_sys_init_vendor().await;
-    unsafe {
-        basisu_transcoder_init();
-    }
-    BASISU_INITIALIZED.store(1, Ordering::Release);
+    BASISU_INITIALIZED
+        .get_or_init(async || {
+            #[cfg(all(
+                target_arch = "wasm32",
+                target_vendor = "unknown",
+                target_os = "unknown",
+            ))]
+            basisu_sys_init_vendor().await;
+            unsafe {
+                basisu_transcoder_init();
+            }
+        })
+        .await;
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -116,7 +105,7 @@ impl Default for BasisuTranscoder {
 impl BasisuTranscoder {
     /// Create a transcoder. Panic if [`basisu_init`] has not been called.
     pub fn new() -> Self {
-        if BASISU_INITIALIZED.load(Ordering::Acquire) == 0 {
+        if !BASISU_INITIALIZED.is_initialized() {
             panic!("`basisu_init` must be called before transcoding.");
         }
         Self {
@@ -267,7 +256,7 @@ fn basisu_transcode_directly_write(
         }
         ktx2_transcoder_get_r_dst_buf_len(transcoder.inner)
     };
-    let mut buffer = alloc::vec![0u8; target_bytes as usize];
+    let mut buffer = vec![0u8; target_bytes as usize];
     let success = unsafe {
         ktx2_transcoder_transcode_image_write(transcoder.inner, target_format, buffer.as_mut_ptr())
     };
@@ -304,19 +293,22 @@ fn basisu_transcode_alloc_and_fetch_dst(
 
 #[cfg(test)]
 mod tests {
-    extern crate std;
-
-    use crate::{BasisuTranscoder, ChannelType, SupportedTextureCompressionMethods};
-    use alloc::vec;
-    use alloc::{string::ToString, vec::Vec};
+    use crate::{
+        BASISU_INITIALIZED, BasisTextureFormat, BasisuTranscoder, ChannelType,
+        SupportedTextureCompressionMethods, TranscodeInfo,
+    };
 
     const XUASTC_FILE: &[u8] =
         include_bytes!("../../../assets/wikipedia_xuastc_ldr_8x8_mips.basisu.ktx2");
 
     #[test]
     #[should_panic]
-    fn transcode_before_init() {
-        BasisuTranscoder::new();
+    fn transcoder_create_before_init() {
+        if BASISU_INITIALIZED.is_initialized() {
+            panic!("Basisu is already initialized, panic to skip this test");
+        } else {
+            BasisuTranscoder::new();
+        }
     }
 
     #[test]
@@ -376,6 +368,19 @@ mod tests {
                     ChannelType::CHANNEL_UNDEFINED,
                 )
                 .unwrap();
+            assert_eq!(
+                info,
+                TranscodeInfo {
+                    width: 1848,
+                    height: 888,
+                    levels: 11,
+                    layers: 0,
+                    faces: 1,
+                    is_srgb: true,
+                    basis_format: BasisTextureFormat::cXUASTC_LDR_8x8,
+                    preferred_target: crate::TranscodedTextureFormat::cTFASTC_LDR_8x8_RGBA
+                }
+            );
             assert_eq!(
                 crate::basisu_transcode_alloc_and_fetch_dst(&transcoder, info.preferred_target),
                 crate::basisu_transcode_directly_write(&transcoder, info.preferred_target)
