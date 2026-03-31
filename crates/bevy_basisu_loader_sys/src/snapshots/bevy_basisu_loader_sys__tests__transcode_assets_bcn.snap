@@ -1,5 +1,5 @@
 ---
-source: crates/basisu_sys/src/lib.rs
+source: crates/bevy_basisu_sys/src/lib.rs
 expression: results
 ---
 [
