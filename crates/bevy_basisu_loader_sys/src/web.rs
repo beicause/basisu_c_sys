@@ -184,7 +184,7 @@ pub unsafe fn ktx2_transcoder_get_r_levels(transcoder: *mut Transcoder) -> u32 {
 pub unsafe fn ktx2_transcoder_get_r_preferred_target(
     transcoder: *mut Transcoder,
 ) -> TranscodedTextureFormat {
-    // SAFETY: Both repr are i32
+    // SAFETY: Both repr are i32 and always valid.
     unsafe {
         core::mem::transmute(BASISU_VENDOR_INSTANCE.with(|inst| {
             let inst = inst.get().unwrap();
@@ -195,7 +195,7 @@ pub unsafe fn ktx2_transcoder_get_r_preferred_target(
 pub unsafe fn ktx2_transcoder_get_r_basis_format(
     transcoder: *mut Transcoder,
 ) -> BasisTextureFormat {
-    // SAFETY: Both repr are i32
+    // SAFETY: Both repr are i32 and always valid.
     unsafe {
         core::mem::transmute(BASISU_VENDOR_INSTANCE.with(|inst| {
             let inst = inst.get().unwrap();
@@ -233,8 +233,7 @@ pub unsafe fn ktx2_transcoder_transcode_image_get_info(
             ptr,
             data_len,
             supported_compressed_formats.0,
-            // SAFETY: Both repr are u8
-            unsafe { core::mem::transmute(channel_type_hint) },
+            channel_type_hint as u8,
         );
         ptr
     })
@@ -259,8 +258,7 @@ pub unsafe fn ktx2_transcoder_transcode_image_compute_target_bytes(
         let inst = inst.get().unwrap();
         inst.js_ktx2_transcoder_transcode_image_compute_target_bytes(
             transcoder,
-            // SAFETY: Both repr are i32
-            unsafe { core::mem::transmute(transcode_target) },
+            transcode_target as i32,
         )
     })
 }
@@ -271,12 +269,22 @@ pub unsafe fn ktx2_transcoder_transcode_image_alloc_and_write(
 ) -> bool {
     BASISU_VENDOR_INSTANCE.with(|inst| {
         let inst = inst.get().unwrap();
-        inst.js_ktx2_transcoder_transcode_image_alloc_and_write(
-            transcoder,
-            // SAFETY: Both repr are i32
-            unsafe { core::mem::transmute(transcode_target) },
-        )
+        inst.js_ktx2_transcoder_transcode_image_alloc_and_write(transcoder, transcode_target as i32)
     })
+}
+
+#[cfg(test)]
+pub unsafe fn ktx2_transcoder_get_r_dst_buf_len(_transcoder: *mut Transcoder) -> u32 {
+    unreachable!("This is only used for test and doesn't run on web")
+}
+
+#[cfg(test)]
+pub unsafe fn ktx2_transcoder_transcode_image_write(
+    _transcoder: *mut Transcoder,
+    _target_format: TranscodedTextureFormat,
+    _dst_buffer: *mut ::core::ffi::c_uchar,
+) -> bool {
+    unreachable!("This is only used for test and doesn't run on web")
 }
 
 pub unsafe fn ktx2_transcoder_get_r_dst_buf(transcoder: *mut Transcoder) -> Vec<u8> {
