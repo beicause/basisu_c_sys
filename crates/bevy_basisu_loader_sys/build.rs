@@ -73,15 +73,18 @@ fn compile_basisu_static() {
         build.cpp_link_stdlib("c++_static");
     }
     build.cpp(true).std("c++17").flag("-xc++");
+    if build.get_compiler().is_like_gnu() {
+        // Fix gcc optimization issue.
+        // See vendor/basis_universal/transcoder/basisu.h
+        // See https://github.com/godotengine/godot/pull/114839
+        build.flag("-fno-strict-aliasing");
+    }
     for f in FLAGS {
         build.flag_if_supported(f);
     }
     for (define, value) in DEFINES {
         build.define(define, *value);
     }
-    // FIXME: This works around a bug.
-    // With -O2 or -O3, the transcoded astc/uastc -> bcn textures have many artifacts, especially when -mipmap is enabled. But with -Os the results are much better.
-    build.opt_level_str("s");
     build.files(SRCS).compile("basisu_vendor");
 }
 
