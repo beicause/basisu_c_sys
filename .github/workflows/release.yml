@@ -48,8 +48,8 @@ jobs:
         uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6.0.0
         with:
           path: |
-            crates/basisu_sys/wasm/basisu_vendor.js
-            crates/basisu_sys/wasm/basisu_vendor.wasm
+            crates/bevy_basisu_sys/wasm/basisu_vendor.js
+            crates/bevy_basisu_sys/wasm/basisu_vendor.wasm
 
       - uses: rust-lang/crates-io-auth-action@v1
         id: auth
@@ -65,6 +65,6 @@ jobs:
         uses: softprops/action-gh-release@v2
         with:
           files: |
-            crates/basisu_sys/wasm/basisu_vendor.js
-            crates/basisu_sys/wasm/basisu_vendor.wasm
+            crates/bevy_basisu_sys/wasm/basisu_vendor.js
+            crates/bevy_basisu_sys/wasm/basisu_vendor.wasm
           token: ${{ secrets.GITHUB_TOKEN }}
