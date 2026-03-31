@@ -1,6 +1,6 @@
 ---
-source: crates/bevy_basisu_sys/src/lib.rs
-expression: result.data
-extension: basisu.ktx2
+source: crates/bevy_basisu_loader_sys/src/lib.rs
+expression: transcoder.output(info.preferred_target).unwrap()
+extension: bin
 snapshot_kind: binary
 ---

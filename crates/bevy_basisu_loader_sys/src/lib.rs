@@ -384,7 +384,7 @@ mod tests {
                 let info =
                     transcoder.start(data, $supported_format, ChannelType::CHANNEL_UNDEFINED);
                 insta::assert_binary_snapshot!(
-                    &($prefix.to_string() + &file_name),
+                    &($prefix.to_string() + &file_name.replace(".basisu.ktx2", ".bin")),
                     transcoder.output(info.preferred_target).unwrap()
                 );
                 results.push(info);
