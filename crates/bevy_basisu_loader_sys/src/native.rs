@@ -18,7 +18,7 @@ pub unsafe fn ktx2_transcoder_transcode_image_get_info(
     data: &[u8],
     supported_compressed_formats: crate::SupportedTextureCompressionMethods,
     channel_type_hint: crate::ChannelType,
-) {
+) -> bool {
     unsafe {
         crate::transcoding::c_ktx2_transcoder_transcode_image_get_info(
             transcoder,
@@ -27,7 +27,7 @@ pub unsafe fn ktx2_transcoder_transcode_image_get_info(
             supported_compressed_formats,
             channel_type_hint,
         )
-    };
+    }
 }
 
 #[cfg(test)]

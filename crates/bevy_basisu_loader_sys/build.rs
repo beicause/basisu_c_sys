@@ -85,6 +85,8 @@ fn compile_basisu_static() {
     for (define, value) in DEFINES {
         build.define(define, *value);
     }
+    // Enable debug message.
+    // build.define("BASISU_FORCE_DEVEL_MESSAGES", "1");
     build.files(SRCS).compile("basisu_vendor");
 }
 

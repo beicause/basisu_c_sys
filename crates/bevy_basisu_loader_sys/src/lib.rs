@@ -137,12 +137,13 @@ impl BasisuTranscoder {
     }
 
     /// Get info about the basisu ktx2 data and prepare to transcode.
+    /// Return None if the data is invalid.
     pub fn start(
         &mut self,
         data: Vec<u8>,
         supported_compressed_formats: SupportedTextureCompressionMethods,
         channel_type_hint: ChannelType,
-    ) -> TranscodeInfo {
+    ) -> Option<TranscodeInfo> {
         let transcoder = self.inner;
         unsafe {
             #[cfg(not(all(
@@ -151,21 +152,24 @@ impl BasisuTranscoder {
                 target_os = "unknown",
             )))]
             {
-                ktx2_transcoder_transcode_image_get_info(
+                if !ktx2_transcoder_transcode_image_get_info(
                     transcoder,
                     &data,
                     supported_compressed_formats,
                     channel_type_hint,
-                );
+                ) {
+                    self.data_handle = None;
+                    return None;
+                }
                 self.data_handle = Some(data);
-            }
+            };
             #[cfg(all(
                 target_arch = "wasm32",
                 target_vendor = "unknown",
                 target_os = "unknown",
             ))]
             {
-                let wasm_data_handle = ktx2_transcoder_transcode_image_get_info(
+                let (success, wasm_data_handle) = ktx2_transcoder_transcode_image_get_info(
                     transcoder,
                     &data,
                     supported_compressed_formats,
@@ -175,8 +179,15 @@ impl BasisuTranscoder {
                     ktx2_transcoder_transcode_image_free_wasm_data(self.data_handle);
                 }
                 self.data_handle = wasm_data_handle;
+                if !success {
+                    if self.data_handle != 0 {
+                        ktx2_transcoder_transcode_image_free_wasm_data(self.data_handle);
+                        self.data_handle = 0;
+                    }
+                    return None;
+                }
             }
-            TranscodeInfo {
+            Some(TranscodeInfo {
                 width: ktx2_transcoder_get_r_width(transcoder),
                 height: ktx2_transcoder_get_r_height(transcoder),
                 levels: ktx2_transcoder_get_r_levels(transcoder),
@@ -185,24 +196,39 @@ impl BasisuTranscoder {
                 is_srgb: ktx2_transcoder_get_r_is_srgb(transcoder),
                 preferred_target: ktx2_transcoder_get_r_preferred_target(transcoder),
                 basis_format: ktx2_transcoder_get_r_basis_format(transcoder),
-            }
+            })
         }
     }
 
     /// Transcode the prepared data and return the result. Return None if transcoding failed.
+    /// Panic if [`BasisuTranscoder::start`] has not been called or successfully returned `Some`.
     pub fn output(&self, transcode_target: TranscodedTextureFormat) -> Option<Vec<u8>> {
         #[cfg(not(all(
             target_arch = "wasm32",
             target_vendor = "unknown",
             target_os = "unknown",
         )))]
-        return basisu_transcode_directly_write(self, transcode_target);
+        {
+            if self.data_handle.is_none() {
+                panic!(
+                    "BasisuTranscoder::start must be called and succeed before calling BasisuTranscoder::output"
+                );
+            }
+            basisu_transcode_directly_write(self, transcode_target)
+        }
         #[cfg(all(
             target_arch = "wasm32",
             target_vendor = "unknown",
             target_os = "unknown",
         ))]
-        return basisu_transcode_alloc_and_fetch_dst(self, transcode_target);
+        {
+            if self.data_handle == 0 {
+                panic!(
+                    "BasisuTranscoder::start must be called and succeed before calling BasisuTranscoder::output"
+                );
+            }
+            basisu_transcode_alloc_and_fetch_dst(self, transcode_target)
+        }
     }
 }
 
@@ -216,6 +242,7 @@ impl Drop for BasisuTranscoder {
             ))]
             if self.data_handle != 0 {
                 ktx2_transcoder_transcode_image_free_wasm_data(self.data_handle);
+                self.data_handle = 0;
             }
             ktx2_transcoder_delete(self.inner)
         };
@@ -279,10 +306,7 @@ fn basisu_transcode_alloc_and_fetch_dst(
 mod tests {
     extern crate std;
 
-    use crate::{
-        BasisTextureFormat, BasisuTranscoder, ChannelType, SupportedTextureCompressionMethods,
-        TranscodeInfo, TranscodedTextureFormat,
-    };
+    use crate::{BasisuTranscoder, ChannelType, SupportedTextureCompressionMethods};
     use alloc::vec;
     use alloc::{string::ToString, vec::Vec};
 
@@ -296,7 +320,7 @@ mod tests {
     }
 
     #[test]
-    fn transcode_invalid_data() {
+    fn transcode_invalid_data_info_is_none() {
         block_on(crate::basisu_init());
         let mut transcoder = BasisuTranscoder::new();
         let info = transcoder.start(
@@ -304,19 +328,7 @@ mod tests {
             SupportedTextureCompressionMethods::NONE,
             ChannelType::CHANNEL_UNDEFINED,
         );
-        assert_eq!(
-            info,
-            TranscodeInfo {
-                width: 0,
-                height: 0,
-                levels: 0,
-                layers: 0,
-                faces: 0,
-                is_srgb: false,
-                basis_format: BasisTextureFormat::cETC1S,
-                preferred_target: TranscodedTextureFormat::cTFRGBA32,
-            }
-        );
+        assert_eq!(info, None);
         let info = transcoder.start(
             vec![1, 2, 1],
             SupportedTextureCompressionMethods::BC
@@ -325,58 +337,45 @@ mod tests {
                 | SupportedTextureCompressionMethods::ETC2,
             ChannelType::CHANNEL_UNDEFINED,
         );
-        assert_eq!(
-            info,
-            TranscodeInfo {
-                width: 0,
-                height: 0,
-                levels: 0,
-                layers: 0,
-                faces: 0,
-                is_srgb: false,
-                basis_format: BasisTextureFormat::cETC1S,
-                preferred_target: TranscodedTextureFormat::cTFBC7_RGBA,
-            }
-        );
+        assert_eq!(info, None);
     }
 
     #[test]
-    fn transcode_two_buffer_write_path_eq() {
+    #[should_panic]
+    fn transcode_before_start_panic() {
+        block_on(crate::basisu_init());
+        let transcoder = BasisuTranscoder::new();
+        transcoder.output(crate::TranscodedTextureFormat::cTFRGBA32);
+    }
+
+    #[test]
+    #[should_panic]
+    fn transcode_invalid_data_output_panic() {
+        block_on(crate::basisu_init());
+        let mut transcoder = BasisuTranscoder::new();
+        let _info = transcoder.start(
+            vec![1, 2, 1],
+            SupportedTextureCompressionMethods::NONE,
+            ChannelType::CHANNEL_UNDEFINED,
+        );
+        transcoder.output(crate::TranscodedTextureFormat::cTFRGBA32);
+    }
+
+    #[test]
+    fn transcode_xuastc_sample_two_path() {
         for _ in 0..10 {
             block_on(crate::basisu_init());
-
             let mut transcoder = BasisuTranscoder::new();
-            let info = transcoder.start(
-                vec![],
-                SupportedTextureCompressionMethods::NONE,
-                ChannelType::CHANNEL_UNDEFINED,
-            );
-            assert_eq!(
-                crate::basisu_transcode_alloc_and_fetch_dst(&transcoder, info.preferred_target),
-                crate::basisu_transcode_directly_write(&transcoder, info.preferred_target)
-            );
-
-            let info = transcoder.start(
-                vec![1, 2, 1],
-                SupportedTextureCompressionMethods::BC
-                    | SupportedTextureCompressionMethods::ASTC_LDR
-                    | SupportedTextureCompressionMethods::ASTC_HDR
-                    | SupportedTextureCompressionMethods::ETC2,
-                ChannelType::CHANNEL_UNDEFINED,
-            );
-            assert_eq!(
-                crate::basisu_transcode_alloc_and_fetch_dst(&transcoder, info.preferred_target),
-                crate::basisu_transcode_directly_write(&transcoder, info.preferred_target)
-            );
-
-            let info = transcoder.start(
-                XUASTC_FILE.to_vec(),
-                SupportedTextureCompressionMethods::BC
-                    | SupportedTextureCompressionMethods::ASTC_LDR
-                    | SupportedTextureCompressionMethods::ASTC_HDR
-                    | SupportedTextureCompressionMethods::ETC2,
-                ChannelType::CHANNEL_UNDEFINED,
-            );
+            let info = transcoder
+                .start(
+                    XUASTC_FILE.to_vec(),
+                    SupportedTextureCompressionMethods::BC
+                        | SupportedTextureCompressionMethods::ASTC_LDR
+                        | SupportedTextureCompressionMethods::ASTC_HDR
+                        | SupportedTextureCompressionMethods::ETC2,
+                    ChannelType::CHANNEL_UNDEFINED,
+                )
+                .unwrap();
             assert_eq!(
                 crate::basisu_transcode_alloc_and_fetch_dst(&transcoder, info.preferred_target),
                 crate::basisu_transcode_directly_write(&transcoder, info.preferred_target)
@@ -401,8 +400,9 @@ mod tests {
                     continue;
                 }
                 let data = std::fs::read(file.path()).unwrap();
-                let info =
-                    transcoder.start(data, $supported_format, ChannelType::CHANNEL_UNDEFINED);
+                let info = transcoder
+                    .start(data, $supported_format, ChannelType::CHANNEL_UNDEFINED)
+                    .unwrap();
                 insta::assert_binary_snapshot!(
                     &($prefix.to_string() + &file_name.replace(".basisu.ktx2", ".bin")),
                     transcoder.output(info.preferred_target).unwrap()

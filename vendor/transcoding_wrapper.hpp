@@ -168,19 +168,19 @@ enum SupportedTextureCompressionMethods : unsigned char {
 };
 
 struct Transcoder {
-	basist::ktx2_transcoder *inner;
-	unsigned char *src_buf;
-	unsigned int src_buf_len;
-	unsigned char *r_dst_buf;
-	unsigned int r_dst_buf_len;
-	unsigned int r_width;
-	unsigned int r_height;
-	unsigned int r_levels;
-	unsigned int r_layers;
-	unsigned int r_faces;
-	BasisTextureFormat r_basis_format;
-	TranscodedTextureFormat r_preferred_target;
-	bool r_is_srgb;
+	basist::ktx2_transcoder *inner = nullptr;
+	unsigned char *src_buf = nullptr;
+	unsigned int src_buf_len = 0;
+	unsigned char *r_dst_buf = nullptr;
+	unsigned int r_dst_buf_len = 0;
+	unsigned int r_width = 0;
+	unsigned int r_height = 0;
+	unsigned int r_levels = 0;
+	unsigned int r_layers = 0;
+	unsigned int r_faces = 0;
+	BasisTextureFormat r_basis_format = BasisTextureFormat::cTotalFormats;
+	TranscodedTextureFormat r_preferred_target = TranscodedTextureFormat::cTFTotalTextureFormats;
+	bool r_is_srgb = false;
 };
 
 void c_basisu_transcoder_init();
@@ -199,7 +199,7 @@ TranscodedTextureFormat c_ktx2_transcoder_get_r_preferred_target(Transcoder *tra
 BasisTextureFormat c_ktx2_transcoder_get_r_basis_format(Transcoder *transcoder);
 bool c_ktx2_transcoder_get_r_is_srgb(Transcoder *transcoder);
 
-void c_ktx2_transcoder_transcode_image_get_info(Transcoder *transcoder, const unsigned char *data, unsigned int data_len,
+bool c_ktx2_transcoder_transcode_image_get_info(Transcoder *transcoder, const unsigned char *data, unsigned int data_len,
 		SupportedTextureCompressionMethods supported_compressed_formats, ChannelType channel_type_hint);
 
 bool c_ktx2_transcoder_transcode_image_compute_target_bytes(Transcoder *transcoder, TranscodedTextureFormat target_format);

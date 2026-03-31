@@ -45,7 +45,7 @@ mod bindings_sys {
             data_len: u32,
             supported_compressed_formats: SupportedTextureCompressionMethodsRepr,
             channel_type_hint: ChannelTypeRepr,
-        );
+        ) -> bool;
         #[wasm_bindgen(method,js_name=_c_ktx2_transcoder_transcode_image_compute_target_bytes)]
         pub fn js_ktx2_transcoder_transcode_image_compute_target_bytes(
             this: &BasisuVendor,
@@ -221,21 +221,21 @@ pub unsafe fn ktx2_transcoder_transcode_image_get_info(
     data: &[u8],
     supported_compressed_formats: SupportedTextureCompressionMethods,
     channel_type_hint: ChannelType,
-) -> usize {
+) -> (bool, usize) {
     BASISU_VENDOR_INSTANCE.with(|inst| {
         let inst = inst.get().unwrap();
         let data_len = data.len() as u32;
         let ptr = inst.js_basisu_malloc(data_len as usize);
         let heap = inst.js_basisu_heapu8();
         heap.set(&Uint8Array::from(data), ptr as u32);
-        inst.js_ktx2_transcoder_transcode_image_get_info(
+        let success = inst.js_ktx2_transcoder_transcode_image_get_info(
             transcoder,
             ptr,
             data_len,
             supported_compressed_formats.0,
             channel_type_hint as u8,
         );
-        ptr
+        (success, ptr)
     })
 }
 
