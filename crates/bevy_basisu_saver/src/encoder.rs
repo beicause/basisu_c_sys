@@ -15,6 +15,10 @@ pub fn basisu_init() {
     });
 }
 
+pub fn basisu_enable_debug_printf(enable: bool) {
+    unsafe { encoder::bu_enable_debug_printf(enable as u32) };
+}
+
 #[derive(Debug, Clone, Copy, Serialize, Deserialize)]
 #[repr(u32)]
 pub enum BasisTextureFormat {
@@ -53,33 +57,40 @@ pub enum BasisTextureFormat {
     AstcLdr12x12 = encoder::BTF_ASTC_LDR_12X12,
 }
 
-pub use encoder::BU_COMP_FLAGS_DEBUG_IMAGES;
-pub use encoder::BU_COMP_FLAGS_DEBUG_OUTPUT;
-pub use encoder::BU_COMP_FLAGS_GEN_MIPS_CLAMP;
-pub use encoder::BU_COMP_FLAGS_GEN_MIPS_WRAP;
-pub use encoder::BU_COMP_FLAGS_KTX2_OUTPUT;
-pub use encoder::BU_COMP_FLAGS_KTX2_UASTC_ZSTD;
-pub use encoder::BU_COMP_FLAGS_NONE;
-pub use encoder::BU_COMP_FLAGS_PRINT_STATS;
-pub use encoder::BU_COMP_FLAGS_PRINT_STATUS;
-pub use encoder::BU_COMP_FLAGS_REC2020;
-pub use encoder::BU_COMP_FLAGS_SRGB;
-pub use encoder::BU_COMP_FLAGS_TEXTURE_TYPE_2D;
-pub use encoder::BU_COMP_FLAGS_TEXTURE_TYPE_2D_ARRAY;
-pub use encoder::BU_COMP_FLAGS_TEXTURE_TYPE_CUBEMAP_ARRAY;
-pub use encoder::BU_COMP_FLAGS_TEXTURE_TYPE_MASK;
-pub use encoder::BU_COMP_FLAGS_TEXTURE_TYPE_SHIFT;
-pub use encoder::BU_COMP_FLAGS_TEXTURE_TYPE_VIDEO_FRAMES;
-pub use encoder::BU_COMP_FLAGS_THREADED;
-pub use encoder::BU_COMP_FLAGS_USE_OPENCL;
-pub use encoder::BU_COMP_FLAGS_VALIDATE_OUTPUT;
-pub use encoder::BU_COMP_FLAGS_VERBOSE;
-pub use encoder::BU_COMP_FLAGS_XUASTC_LDR_FULL_ARITH;
-pub use encoder::BU_COMP_FLAGS_XUASTC_LDR_FULL_ZSTD;
-pub use encoder::BU_COMP_FLAGS_XUASTC_LDR_HYBRID;
-pub use encoder::BU_COMP_FLAGS_XUASTC_LDR_SYNTAX_MASK;
-pub use encoder::BU_COMP_FLAGS_XUASTC_LDR_SYNTAX_SHIFT;
-pub use encoder::BU_COMP_FLAGS_Y_FLIP;
+pub const BU_COMP_FLAGS_DEBUG_IMAGES: u64 = encoder::BU_COMP_FLAGS_DEBUG_IMAGES as u64;
+pub const BU_COMP_FLAGS_DEBUG_OUTPUT: u64 = encoder::BU_COMP_FLAGS_DEBUG_OUTPUT as u64;
+pub const BU_COMP_FLAGS_GEN_MIPS_CLAMP: u64 = encoder::BU_COMP_FLAGS_GEN_MIPS_CLAMP as u64;
+pub const BU_COMP_FLAGS_GEN_MIPS_WRAP: u64 = encoder::BU_COMP_FLAGS_GEN_MIPS_WRAP as u64;
+pub const BU_COMP_FLAGS_KTX2_OUTPUT: u64 = encoder::BU_COMP_FLAGS_KTX2_OUTPUT as u64;
+pub const BU_COMP_FLAGS_KTX2_UASTC_ZSTD: u64 = encoder::BU_COMP_FLAGS_KTX2_UASTC_ZSTD as u64;
+pub const BU_COMP_FLAGS_NONE: u64 = encoder::BU_COMP_FLAGS_NONE as u64;
+pub const BU_COMP_FLAGS_PRINT_STATS: u64 = encoder::BU_COMP_FLAGS_PRINT_STATS as u64;
+pub const BU_COMP_FLAGS_PRINT_STATUS: u64 = encoder::BU_COMP_FLAGS_PRINT_STATUS as u64;
+pub const BU_COMP_FLAGS_REC2020: u64 = encoder::BU_COMP_FLAGS_REC2020 as u64;
+pub const BU_COMP_FLAGS_SRGB: u64 = encoder::BU_COMP_FLAGS_SRGB as u64;
+pub const BU_COMP_FLAGS_TEXTURE_TYPE_2D: u64 = encoder::BU_COMP_FLAGS_TEXTURE_TYPE_2D as u64;
+pub const BU_COMP_FLAGS_TEXTURE_TYPE_2D_ARRAY: u64 =
+    encoder::BU_COMP_FLAGS_TEXTURE_TYPE_2D_ARRAY as u64;
+pub const BU_COMP_FLAGS_TEXTURE_TYPE_CUBEMAP_ARRAY: u64 =
+    encoder::BU_COMP_FLAGS_TEXTURE_TYPE_CUBEMAP_ARRAY as u64;
+pub const BU_COMP_FLAGS_TEXTURE_TYPE_MASK: u64 = encoder::BU_COMP_FLAGS_TEXTURE_TYPE_MASK as u64;
+pub const BU_COMP_FLAGS_TEXTURE_TYPE_SHIFT: u64 = encoder::BU_COMP_FLAGS_TEXTURE_TYPE_SHIFT as u64;
+pub const BU_COMP_FLAGS_TEXTURE_TYPE_VIDEO_FRAMES: u64 =
+    encoder::BU_COMP_FLAGS_TEXTURE_TYPE_VIDEO_FRAMES as u64;
+pub const BU_COMP_FLAGS_THREADED: u64 = encoder::BU_COMP_FLAGS_THREADED as u64;
+pub const BU_COMP_FLAGS_USE_OPENCL: u64 = encoder::BU_COMP_FLAGS_USE_OPENCL as u64;
+pub const BU_COMP_FLAGS_VALIDATE_OUTPUT: u64 = encoder::BU_COMP_FLAGS_VALIDATE_OUTPUT as u64;
+pub const BU_COMP_FLAGS_VERBOSE: u64 = encoder::BU_COMP_FLAGS_VERBOSE as u64;
+pub const BU_COMP_FLAGS_XUASTC_LDR_FULL_ARITH: u64 =
+    encoder::BU_COMP_FLAGS_XUASTC_LDR_FULL_ARITH as u64;
+pub const BU_COMP_FLAGS_XUASTC_LDR_FULL_ZSTD: u64 =
+    encoder::BU_COMP_FLAGS_XUASTC_LDR_FULL_ZSTD as u64;
+pub const BU_COMP_FLAGS_XUASTC_LDR_HYBRID: u64 = encoder::BU_COMP_FLAGS_XUASTC_LDR_HYBRID as u64;
+pub const BU_COMP_FLAGS_XUASTC_LDR_SYNTAX_MASK: u64 =
+    encoder::BU_COMP_FLAGS_XUASTC_LDR_SYNTAX_MASK as u64;
+pub const BU_COMP_FLAGS_XUASTC_LDR_SYNTAX_SHIFT: u64 =
+    encoder::BU_COMP_FLAGS_XUASTC_LDR_SYNTAX_SHIFT as u64;
+pub const BU_COMP_FLAGS_Y_FLIP: u64 = encoder::BU_COMP_FLAGS_Y_FLIP as u64;
 
 pub struct BasisuEncoder {
     params: u64,
@@ -131,10 +142,10 @@ impl BasisuEncoderParams {
             basis_tex_format,
             quality_level: 75,
             effort_level: 2,
-            flags_and_quality: (BU_COMP_FLAGS_THREADED
+            flags_and_quality: BU_COMP_FLAGS_THREADED
                 | BU_COMP_FLAGS_SRGB
                 | BU_COMP_FLAGS_KTX2_OUTPUT
-                | BU_COMP_FLAGS_KTX2_UASTC_ZSTD) as u64,
+                | BU_COMP_FLAGS_KTX2_UASTC_ZSTD,
             low_level_uastc_rdo_or_dct_quality: 0.0,
         }
     }
@@ -144,16 +155,16 @@ impl BasisuEncoderParams {
             basis_tex_format,
             quality_level: 75,
             effort_level: 2,
-            flags_and_quality: (BU_COMP_FLAGS_THREADED
+            flags_and_quality: BU_COMP_FLAGS_THREADED
                 | BU_COMP_FLAGS_KTX2_OUTPUT
-                | BU_COMP_FLAGS_KTX2_UASTC_ZSTD) as u64,
+                | BU_COMP_FLAGS_KTX2_UASTC_ZSTD,
             low_level_uastc_rdo_or_dct_quality: 0.0,
         }
     }
 
     pub const fn with_tex_type(mut self, tex_type: TextureViewDimension) -> Self {
         self.flags_and_quality = self.flags_and_quality
-            & !(BU_COMP_FLAGS_TEXTURE_TYPE_MASK << BU_COMP_FLAGS_TEXTURE_TYPE_SHIFT) as u64;
+            & !(BU_COMP_FLAGS_TEXTURE_TYPE_MASK << BU_COMP_FLAGS_TEXTURE_TYPE_SHIFT);
 
         self.flags_and_quality = self.flags_and_quality
             | match tex_type {
@@ -165,7 +176,20 @@ impl BasisuEncoderParams {
                 TextureViewDimension::D1 | TextureViewDimension::D3 => {
                     panic!("Compressing 1D or 3D texture is unsupported")
                 }
-            } as u64;
+            };
+        self
+    }
+
+    /// Add [`BU_COMP_FLAGS_VALIDATE_OUTPUT`] to param flags.
+    pub const fn with_validate_output(mut self) -> Self {
+        self.flags_and_quality |= BU_COMP_FLAGS_VALIDATE_OUTPUT;
+        self
+    }
+
+    /// Add [`BU_COMP_FLAGS_DEBUG_OUTPUT`] to param flags.
+    /// Remember to call [`basisu_enable_debug_printf`] to see the debug info.
+    pub const fn with_debug_output(mut self) -> Self {
+        self.flags_and_quality |= BU_COMP_FLAGS_DEBUG_OUTPUT;
         self
     }
 }

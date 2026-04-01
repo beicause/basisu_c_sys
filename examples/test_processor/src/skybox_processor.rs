@@ -33,13 +33,13 @@ impl Process for SkyboxProcessor {
             });
         }
         let face_paths: [String; 6] = ron::from_str(&ron).unwrap();
-        let compressed = encode_cubemap(&face_paths);
+        let compressed = encode_cubemap(&face_paths, false);
         writer.write_all(&compressed).await.unwrap();
         Ok(BasisuLoaderSettings::default())
     }
 }
 
-fn encode_cubemap(face_paths: &[String; 6]) -> Vec<u8> {
+fn encode_cubemap(face_paths: &[String; 6], debug: bool) -> Vec<u8> {
     let dir = std::env!("CARGO_MANIFEST_DIR");
     let mut encoder = BasisuEncoder::new();
     for (i, path) in face_paths.iter().enumerate() {
@@ -56,19 +56,23 @@ fn encode_cubemap(face_paths: &[String; 6]) -> Vec<u8> {
         .unwrap();
         encoder.set_image_slice(i as u32, &image).unwrap();
     }
+    let params = BasisuEncoderParams::new_with_srgb_defaults(
+        bevy_basisu_saver::encoder::BasisTextureFormat::XuastcLdr6x6,
+    )
+    .with_tex_type(TextureViewDimension::Cube);
+
     encoder
-        .compress(
-            BasisuEncoderParams::new_with_srgb_defaults(
-                bevy_basisu_saver::encoder::BasisTextureFormat::XuastcLdr6x6,
-            )
-            .with_tex_type(TextureViewDimension::Cube),
-        )
+        .compress(if debug {
+            params.with_validate_output().with_debug_output()
+        } else {
+            params
+        })
         .unwrap()
 }
 
 #[cfg(test)]
 mod tests {
-    use bevy_basisu_saver::encoder::basisu_init;
+    use bevy_basisu_saver::encoder::{basisu_enable_debug_printf, basisu_init};
 
     use super::*;
 
@@ -117,14 +121,17 @@ mod tests {
                 BasisuEncoderParams::new_with_srgb_defaults(
                     bevy_basisu_saver::encoder::BasisTextureFormat::XuastcLdr4x4,
                 )
-                .with_tex_type(TextureViewDimension::Cube),
+                .with_tex_type(TextureViewDimension::Cube)
+                .with_validate_output()
+                .with_debug_output(),
             )
             .unwrap()
     }
 
     #[test]
-    fn encoder_set_image_slice_eq_set_image() {
+    fn validate_encoding_via_set_image() {
         basisu_init();
+        basisu_enable_debug_printf(true);
 
         let paths = [
             "skybox/right.jpg",
@@ -136,6 +143,24 @@ mod tests {
         ]
         .map(|s| s.to_string());
 
-        assert_eq!(encode_cubemap(&paths), encode_cubemap2(&paths));
+        let _ = encode_cubemap(&paths, true);
+    }
+
+    #[test]
+    fn validate_encoding_via_set_image_slice() {
+        basisu_init();
+        basisu_enable_debug_printf(true);
+
+        let paths = [
+            "skybox/right.jpg",
+            "skybox/left.jpg",
+            "skybox/top.jpg",
+            "skybox/bottom.jpg",
+            "skybox/front.jpg",
+            "skybox/back.jpg",
+        ]
+        .map(|s| s.to_string());
+
+        let _ = encode_cubemap2(&paths);
     }
 }
