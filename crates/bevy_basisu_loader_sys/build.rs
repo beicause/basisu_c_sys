@@ -1,7 +1,6 @@
 const FLAGS: &[&str] = &[
     "-w",
     "-fno-exceptions",
-    "-fvisibility=hidden",
     // Fix gcc optimization issue.
     // See vendor/basis_universal/transcoder/basisu.h
     // See https://github.com/godotengine/godot/pull/114839
@@ -10,9 +9,6 @@ const FLAGS: &[&str] = &[
 
 // Disable PVRTC1/2, ATC, FXT1 as wgpu does not support them.
 const DEFINES: &[(&str, &str)] = &[
-    ("ZSTDLIB_VISIBLE", ""),
-    ("ZDICTLIB_VISIBLE", ""),
-    ("ZSTDERRORLIB_VISIBLE", ""),
     // ("BASISU_FORCE_DEVEL_MESSAGES", "1"), // Enable debug message.
     // ("BASISD_SUPPORT_KTX2", "1"),
     // ("BASISD_SUPPORT_KTX2_ZSTD", "1"),
