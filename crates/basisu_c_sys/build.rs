@@ -64,7 +64,7 @@ fn main() {
     if target != "wasm32-unknown-unknown" {
         compile_basisu_static();
     } else {
-        panic!("bevy_basisu_saver_sys doesn't support wasm32-unknown-unknown yet");
+        panic!("basisu_c_sys doesn't support wasm32-unknown-unknown yet");
     }
     println!("cargo::rerun-if-changed=vendor/");
 }
