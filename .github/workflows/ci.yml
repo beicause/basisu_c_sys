@@ -43,10 +43,20 @@ jobs:
       - name: Doc
         run: cargo doc --workspace --all-features --no-deps --document-private-items --keep-going
 
+      - name: Build Debug
+        if: ${{ matrix.os != 'ubuntu-latest' }}
+        run: cargo build
+
+      - name: Test Debug
+        if: ${{ matrix.os != 'ubuntu-latest' }}
+        run: cargo test --workspace
+
       - name: Build
+        if: ${{ matrix.os == 'ubuntu-latest' }}
         run: cargo build -r
 
       - name: Test
+        if: ${{ matrix.os == 'ubuntu-latest' }}
         run: cargo test --workspace -r
 
   build-wasm:
