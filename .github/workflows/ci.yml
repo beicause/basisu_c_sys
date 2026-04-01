@@ -78,7 +78,7 @@ jobs:
           path: crates/bevy_basisu_loader_sys/wasm/
 
       - name: Build wasm
-        run: RUSTFLAGS="-Ctarget-feature=+simd128" cargo build --target wasm32-unknown-unknown
+        run: RUSTFLAGS="-Ctarget-feature=+simd128" cargo build -p test_scene --target wasm32-unknown-unknown
 
   build-android:
     name: Build android
