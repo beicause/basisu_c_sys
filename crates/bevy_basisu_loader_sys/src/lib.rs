@@ -414,7 +414,7 @@ mod tests {
                 );
                 results.push((file_name, info));
             }
-            results.sort_unstable_by_key(|(file_name, _)| file_name.clone());
+            results.sort_unstable_by(|a, b| a.0.cmp(&b.0));
             insta::assert_debug_snapshot!(results);
         };
     }
