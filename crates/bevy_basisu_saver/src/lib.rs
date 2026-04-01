@@ -13,6 +13,7 @@ use crate::{encoder::basisu_init, saver::BasisuTextureSaver};
 
 pub mod encoder;
 pub mod saver;
+pub use basisu_c_sys as c_sys;
 
 pub type BasisuProcessor =
     LoadTransformAndSave<ImageLoader, IdentityAssetTransformer<Image>, BasisuTextureSaver>;

@@ -7,9 +7,8 @@ use bevy::{
     render::render_resource::TextureViewDimension,
 };
 use bevy_basisu_loader::{BasisuLoader, BasisuLoaderSettings};
-use bevy_basisu_saver::encoder::{
-    BU_COMP_FLAGS_DEBUG_OUTPUT, BU_COMP_FLAGS_VALIDATE_OUTPUT, BasisuEncoder, BasisuEncoderParams,
-};
+use bevy_basisu_saver::c_sys::common::{BU_COMP_FLAGS_DEBUG_OUTPUT, BU_COMP_FLAGS_VALIDATE_OUTPUT};
+use bevy_basisu_saver::encoder::{BasisuEncoder, BasisuEncoderParams};
 
 #[derive(TypePath)]
 pub(crate) struct SkyboxProcessor;
