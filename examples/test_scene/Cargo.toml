@@ -71,4 +71,4 @@ bevy = { version = "0.18", default-features = false, features = [
   "bevy_pbr",
   "bevy_ui_render",
 ] }
-bevy_basisu_loader = { path = "../.." }
+bevy_basisu_loader = { path = "../../crates/bevy_basisu_loader" }
