@@ -412,8 +412,9 @@ mod tests {
                     &($prefix.to_string() + &file_name.replace(".basisu.ktx2", ".bin")),
                     transcoder.output(info.preferred_target).unwrap()
                 );
-                results.push(info);
+                results.push((file_name, info));
             }
+            results.sort_unstable_by_key(|(file_name, _)| file_name.clone());
             insta::assert_debug_snapshot!(results);
         };
     }
