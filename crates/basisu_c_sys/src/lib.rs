@@ -1,11 +1,15 @@
-//! Raw Rust ffi binding for the Basis Universal pure C API.
+//! Raw Rust ffi binding for the basis universal pure C API.
+//!
+//! See also https://github.com/BinomialLLC/basis_universal/wiki#encoder-and-transcoding-c-api-documentation
 
-#[expect(nonstandard_style, reason = "Generated code is ok")]
+pub mod common {
+    include!(concat!(env!("OUT_DIR"), "/basisu_api_common.rs"));
+}
+
 pub mod encoder {
     include!(concat!(env!("OUT_DIR"), "/basisu_c_api.rs"));
 }
 
-#[expect(nonstandard_style, reason = "Generated code is ok")]
 pub mod transcoder {
     include!(concat!(env!("OUT_DIR"), "/basisu_c_transcoder_api.rs"));
 }
