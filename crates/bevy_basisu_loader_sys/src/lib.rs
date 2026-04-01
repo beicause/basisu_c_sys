@@ -1,3 +1,5 @@
+#![doc = include_str!("../README.md")]
+
 #[expect(
     non_upper_case_globals,
     non_camel_case_types,
