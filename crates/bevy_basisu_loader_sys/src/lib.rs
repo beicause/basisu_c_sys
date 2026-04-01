@@ -1,7 +1,7 @@
 #[expect(
     non_upper_case_globals,
     non_camel_case_types,
-    reason = "Generated code is OK to have non upper case globals or non camel case enums"
+    reason = "Generated code is ok"
 )]
 #[cfg_attr(
     all(

@@ -1,13 +1,12 @@
 const FLAGS: &[&str] = &[
-    "-Werror",
+    "-w",
     "-fno-exceptions",
-    "-Wno-unused-function",
-    "-Wno-unused-const-variable",
-    "-Wno-unused-but-set-variable",
-    "-Wno-unused-variable",
-    "-Wno-type-limits",
-    "-Wno-stringop-overflow",
+    // Fix gcc optimization issue.
+    // See vendor/basis_universal/transcoder/basisu.h
+    // See https://github.com/godotengine/godot/pull/114839
+    "-fno-strict-aliasing",
 ];
+
 // Disable PVRTC1/2, ATC, FXT1 as wgpu does not support them.
 const DEFINES: &[(&str, &str)] = &[
     // ("BASISU_FORCE_DEVEL_MESSAGES", "1"),
@@ -49,7 +48,7 @@ fn bindgen() {
     let binding_file =
         std::path::PathBuf::from(std::env::var("OUT_DIR").unwrap()).join("transcoding.rs");
     bindgen::Builder::default()
-        .clang_args(&["-x", "c++", "-std=c++17", "-fvisibility=default"])
+        .clang_args(&["-xc++", "-std=c++17", "-fvisibility=default"])
         .header("vendor/transcoding_wrapper.hpp")
         .use_core()
         .parse_callbacks(Box::new(bindgen::CargoCallbacks::new()))
@@ -72,13 +71,7 @@ fn compile_basisu_static() {
     if target_os == "android" {
         build.cpp_link_stdlib("c++_static");
     }
-    build.cpp(true).std("c++17").flag("-xc++");
-    if build.get_compiler().is_like_gnu() {
-        // Fix gcc optimization issue.
-        // See vendor/basis_universal/transcoder/basisu.h
-        // See https://github.com/godotengine/godot/pull/114839
-        build.flag("-fno-strict-aliasing");
-    }
+    build.cpp(true).std("c++17").flag_if_supported("-xc++");
     for f in FLAGS {
         build.flag_if_supported(f);
     }
