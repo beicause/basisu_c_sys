@@ -53,6 +53,8 @@ const SRCS: &[&str] = &[
     "vendor/basis_universal/encoder/basisu_wasm_transcoder_api.cpp",
     "vendor/basis_universal/encoder/jpgd.cpp",
     "vendor/basis_universal/encoder/pvpngreader.cpp",
+    "vendor/basis_universal/encoder/3rdparty/android_astc_decomp.cpp",
+    "vendor/basis_universal/encoder/3rdparty/tinyexr.cpp",
     "vendor/basis_universal/transcoder/basisu_transcoder.cpp",
     "vendor/basis_universal/zstd/zstd.c",
     "vendor/basis_universal/zstd/zstddeclib.c",
