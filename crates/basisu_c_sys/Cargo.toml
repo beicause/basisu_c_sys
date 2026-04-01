@@ -1,0 +1,15 @@
+[package]
+name = "basisu_c_sys"
+version = "0.1.4"
+edition = "2024"
+repository.workspace = true
+license.workspace = true
+description = "Raw Rust ffi binding for the Basis Universal pure C API"
+keywords = ["basis-universal", "ffi"]
+include = ["vendor/basis_universal", "build.rs", "README.md", "src/*.rs"]
+
+[dependencies]
+
+[build-dependencies]
+cc = "1.2"
+bindgen = "0.72"

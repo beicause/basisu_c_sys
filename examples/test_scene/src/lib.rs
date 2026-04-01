@@ -4,7 +4,7 @@ use bevy::{
     log::LogPlugin,
     math::Affine2,
     prelude::*,
-    render::{render_resource::TextureFormat, view::Hdr},
+    render::render_resource::TextureFormat,
 };
 use bevy_basisu_loader::{BasisuLoaderPlugin, BasisuLoaderSettings};
 
@@ -35,7 +35,7 @@ pub fn main() {
                     ..Default::default()
                 })
                 .set(LogPlugin {
-                    filter: "bevy_basisu_loader=debug".to_string(),
+                    filter: "bevy_basisu_loader=debug,wgpu=warn".to_string(),
                     ..Default::default()
                 }),
         )
@@ -55,7 +55,6 @@ fn setup(
     // camera
     commands.spawn((
         Camera3d::default(),
-        Hdr,
         Tonemapping::None,
         Transform::from_xyz(0.0, 0.0, 3.0).looking_at(Vec3::ZERO, Vec3::Y),
         Skybox {
@@ -137,14 +136,8 @@ fn setup(
             ..Default::default()
         },
         children![
-            ImageNode {
-                image: asset_server.load(IMAGE_PATH_WIKIPEDIA),
-                ..Default::default()
-            },
-            ImageNode {
-                image: asset_server.load(IMAGE_PATH_KODIM20),
-                ..Default::default()
-            },
+            ImageNode::new(asset_server.load(IMAGE_PATH_WIKIPEDIA)),
+            ImageNode::new(asset_server.load(IMAGE_PATH_KODIM20)),
         ],
     ));
 

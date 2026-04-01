@@ -43,11 +43,21 @@ jobs:
       - name: Doc
         run: cargo doc --workspace --all-features --no-deps --document-private-items --keep-going
 
+      - name: Build Debug
+        if: ${{ matrix.os != 'ubuntu-latest' }}
+        run: cargo build
+
+      - name: Test Debug
+        if: ${{ matrix.os != 'ubuntu-latest' }}
+        run: cargo test --workspace
+
       - name: Build
+        if: ${{ matrix.os == 'ubuntu-latest' }}
         run: cargo build -r
 
       - name: Test
-        run: cargo test -r
+        if: ${{ matrix.os == 'ubuntu-latest' }}
+        run: cargo test --workspace -r
 
   build-wasm:
     name: Build wasm
@@ -78,7 +88,7 @@ jobs:
           path: crates/bevy_basisu_loader_sys/wasm/
 
       - name: Build wasm
-        run: RUSTFLAGS="-Ctarget-feature=+simd128" cargo build --target wasm32-unknown-unknown
+        run: RUSTFLAGS="-Ctarget-feature=+simd128" cargo build -p test_scene --target wasm32-unknown-unknown
 
   build-android:
     name: Build android
@@ -106,4 +116,4 @@ jobs:
           export ANDROID_NDK_HOME=${ANDROID_HOME}/ndk/${{env.ANDROID_NDK_VERSION}} &&
           export ANDROID_NDK_ROOT=${ANDROID_NDK_HOME} &&
           cargo ndk-env -t arm64-v8a &&
-          cargo ndk -t arm64-v8a build --features bevy/android-game-activity
+          cargo ndk -t arm64-v8a -P 26 build --features bevy/android-game-activity
