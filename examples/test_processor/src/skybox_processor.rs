@@ -44,7 +44,6 @@ impl Process for SkyboxProcessor {
 
 fn encode_cubemap(face_paths: &[String; 6]) -> Vec<u8> {
     let dir = std::env!("CARGO_MANIFEST_DIR");
-    // let mut images = Vec::new();
     let mut encoder = BasisuEncoder::new();
     for (i, path) in face_paths.iter().enumerate() {
         let image = Image::from_buffer(

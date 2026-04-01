@@ -6,7 +6,7 @@ repository.workspace = true
 license.workspace = true
 description = "Raw Rust ffi binding for the Basis Universal pure C API"
 keywords = ["basis-universal", "ffi"]
-include = ["vendor/basis_universal", "build.rs", "src/*.rs"]
+include = ["vendor/basis_universal", "build.rs", "README.md", "src/*.rs"]
 
 [dependencies]
 
