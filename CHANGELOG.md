@@ -4,6 +4,10 @@
 
 -
 
+## v0.4.4
+
+- `bevy_basisu_loader_sys`: Fix some potential unsoundness.
+
 ## v0.4.3
 
 - Update basis universal to v2.1.0
