@@ -9,6 +9,8 @@ name = "test_scene_lib"
 crate-type = ["lib", "cdylib"]
 
 [dependencies]
+bevy_basisu_loader = { path = "../../crates/bevy_basisu_loader" }
+
 bevy = { version = "0.18", default-features = false, features = [
   # collection: dev
   # "debug",
@@ -71,4 +73,3 @@ bevy = { version = "0.18", default-features = false, features = [
   "bevy_pbr",
   "bevy_ui_render",
 ] }
-bevy_basisu_loader = { path = "../../crates/bevy_basisu_loader" }

@@ -5,7 +5,7 @@ exclude: |
     .*thirdparty/.*|
     .*\.svg|
     vendor/basis_universal/.*|
-    crates/bevy_basisu_loader_sys/src/snapshots/.*|
+    .*snapshots/.*|
   )$
 repos:
   - repo: https://github.com/codespell-project/codespell

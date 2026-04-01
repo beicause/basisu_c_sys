@@ -84,8 +84,8 @@ pub struct BasisuLoaderSettings {
 }
 
 /// An error when loading an image using [`BasisuLoader`].
-#[non_exhaustive]
 #[derive(Debug, Error)]
+#[non_exhaustive]
 pub enum BasisuLoaderError {
     /// An error occurred while trying to load the image bytes.
     #[error("Failed to load image bytes: {0}")]
