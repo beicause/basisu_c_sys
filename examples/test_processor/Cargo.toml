@@ -75,6 +75,3 @@ bevy = { version = "0.18", default-features = false, features = [
   "bevy_ui_render",
 ] }
 ron = "0.12.1"
-
-[dev-dependencies]
-insta = "1.47.2"

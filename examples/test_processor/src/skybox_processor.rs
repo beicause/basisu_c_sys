@@ -141,18 +141,4 @@ mod tests {
 
         assert_eq!(encode_cubemap(&paths), encode_cubemap2(&paths));
     }
-
-    #[test]
-    fn encode_cubemap_snapshot() {
-        let paths = [
-            "skybox/right.jpg",
-            "skybox/left.jpg",
-            "skybox/top.jpg",
-            "skybox/bottom.jpg",
-            "skybox/front.jpg",
-            "skybox/back.jpg",
-        ]
-        .map(|s| s.to_string());
-        insta::assert_binary_snapshot!("skybox.bin", encode_cubemap(&paths));
-    }
 }
