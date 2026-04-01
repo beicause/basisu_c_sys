@@ -122,15 +122,26 @@ pub enum BasisuEncodeError {
     BuCompressFailed,
 }
 
+pub const BU_EFFORT_MAX: i32 = encoder::BU_EFFORT_MAX as i32;
+pub const BU_EFFORT_MIN: i32 = encoder::BU_EFFORT_MIN as i32;
+pub const BU_QUALITY_MAX: i32 = encoder::BU_QUALITY_MAX as i32;
+pub const BU_QUALITY_MIN: i32 = encoder::BU_QUALITY_MIN as i32;
+pub const BU_EFFORT_SUPER_FAST: i32 = 0;
+pub const BU_EFFORT_FAST: i32 = 2;
+pub const BU_EFFORT_NORMAL: i32 = 5;
+pub const BU_EFFORT_DEFAULT: i32 = 2;
+pub const BU_EFFORT_SLOW: i32 = 8;
+pub const BU_EFFORT_VERY_SLOW: i32 = 10;
+
 #[derive(Debug, Clone, Copy, Serialize, Deserialize)]
 pub struct BasisuEncoderParams {
     /// Target file format — one of the BTF_* constants (e.g. BTF_ETC1S, BTF_UASTC_LDR_4X4).
     pub basis_tex_format: BasisTextureFormat,
-    /// Unified Quality level [1,100] (see BU_QUALITY_MIN, BU_QUALITY_MAX). Use -1 to use older non-unified/direct codec-specific quality level or lambda (low 8-bits of flags_and_quality, or via low_level_uastc_rdo_or_dct_quality).
+    /// Unified Quality level [1,100]. See [`BU_QUALITY_MIN`], [`BU_QUALITY_MAX`]. Note the recommended usable unified quality range is [1,100], but the C API accepts [0,100]. Use -1 to use older non-unified/direct codec-specific quality level or lambda (low 8-bits of flags_and_quality, or via low_level_uastc_rdo_or_dct_quality).
     pub quality_level: i32,
-    /// Unified Encoder effort [0,10] (see BU_EFFORT_MIN, BU_EFFORT_MAX). See BU_EFFORT_* presets. Use -1 to use older non-unified/direct codec-specific effort level (low 8-bits of flags_and_quality for some codecs).
+    /// Unified Encoder effort [0,10]. See [`BU_EFFORT_MIN`], [`BU_EFFORT_MAX`]. See `BU_EFFORT_*` presets. Use -1 to use older non-unified/direct codec-specific effort level (low 8-bits of flags_and_quality for some codecs).
     pub effort_level: i32,
-    /// Bitwise OR of BU_COMP_FLAGS_* constants. Controls output format, mipmaps, color space, etc. Low 8-bits are either the older non-unified quality level, or for some codecs the non-unified effort level.
+    /// Bitwise OR of `BU_COMP_FLAGS_*` constants. Controls output format, mipmaps, color space, etc. Low 8-bits are either the older non-unified quality level, or for some codecs the non-unified effort level.
     pub flags_and_quality: u64,
     /// Low-level (non-unified) quality or lambda parameter for UASTC RDO encoding. Typically 0.0 for defaults. Must be 0.0 if using unified (not -1) quality level.
     pub low_level_uastc_rdo_or_dct_quality: f32,
@@ -180,16 +191,9 @@ impl BasisuEncoderParams {
         self
     }
 
-    /// Add [`BU_COMP_FLAGS_VALIDATE_OUTPUT`] to param flags.
-    pub const fn with_validate_output(mut self) -> Self {
-        self.flags_and_quality |= BU_COMP_FLAGS_VALIDATE_OUTPUT;
-        self
-    }
-
-    /// Add [`BU_COMP_FLAGS_DEBUG_OUTPUT`] to param flags.
-    /// Remember to call [`basisu_enable_debug_printf`] to see the debug info.
-    pub const fn with_debug_output(mut self) -> Self {
-        self.flags_and_quality |= BU_COMP_FLAGS_DEBUG_OUTPUT;
+    /// Bitwise OR the flags (See `BU_COMP_FLAGS_*`) to `self`.
+    pub const fn with_flags(mut self, flags: u64) -> Self {
+        self.flags_and_quality |= flags;
         self
     }
 }

@@ -7,7 +7,9 @@ use bevy::{
     render::render_resource::TextureViewDimension,
 };
 use bevy_basisu_loader::{BasisuLoader, BasisuLoaderSettings};
-use bevy_basisu_saver::encoder::{BasisuEncoder, BasisuEncoderParams};
+use bevy_basisu_saver::encoder::{
+    BU_COMP_FLAGS_DEBUG_OUTPUT, BU_COMP_FLAGS_VALIDATE_OUTPUT, BasisuEncoder, BasisuEncoderParams,
+};
 
 #[derive(TypePath)]
 pub(crate) struct SkyboxProcessor;
@@ -63,7 +65,7 @@ fn encode_cubemap(face_paths: &[String; 6], debug: bool) -> Vec<u8> {
 
     encoder
         .compress(if debug {
-            params.with_validate_output().with_debug_output()
+            params.with_flags(BU_COMP_FLAGS_DEBUG_OUTPUT | BU_COMP_FLAGS_VALIDATE_OUTPUT)
         } else {
             params
         })
@@ -122,8 +124,7 @@ mod tests {
                     bevy_basisu_saver::encoder::BasisTextureFormat::XuastcLdr4x4,
                 )
                 .with_tex_type(TextureViewDimension::Cube)
-                .with_validate_output()
-                .with_debug_output(),
+                .with_flags(BU_COMP_FLAGS_DEBUG_OUTPUT | BU_COMP_FLAGS_VALIDATE_OUTPUT),
             )
             .unwrap()
     }
