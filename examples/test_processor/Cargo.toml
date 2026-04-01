@@ -1,21 +1,20 @@
 [package]
-name = "test_scene"
+name = "test_processor"
 version = "0.0.0"
 edition = "2024"
 publish = false
 
-[lib]
-name = "test_scene_lib"
-crate-type = ["lib", "cdylib"]
-
 [dependencies]
 bevy_basisu_loader = { path = "../../crates/bevy_basisu_loader" }
+bevy_basisu_saver = { path = "../../crates/bevy_basisu_saver" }
 
 bevy = { version = "0.18", default-features = false, features = [
   # collection: dev
   # "debug",
   # "bevy_dev_tools",
-  # "file_watcher",
+  "file_watcher",
+
+  "asset_processor",
 
   # collection: audio
   # "bevy_audio",
@@ -48,7 +47,7 @@ bevy = { version = "0.18", default-features = false, features = [
   "bevy_winit",
   "default_font",
   "multi_threaded",
-  "webgl2",
+  # "webgl2",
   "x11",
   "wayland",
   "sysinfo_plugin",
@@ -63,7 +62,9 @@ bevy = { version = "0.18", default-features = false, features = [
   "bevy_shader",
   "bevy_text",
   # "hdr",
-  # "png",
+  "exr",
+  "png",
+  "jpeg",
 
   "bevy_render",
   "bevy_core_pipeline",
@@ -73,3 +74,7 @@ bevy = { version = "0.18", default-features = false, features = [
   "bevy_pbr",
   "bevy_ui_render",
 ] }
+ron = "0.12.1"
+
+[dev-dependencies]
+insta = "1.47.2"

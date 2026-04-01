@@ -1,0 +1,6 @@
+---
+source: examples/test_processor/src/skybox_processor.rs
+expression: encode_cubemap(&paths)
+extension: bin
+snapshot_kind: binary
+---

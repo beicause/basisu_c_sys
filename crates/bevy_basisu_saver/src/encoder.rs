@@ -1,7 +1,7 @@
 use basisu_c_sys::encoder;
 use bevy::{
     image::Image,
-    render::render_resource::{TextureFormat, TextureViewDimension},
+    render::render_resource::{TextureDimension, TextureFormat, TextureViewDimension},
 };
 use serde::{Deserialize, Serialize};
 
@@ -97,10 +97,14 @@ pub enum BasisuEncodeError {
     DataIsNone,
     #[error("Mip level count must be 1")]
     MipLevelCountNotOne,
-    #[error("Unsupported textire format: {0:?}")]
+    #[error("Unsupported texture format: {0:?}")]
     UnsupportedTextureFormat(TextureFormat),
-    #[error("Unsupported textire view dimension: {0:?}")]
+    #[error("Unsupported texture dimension: {0:?}")]
+    UnsupportedTextureDimension(TextureDimension),
+    #[error("Unsupported texture view dimension: {0:?}")]
     UnsupportedTextureViewDimension(TextureViewDimension),
+    #[error("`BaisuEncoder::set_image_slice` only accepts image with 1 layer or depth")]
+    SetImageSliceOnlyAcceptsOneLayer,
     #[error("bu_comp_params_set_image_* failed")]
     BuSetImageFailed,
     #[error("bu_compress_texture failed")]
@@ -127,10 +131,10 @@ impl BasisuEncoderParams {
             basis_tex_format,
             quality_level: 75,
             effort_level: 2,
-            flags_and_quality: (encoder::BU_COMP_FLAGS_THREADED
-                | encoder::BU_COMP_FLAGS_SRGB
-                | encoder::BU_COMP_FLAGS_KTX2_OUTPUT
-                | encoder::BU_COMP_FLAGS_KTX2_UASTC_ZSTD) as u64,
+            flags_and_quality: (BU_COMP_FLAGS_THREADED
+                | BU_COMP_FLAGS_SRGB
+                | BU_COMP_FLAGS_KTX2_OUTPUT
+                | BU_COMP_FLAGS_KTX2_UASTC_ZSTD) as u64,
             low_level_uastc_rdo_or_dct_quality: 0.0,
         }
     }
@@ -140,11 +144,29 @@ impl BasisuEncoderParams {
             basis_tex_format,
             quality_level: 75,
             effort_level: 2,
-            flags_and_quality: (encoder::BU_COMP_FLAGS_THREADED
-                | encoder::BU_COMP_FLAGS_KTX2_OUTPUT
-                | encoder::BU_COMP_FLAGS_KTX2_UASTC_ZSTD) as u64,
+            flags_and_quality: (BU_COMP_FLAGS_THREADED
+                | BU_COMP_FLAGS_KTX2_OUTPUT
+                | BU_COMP_FLAGS_KTX2_UASTC_ZSTD) as u64,
             low_level_uastc_rdo_or_dct_quality: 0.0,
         }
+    }
+
+    pub const fn with_tex_type(mut self, tex_type: TextureViewDimension) -> Self {
+        self.flags_and_quality = self.flags_and_quality
+            & !(BU_COMP_FLAGS_TEXTURE_TYPE_MASK << BU_COMP_FLAGS_TEXTURE_TYPE_SHIFT) as u64;
+
+        self.flags_and_quality = self.flags_and_quality
+            | match tex_type {
+                TextureViewDimension::D2 => BU_COMP_FLAGS_TEXTURE_TYPE_2D,
+                TextureViewDimension::D2Array => BU_COMP_FLAGS_TEXTURE_TYPE_2D_ARRAY,
+                TextureViewDimension::Cube | TextureViewDimension::CubeArray => {
+                    BU_COMP_FLAGS_TEXTURE_TYPE_CUBEMAP_ARRAY
+                }
+                TextureViewDimension::D1 | TextureViewDimension::D3 => {
+                    panic!("Compressing 1D or 3D texture is unsupported")
+                }
+            } as u64;
+        self
     }
 }
 
@@ -156,12 +178,21 @@ impl BasisuEncoder {
     }
 
     pub fn set_image(&mut self, image: &Image) -> Result<(), BasisuEncodeError> {
-        assert!(unsafe { encoder::bu_comp_params_clear(self.params) } != 0);
+        self.clear_image();
+
         let Some(data) = image.data.as_ref() else {
             return Err(BasisuEncodeError::DataIsNone);
         };
         if image.texture_descriptor.mip_level_count != 1 {
             return Err(BasisuEncodeError::MipLevelCountNotOne);
+        }
+        match image.texture_descriptor.dimension {
+            TextureDimension::D1 | TextureDimension::D3 => {
+                return Err(BasisuEncodeError::UnsupportedTextureDimension(
+                    image.texture_descriptor.dimension,
+                ));
+            }
+            TextureDimension::D2 => {}
         }
         if let Some(view_desc) = &image.texture_view_descriptor
             && let Some(dimension) = view_desc.dimension
@@ -176,12 +207,12 @@ impl BasisuEncoder {
             }
         };
         match image.texture_descriptor.format {
-            TextureFormat::Rgba8Unorm => unsafe {
+            TextureFormat::Rgba8Unorm | TextureFormat::Rgba8UnormSrgb => unsafe {
                 for i in 0..image.texture_descriptor.array_layer_count() {
                     if encoder::bu_comp_params_set_image_rgba32(
                         self.params,
                         i,
-                        data.as_ptr() as u64,
+                        data.as_ptr() as u64 + (i * image.width() * image.height() * 4) as u64,
                         image.width(),
                         image.height(),
                         image.width() * 4,
@@ -196,7 +227,7 @@ impl BasisuEncoder {
                     if encoder::bu_comp_params_set_image_float_rgba(
                         self.params,
                         i,
-                        data.as_ptr() as u64,
+                        data.as_ptr() as u64 + (i * image.width() * image.height() * 16) as u64,
                         image.width(),
                         image.height(),
                         image.width() * 16,
@@ -204,6 +235,76 @@ impl BasisuEncoder {
                     {
                         return Err(BasisuEncodeError::BuSetImageFailed);
                     }
+                }
+            },
+            _ => {
+                return Err(BasisuEncodeError::UnsupportedTextureFormat(
+                    image.texture_descriptor.format,
+                ));
+            }
+        }
+        Ok(())
+    }
+
+    pub fn clear_image(&mut self) {
+        assert!(unsafe { encoder::bu_comp_params_clear(self.params) } != 0);
+    }
+
+    pub fn set_image_slice(&mut self, index: u32, image: &Image) -> Result<(), BasisuEncodeError> {
+        let Some(data) = image.data.as_ref() else {
+            return Err(BasisuEncodeError::DataIsNone);
+        };
+        if image.texture_descriptor.mip_level_count != 1 {
+            return Err(BasisuEncodeError::MipLevelCountNotOne);
+        }
+        match image.texture_descriptor.dimension {
+            TextureDimension::D1 | TextureDimension::D3 => {
+                return Err(BasisuEncodeError::UnsupportedTextureDimension(
+                    image.texture_descriptor.dimension,
+                ));
+            }
+            TextureDimension::D2 => {}
+        }
+        if image.texture_descriptor.array_layer_count() != 1 {
+            return Err(BasisuEncodeError::SetImageSliceOnlyAcceptsOneLayer);
+        }
+        if let Some(view_desc) = &image.texture_view_descriptor
+            && let Some(dimension) = view_desc.dimension
+        {
+            match dimension {
+                TextureViewDimension::D1 | TextureViewDimension::D3 => {
+                    return Err(BasisuEncodeError::UnsupportedTextureViewDimension(
+                        dimension,
+                    ));
+                }
+                _ => {}
+            }
+        };
+        match image.texture_descriptor.format {
+            TextureFormat::Rgba8Unorm | TextureFormat::Rgba8UnormSrgb => unsafe {
+                if encoder::bu_comp_params_set_image_rgba32(
+                    self.params,
+                    index,
+                    data.as_ptr() as u64,
+                    image.width(),
+                    image.height(),
+                    image.width() * 4,
+                ) == 0
+                {
+                    return Err(BasisuEncodeError::BuSetImageFailed);
+                }
+            },
+            TextureFormat::Rgba32Float => unsafe {
+                if encoder::bu_comp_params_set_image_float_rgba(
+                    self.params,
+                    index,
+                    data.as_ptr() as u64,
+                    image.width(),
+                    image.height(),
+                    image.width() * 16,
+                ) == 0
+                {
+                    return Err(BasisuEncodeError::BuSetImageFailed);
                 }
             },
             _ => {
