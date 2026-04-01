@@ -32,10 +32,7 @@ impl Process for SkyboxProcessor {
                 err: bevy::asset::io::AssetReaderError::Io(err.into()),
             });
         }
-        let face_paths: [String; 6] = ron::from_str::<ron::Value>(&ron)
-            .unwrap()
-            .into_rust()
-            .unwrap();
+        let face_paths: [String; 6] = ron::from_str(&ron).unwrap();
         let compressed = encode_cubemap(&face_paths);
         writer.write_all(&compressed).await.unwrap();
         Ok(BasisuLoaderSettings::default())
