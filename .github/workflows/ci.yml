@@ -47,7 +47,7 @@ jobs:
         run: cargo build -r
 
       - name: Test
-        run: cargo test -r
+        run: cargo test --workspace -r
 
   build-wasm:
     name: Build wasm
