@@ -8,7 +8,7 @@ description = "A bevy asset processor to transform images to basisu ktx2 texture
 keywords = ["basis-universal", "bevy", "asset"]
 
 [dependencies]
-basisu_c_sys = { version = "0.2", path = "../basisu_c_sys" }
+basisu_c_sys = { version = "0.3", path = "../basisu_c_sys" }
 bevy_basisu_loader = { version = "0.4", path = "../bevy_basisu_loader" }
 
 bevy = { version = "0.18", default-features = false, features = [

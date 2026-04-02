@@ -92,9 +92,9 @@ pub enum BasisuEncodeError {
 pub struct BasisuEncoderParams {
     /// Target file format — one of the BTF_* constants (e.g. BTF_ETC1S, BTF_UASTC_LDR_4X4).
     pub basis_tex_format: BasisTextureFormat,
-    /// Unified Quality level [1,100]. See [`enc_sys::BU_QUALITY_MIN`], [`enc_sys::BU_QUALITY_MAX`]. Note the recommended usable unified quality range is [1,100], but the C API accepts [0,100]. Use -1 to use older non-unified/direct codec-specific quality level or lambda (low 8-bits of flags_and_quality, or via low_level_uastc_rdo_or_dct_quality).
+    /// Unified Quality level [1, 100]. See [`common::BU_QUALITY_MIN`], [`common::BU_QUALITY_MAX`]. Note the recommended usable unified quality range is [1, 100], but the C API accepts [0, 100]. Use -1 to use older non-unified/direct codec-specific quality level or lambda (low 8-bits of flags_and_quality, or via low_level_uastc_rdo_or_dct_quality).
     pub quality_level: i32,
-    /// Unified Encoder effort [0,10]. See [`enc_sys::BU_EFFORT_MIN`], [`enc_sys::BU_EFFORT_MAX`]. See `BU_EFFORT_*` presets. Use -1 to use older non-unified/direct codec-specific effort level (low 8-bits of flags_and_quality for some codecs).
+    /// Unified Encoder effort [0, 10]. See [`common::BU_EFFORT_MIN`], [`common::BU_EFFORT_MAX`]. See `BU_EFFORT_*` presets. Use -1 to use older non-unified/direct codec-specific effort level (low 8-bits of flags_and_quality for some codecs).
     pub effort_level: i32,
     /// Bitwise OR of `BU_COMP_FLAGS_*` constants. Controls output format, mipmaps, color space, etc. Low 8-bits are either the older non-unified quality level, or for some codecs the non-unified effort level.
     pub flags_and_quality: u64,
@@ -200,7 +200,8 @@ impl BasisuEncoder {
                         image.width(),
                         image.height(),
                         image.width() * 4,
-                    ) == 0
+                    )
+                    .is_err()
                     {
                         return Err(BasisuEncodeError::BuSetImageFailed);
                     }
@@ -215,7 +216,8 @@ impl BasisuEncoder {
                         image.width(),
                         image.height(),
                         image.width() * 16,
-                    ) == 0
+                    )
+                    .is_err()
                     {
                         return Err(BasisuEncodeError::BuSetImageFailed);
                     }
@@ -231,7 +233,7 @@ impl BasisuEncoder {
     }
 
     pub fn clear_image(&mut self) {
-        assert!(unsafe { enc_sys::bu_comp_params_clear(self.params) } != 0);
+        assert!(unsafe { enc_sys::bu_comp_params_clear(self.params) }.is_ok());
     }
 
     pub fn set_image_slice(&mut self, index: u32, image: &Image) -> Result<(), BasisuEncodeError> {
@@ -273,7 +275,8 @@ impl BasisuEncoder {
                     image.width(),
                     image.height(),
                     image.width() * 4,
-                ) == 0
+                )
+                .is_err()
                 {
                     return Err(BasisuEncodeError::BuSetImageFailed);
                 }
@@ -286,7 +289,8 @@ impl BasisuEncoder {
                     image.width(),
                     image.height(),
                     image.width() * 16,
-                ) == 0
+                )
+                .is_err()
                 {
                     return Err(BasisuEncodeError::BuSetImageFailed);
                 }
@@ -309,7 +313,8 @@ impl BasisuEncoder {
                 params.effort_level,
                 params.flags_and_quality,
                 params.low_level_uastc_rdo_or_dct_quality,
-            ) == 0
+            )
+            .is_err()
             {
                 return Err(BasisuEncodeError::BuCompressFailed);
             }
@@ -324,8 +329,6 @@ impl BasisuEncoder {
 
 impl Drop for BasisuEncoder {
     fn drop(&mut self) {
-        unsafe {
-            enc_sys::bu_delete_comp_params(self.params);
-        }
+        assert!(unsafe { enc_sys::bu_delete_comp_params(self.params).is_ok() });
     }
 }

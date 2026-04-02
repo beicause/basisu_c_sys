@@ -24,6 +24,13 @@ jobs:
       fail-fast: false
       matrix:
         os: [ubuntu-latest, macos-latest, windows-latest]
+        include:
+          - os: ubuntu-latest
+            cargo-flags: --release
+          - os: macos-latest
+            cargo-flags:
+          - os: windows-latest
+            cargo-flags:
 
     steps:
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
@@ -40,24 +47,16 @@ jobs:
       - name: Clippy
         run: cargo clippy -- -D warnings
 
-      - name: Doc
-        run: cargo doc --workspace --all-features --no-deps --document-private-items --keep-going
+      - name: Doc ${{ matrix.cargo-flags }}
+        run: cargo doc --workspace --all-features --no-deps --document-private-items --keep-going ${{ matrix.cargo-flags }}
+        env:
+          RUSTDOCFLAGS: -D warnings
 
-      - name: Build Debug
-        if: ${{ matrix.os != 'ubuntu-latest' }}
-        run: cargo build
+      - name: Build ${{ matrix.cargo-flags }}
+        run: cargo build ${{ matrix.cargo-flags }}
 
-      - name: Test Debug
-        if: ${{ matrix.os != 'ubuntu-latest' }}
-        run: cargo test --workspace
-
-      - name: Build
-        if: ${{ matrix.os == 'ubuntu-latest' }}
-        run: cargo build -r
-
-      - name: Test
-        if: ${{ matrix.os == 'ubuntu-latest' }}
-        run: cargo test --workspace -r
+      - name: Test ${{ matrix.cargo-flags }}
+        run: cargo test --workspace ${{ matrix.cargo-flags }}
 
   build-wasm:
     name: Build wasm
