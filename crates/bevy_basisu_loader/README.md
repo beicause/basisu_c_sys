@@ -60,7 +60,7 @@ cargo r -p basisu_c_sys --bin build-wasm-cli --features __build-wasm-cli -- --em
 
 | `bevy` | `bevy_basisu_loader` | `basis_universal` |
 | ------ | -------------------- | ----------------- |
-| 0.18   | 0.3, 0.4             | v2_1_0            |
+| 0.18   | 0.3, 0.4, 0.5        | v2_1_0            |
 | 0.17   | 0.1, 0.2             | v1_60_snapshot    |
 
 ## License

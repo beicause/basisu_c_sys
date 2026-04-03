@@ -28,9 +28,8 @@ pub fn main() {
         .add_plugins(BasisuSaverPlugin);
 }
 ```
-See also [examples/test_processor](../../examples/test_processor)
 
-3. High level basisu encoder API:
+3. High level basisu encoder API which is a wrapper of `basisu_c_sys`:
 ```rs
     let mut encoder = BasisuEncoder::new();
     for (i, path) in face_paths.iter().enumerate() {
@@ -56,12 +55,13 @@ See also [examples/test_processor](../../examples/test_processor)
         )
         .unwrap();
 ```
+See also [examples/test_processor](../../examples/test_processor)
 
 ## Bevy version compatibility
 
 | `bevy` | `bevy_basisu_loader` | `basis_universal` |
 | ------ | -------------------- | ----------------- |
-| 0.18   | 0.2                  | v2_1_0            |
+| 0.18   | 0.2, 0.3             | v2_1_0            |
 
 ## License
 
