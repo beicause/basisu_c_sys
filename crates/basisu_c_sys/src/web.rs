@@ -83,6 +83,8 @@ pub mod transcoder {
     include!(concat!(env!("OUT_DIR"), "/wasm_transcoder_pub_funcs.rs"));
 }
 
+/// Use this to copy memory between host and basisu.
+/// This is required on web where memory isn't shared.
 /// # Safety
 /// `basisu_ptr` must be valid pointer allocated by `bu_alloc` or `bt_alloc`
 /// and must be valid for writes of `data.len()` bytes.
@@ -94,6 +96,8 @@ pub unsafe fn copy_host_memory_to_basisu(data: &[u8], basisu_ptr: u64) {
     });
 }
 
+/// Use this to copy memory between host and basisu.
+/// This is required on web where memory isn't shared.
 /// # Safety
 /// `basisu_ptr` must be valid pointer allocated by `bu_alloc` or `bt_alloc`
 /// and must be valid for reads of `count` bytes.
