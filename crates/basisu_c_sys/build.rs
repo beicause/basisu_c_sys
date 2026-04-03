@@ -28,7 +28,8 @@ const DEFINES: &[(&str, &str)] = &[
     ("BASISD_SUPPORT_PVRTC2", "0"),
     // ("BASISD_SUPPORT_UASTC_HDR", "1"),
 ];
-const SRCS: &[&str] = &[
+
+const ENCODER_SRCS: &[&str] = &[
     "vendor/basis_universal/encoder/basisu_astc_hdr_6x6_enc.cpp",
     "vendor/basis_universal/encoder/basisu_astc_hdr_common.cpp",
     "vendor/basis_universal/encoder/basisu_astc_ldr_common.cpp",
@@ -59,13 +60,19 @@ const SRCS: &[&str] = &[
     "vendor/basis_universal/zstd/zstd.c",
 ];
 
+const TRANSCODER_SRCS: &[&str] = &[
+    "vendor/basis_universal/encoder/basisu_wasm_transcoder_api.cpp",
+    "vendor/basis_universal/transcoder/basisu_transcoder.cpp",
+    "vendor/basis_universal/zstd/zstddeclib.c",
+];
+
 fn main() {
     bindgen();
+    wasm_bindgen();
+    gen_wasm_build_cmd();
     let target = std::env::var("TARGET").unwrap();
     if target != "wasm32-unknown-unknown" {
         compile_basisu_static();
-    } else {
-        panic!("basisu_c_sys doesn't support wasm32-unknown-unknown yet");
     }
     println!("cargo::rerun-if-changed=vendor/");
 }
@@ -105,7 +112,7 @@ impl bindgen::callbacks::ParseCallbacks for WasmBoolRenameCallbacks {
 
 fn bindgen() {
     let binding_file =
-        std::path::PathBuf::from(std::env::var("OUT_DIR").unwrap()).join("basisu_api_common.rs");
+        std::path::Path::new(&std::env::var("OUT_DIR").unwrap()).join("basisu_api_common.rs");
     bindgen::Builder::default()
         .clang_args(&["-fvisibility=default"])
         .header("vendor/basis_universal/encoder/basisu_wasm_api_common.h")
@@ -124,7 +131,7 @@ fn bindgen() {
         .expect("Couldn't write bindings!");
 
     let binding_file =
-        std::path::PathBuf::from(std::env::var("OUT_DIR").unwrap()).join("basisu_c_api.rs");
+        std::path::Path::new(&std::env::var("OUT_DIR").unwrap()).join("basisu_c_api.rs");
     bindgen::Builder::default()
         .clang_args(&["-fvisibility=default"])
         .header("vendor/basis_universal/encoder/basisu_wasm_api.h")
@@ -139,8 +146,8 @@ fn bindgen() {
         .write_to_file(binding_file)
         .expect("Couldn't write bindings!");
 
-    let binding_file = std::path::PathBuf::from(std::env::var("OUT_DIR").unwrap())
-        .join("basisu_c_transcoder_api.rs");
+    let binding_file =
+        std::path::Path::new(&std::env::var("OUT_DIR").unwrap()).join("basisu_c_transcoder_api.rs");
     bindgen::Builder::default()
         .clang_args(&["-fvisibility=default"])
         .header("vendor/basis_universal/encoder/basisu_wasm_transcoder_api.h")
@@ -154,6 +161,179 @@ fn bindgen() {
         .expect("Unable to generate bindings")
         .write_to_file(binding_file)
         .expect("Couldn't write bindings!");
+}
+
+fn wasm_bindgen() {
+    let encoder_api_file =
+        std::path::Path::new(&std::env::var("OUT_DIR").unwrap()).join("basisu_c_api.rs");
+    let transcoder_api_file =
+        std::path::Path::new(&std::env::var("OUT_DIR").unwrap()).join("basisu_c_transcoder_api.rs");
+    let encoder_api_file = std::fs::read_to_string(encoder_api_file).unwrap();
+    let transcoder_api_file = std::fs::read_to_string(transcoder_api_file).unwrap();
+
+    let encoder_ast = syn::parse_file(&encoder_api_file).unwrap();
+    let transcoder_ast = syn::parse_file(&transcoder_api_file).unwrap();
+
+    fn gen_binding_funcs(file_ast: &syn::File) -> Vec<syn::ForeignItem> {
+        let ty_bool32: syn::Type = syn::parse_quote!(Bool32);
+        let ty_u32: syn::Type = syn::parse_quote!(u32);
+
+        file_ast
+            .items
+            .iter()
+            .filter_map(|item| {
+                if let syn::Item::ForeignMod(foreign) = item {
+                    assert!(foreign.items.len() == 1);
+                    let syn::ForeignItem::Fn(mut func) = foreign.items[0].clone() else {
+                        return None;
+                    };
+                    let func_name = "_".to_string() + &func.sig.ident.to_string();
+                    func.attrs = syn::parse_quote!(#[wasm_bindgen(method,js_name=#func_name)]);
+                    func.sig.inputs.insert(0, syn::parse_quote!(this: &Basisu));
+
+                    if let syn::ReturnType::Type(_, ty) = &mut func.sig.output
+                        && ty.as_ref() == &ty_bool32
+                    {
+                        *ty = ty_u32.clone().into();
+                    }
+                    Some(syn::ForeignItem::Fn(func))
+                } else {
+                    None
+                }
+            })
+            .collect()
+    }
+
+    fn gen_public_funcs(file_ast: &syn::File) -> Vec<syn::Item> {
+        let ty_bool32: syn::Type = syn::parse_quote!(Bool32);
+
+        file_ast
+            .items
+            .iter()
+            .filter_map(|item| {
+                if let syn::Item::ForeignMod(foreign) = item {
+                    assert!(foreign.items.len() == 1);
+                    let syn::ForeignItem::Fn(func) = foreign.items[0].clone() else {
+                        return None;
+                    };
+                    let func_name = func.sig.ident.clone();
+                    let func_inputs = func.sig.inputs.clone();
+                    let func_args = func_inputs
+                        .iter()
+                        .map(|arg| {
+                            let syn::FnArg::Typed(pat_type) = arg else {
+                                unreachable!()
+                            };
+                            let syn::Pat::Ident(ident) = &*pat_type.pat else {
+                                unreachable!()
+                            };
+                            ident.ident.clone()
+                        })
+                        .collect::<Vec<syn::Ident>>();
+                    let block: syn::Block = if let syn::ReturnType::Type(_, ty) = &func.sig.output
+                        && ty.as_ref() == &ty_bool32
+                    {
+                        syn::parse_quote! (
+                            {
+                                BASISU_INSTANCE.with(|inst| {
+                                    let inst = inst.get().unwrap();
+                                    Bool32(inst.#func_name(#(#func_args),*))
+                                })
+                            }
+                        )
+                    } else {
+                        syn::parse_quote! (
+                            {
+                                BASISU_INSTANCE.with(|inst| {
+                                    let inst = inst.get().unwrap();
+                                    inst.#func_name(#(#func_args),*)
+                                })
+                            }
+                        )
+                    };
+                    let mut func = syn::ItemFn {
+                        attrs: func.attrs,
+                        vis: syn::Visibility::Public(Default::default()),
+                        sig: func.sig,
+                        block: Box::new(block),
+                    };
+                    func.sig.unsafety = Some(Default::default());
+                    Some(syn::Item::Fn(func))
+                } else {
+                    None
+                }
+            })
+            .collect()
+    }
+
+    let encoder_binding_apis = gen_binding_funcs(&encoder_ast);
+    let transcoder_binding_apis = gen_binding_funcs(&transcoder_ast);
+
+    std::fs::write(
+        std::path::Path::new(&std::env::var("OUT_DIR").unwrap()).join("wasm_encoder_binding.rs"),
+        prettyplease::unparse(&syn::parse_quote!(
+            #[wasm_bindgen]
+            extern "C" {
+                #[derive(Debug)]
+                pub type Basisu;
+
+                #[wasm_bindgen(method,getter,js_name=HEAPU8)]
+                pub(crate) fn wasm_heap_memory(this: &Basisu) -> Uint8Array;
+
+                #(#encoder_binding_apis)*
+                #(#transcoder_binding_apis)*
+            }
+        )),
+    )
+    .unwrap();
+
+    std::fs::write(
+        std::path::Path::new(&std::env::var("OUT_DIR").unwrap()).join("wasm_transcoder_binding.rs"),
+        prettyplease::unparse(&syn::parse_quote!(
+            #[wasm_bindgen]
+            extern "C" {
+                #[derive(Debug)]
+                pub type Basisu;
+
+                #[wasm_bindgen(method,getter,js_name=HEAPU8)]
+                pub(crate) fn wasm_heap_memory(this: &Basisu) -> Uint8Array;
+
+                #(#transcoder_binding_apis)*
+            }
+        )),
+    )
+    .unwrap();
+
+    let encoder_pub_funcs = gen_public_funcs(&encoder_ast);
+    let transcoder_pub_funcs = gen_public_funcs(&transcoder_ast);
+
+    std::fs::write(
+        std::path::Path::new(&std::env::var("OUT_DIR").unwrap()).join("wasm_encoder_pub_funcs.rs"),
+        prettyplease::unparse(&syn::parse_quote!(
+            #(#encoder_pub_funcs)*
+        )),
+    )
+    .unwrap();
+
+    std::fs::write(
+        std::path::Path::new(&std::env::var("OUT_DIR").unwrap())
+            .join("wasm_transcoder_pub_funcs.rs"),
+        prettyplease::unparse(&syn::parse_quote!(
+            #(#transcoder_pub_funcs)*
+        )),
+    )
+    .unwrap();
+}
+
+fn extract_func_name(line: &str) -> Option<&str> {
+    let line = line.trim_start();
+    if let Some(start) = line.find("pub fn ")
+        && let Some(end) = line.rfind("(")
+    {
+        Some(&line[(start + "pub fn ".len())..end])
+    } else {
+        None
+    }
 }
 
 fn compile_basisu_static() {
@@ -172,5 +352,69 @@ fn compile_basisu_static() {
     for (define, value) in DEFINES {
         build.define(define, *value);
     }
-    build.files(SRCS).compile("basisu_c_api_vendor");
+    if cfg!(feature = "encoder") {
+        build.files(ENCODER_SRCS);
+    } else {
+        build.files(TRANSCODER_SRCS);
+    }
+    build.compile("basisu_c_api_vendor");
+}
+
+fn gen_wasm_build_cmd() {
+    let encoder_api_file =
+        std::path::Path::new(&std::env::var("OUT_DIR").unwrap()).join("basisu_c_api.rs");
+    let transcoder_api_file =
+        std::path::Path::new(&std::env::var("OUT_DIR").unwrap()).join("basisu_c_transcoder_api.rs");
+    let mut encoder_apis = Vec::new();
+    let mut transcoder_apis = Vec::new();
+    for (vec, file) in [
+        (&mut encoder_apis, encoder_api_file),
+        (&mut transcoder_apis, transcoder_api_file),
+    ] {
+        for line in std::fs::read_to_string(file).unwrap().lines() {
+            if let Some(func) = extract_func_name(line) {
+                vec.push(func.to_string());
+            }
+        }
+    }
+    encoder_apis.extend(transcoder_apis.iter().cloned());
+    for (name, apis, srcs) in [
+        ("encoder", encoder_apis, ENCODER_SRCS),
+        ("transcoder", transcoder_apis, TRANSCODER_SRCS),
+    ] {
+        let emcc_args = [
+            "-sSTRICT".to_string(),
+            "-sEXPORT_ES6".to_string(),
+            "-sINCOMING_MODULE_JS_API=wasmBinary".to_string(),
+            "-sALLOW_MEMORY_GROWTH".to_string(),
+            "-sEXPORTED_RUNTIME_METHODS=HEAPU8".to_string(),
+            "-sEXPORTED_FUNCTIONS=".to_string() + &apis.join(","),
+        ];
+        let mut cmd = std::process::Command::new("em++");
+        cmd.args(["-xc++", "-std=c++17"])
+            .args(FLAGS)
+            .args(
+                DEFINES
+                    .iter()
+                    .map(|(define, value)| format!("-D{define}={value}")),
+            )
+            .args(emcc_args)
+            .args(srcs);
+        cmd.args(["-o".to_string(), format!("wasm/basisu_{name}.js")]);
+        let default_emcc_args = cmd
+            .get_args()
+            .map(|s| s.to_string_lossy().to_string())
+            .collect::<Vec<String>>();
+
+        std::fs::write(
+            std::path::Path::new(&std::env::var("OUT_DIR").unwrap())
+                .join(format!("build_{name}_emcc_args.rs")),
+            format!(
+                "const DEFAULT_{}_EMCC_ARGS: &[&str] = &{:?};",
+                name.to_uppercase(),
+                default_emcc_args
+            ),
+        )
+        .unwrap();
+    }
 }

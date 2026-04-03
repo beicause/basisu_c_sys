@@ -5,6 +5,7 @@ exclude: |
     .*thirdparty/.*|
     .*\.svg|
     vendor/basis_universal/.*|
+    crates/basisu_c_sys/wasm/.*|
     .*snapshots/.*|
   )$
 repos:
@@ -17,7 +18,6 @@ repos:
     hooks:
       - id: trailing-whitespace
         args: [--markdown-linebreak-ext=md]
-      - id: check-added-large-files
       - id: end-of-file-fixer
   - repo: local
     hooks:

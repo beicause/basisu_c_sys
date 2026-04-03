@@ -1,10 +1,11 @@
 [files]
 extend-exclude = [
-  "*.pbxproj",                # metadata file
-  "*.patch",                  # Automatically generated files that should not be manually modified.
-  "*.bin",                    # Binary files
-  ".git/",                    # Version control files
-  "vendor/basis_universal/*", # BasisU source code
+  "*.pbxproj",                  # metadata file
+  "*.patch",                    # Automatically generated files that should not be manually modified.
+  "*.bin",                      # Binary files
+  ".git/",                      # Version control files
+  "vendor/basis_universal/*",   # BasisU source code
+  "crates/basisu_c_sys/wasm/*", # BasisU prebuilt wasm
 ]
 ignore-hidden = false
 
