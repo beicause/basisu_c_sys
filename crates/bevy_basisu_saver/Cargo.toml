@@ -5,7 +5,7 @@ edition = "2024"
 repository.workspace = true
 license.workspace = true
 description = "A bevy asset processor to transform images to basisu ktx2 textures"
-keywords = ["basis-universal", "bevy", "asset"]
+keywords = ["basis-universal", "bevy", "asset", "encoder"]
 
 [dependencies]
 basisu_c_sys = { version = "0.4", features = [
