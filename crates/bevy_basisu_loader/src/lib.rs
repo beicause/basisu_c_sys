@@ -1,6 +1,6 @@
 use bevy::prelude::*;
 use bevy::render::{RenderApp, renderer::RenderDevice};
-mod transcoder;
+pub mod transcoder;
 
 #[cfg(all(
     target_arch = "wasm32",
