@@ -1,6 +1,6 @@
 [package]
 name = "basisu_c_sys"
-version = "0.3.0"
+version = "0.4.0"
 edition = "2024"
 repository.workspace = true
 license.workspace = true
@@ -24,7 +24,8 @@ wasm-bindgen-futures = "0.4"
 [build-dependencies]
 cc = { version = "1.2", features = ["parallel"] }
 bindgen = "0.72"
-syn = { version = "2.0.117", default-features = false, features = ["full"] }
+syn = { version = "2.0.117", default-features = false, features = ["full", "parsing", "printing"] }
+prettyplease = "0.2.37"
 
 [[bin]]
 name = "build-wasm-cli"

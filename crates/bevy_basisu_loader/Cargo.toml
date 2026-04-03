@@ -8,7 +8,7 @@ description = "Provides a lightweight, cross-platform KTX2 Basis Universal textu
 keywords = ["bevy", "basis-universal", "asset", "transcoder"]
 
 [dependencies]
-bevy_basisu_loader_sys = { version = "0.4", path = "../bevy_basisu_loader_sys" }
+basisu_c_sys = { version = "0.4", default-features = false, path = "../basisu_c_sys" }
 
 bevy = { version = "0.18", default-features = false, features = [
   "bevy_asset",
@@ -19,3 +19,4 @@ bevy = { version = "0.18", default-features = false, features = [
 serde = { version = "1", features = ["derive"] }
 thiserror = { version = "2", default-features = false }
 log = { version = "0.4", default-features = false }
+async-lock = "3.4.2"

@@ -1,3 +1,4 @@
+use async_lock::OnceCell;
 use basisu_c_sys::common;
 use basisu_c_sys::encoder as enc_sys;
 use bevy::{
@@ -6,17 +7,18 @@ use bevy::{
 };
 use serde::{Deserialize, Serialize};
 
-use std::sync::OnceLock;
+static BASISU_INITIALIZED: OnceCell<()> = OnceCell::new();
 
-static BASISU_INITIALIZED: OnceLock<()> = OnceLock::new();
-
-pub fn basisu_init() {
-    BASISU_INITIALIZED.get_or_init(|| {
-        unsafe { enc_sys::bu_init() };
-    });
+pub async fn basisu_encoder_init() {
+    BASISU_INITIALIZED
+        .get_or_init(async || {
+            basisu_c_sys::instantiate_builtin_wasm().await;
+            unsafe { enc_sys::bu_init() };
+        })
+        .await;
 }
 
-pub fn basisu_enable_debug_printf(enable: bool) {
+pub fn basisu_encoder_enable_debug_printf(enable: bool) {
     unsafe { enc_sys::bu_enable_debug_printf(enable as u32) };
 }
 

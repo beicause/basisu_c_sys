@@ -73,7 +73,7 @@ fn encode_cubemap(face_paths: &[String; 6], debug: bool) -> Vec<u8> {
 
 #[cfg(test)]
 mod tests {
-    use bevy_basisu_saver::encoder::{basisu_enable_debug_printf, basisu_init};
+    use bevy_basisu_saver::encoder::{basisu_encoder_enable_debug_printf, basisu_encoder_init};
 
     use super::*;
 
@@ -130,8 +130,8 @@ mod tests {
 
     #[test]
     fn validate_encoding_via_set_image() {
-        basisu_init();
-        basisu_enable_debug_printf(true);
+        basisu_encoder_init();
+        basisu_encoder_enable_debug_printf(true);
 
         let paths = [
             "skybox/right.jpg",
@@ -148,8 +148,8 @@ mod tests {
 
     #[test]
     fn validate_encoding_via_set_image_slice() {
-        basisu_init();
-        basisu_enable_debug_printf(true);
+        basisu_encoder_init();
+        basisu_encoder_enable_debug_printf(true);
 
         let paths = [
             "skybox/right.jpg",

@@ -1,6 +1,19 @@
 use js_sys::{Object, Reflect, Uint8Array};
 use std::cell::OnceCell;
 
+#[repr(transparent)]
+#[derive(Debug, Copy, Clone)]
+pub struct Bool32(pub u32);
+
+impl Bool32 {
+    pub fn is_ok(&self) -> bool {
+        self.0 != 0
+    }
+    pub fn is_err(&self) -> bool {
+        !self.is_ok()
+    }
+}
+
 mod binding {
     use wasm_bindgen::prelude::*;
     #[cfg(feature = "encoder")]
@@ -40,7 +53,7 @@ mod instance {
     }
 }
 
-pub async fn basisu_builtin_wasm_instantiate() {
+pub async fn instantiate_builtin_wasm() {
     let binary = Uint8Array::new_from_slice(BASISU_WASM);
     let args = Object::new();
     Reflect::set(&args, &"wasmBinary".into(), &binary).unwrap();
@@ -48,4 +61,17 @@ pub async fn basisu_builtin_wasm_instantiate() {
     BASISU_INSTANCE.with(|cell| {
         cell.set(instance).unwrap();
     });
+}
+
+#[cfg(feature = "encoder")]
+pub mod encoder {
+    use super::BASISU_INSTANCE;
+    use super::Bool32;
+    include!(concat!(env!("OUT_DIR"), "/wasm_encoder_pub_funcs.rs"));
+}
+
+pub mod transcoder {
+    use super::BASISU_INSTANCE;
+    use super::Bool32;
+    include!(concat!(env!("OUT_DIR"), "/wasm_transcoder_pub_funcs.rs"));
 }

@@ -5,11 +5,17 @@
 use bevy::{
     app::Plugin,
     asset::{processor::LoadTransformAndSave, transformer::IdentityAssetTransformer},
+    ecs::resource::Resource,
     image::{Image, ImageLoader},
+    platform::sync::{
+        Arc,
+        atomic::{AtomicUsize, Ordering},
+    },
+    prelude::*,
 };
 use bevy_basisu_loader::BasisuLoaderPlugin;
 
-use crate::{encoder::basisu_init, saver::BasisuTextureSaver};
+use crate::{encoder::basisu_encoder_init, saver::BasisuTextureSaver};
 
 pub mod encoder;
 pub mod saver;
@@ -35,9 +41,39 @@ impl Default for BasisuSaverPlugin {
     }
 }
 
+#[cfg(all(
+    target_arch = "wasm32",
+    target_vendor = "unknown",
+    target_os = "unknown",
+))]
+#[derive(Resource, Clone, Deref)]
+struct BasisuWasmReady(Arc<AtomicUsize>);
+
 impl Plugin for BasisuSaverPlugin {
     fn build(&self, app: &mut bevy::app::App) {
-        basisu_init();
+        #[cfg(all(
+            target_arch = "wasm32",
+            target_vendor = "unknown",
+            target_os = "unknown",
+        ))]
+        {
+            let ready = BasisuWasmReady(Arc::new(AtomicUsize::new(0)));
+            let r = ready.clone();
+            bevy::tasks::IoTaskPool::get()
+                .spawn_local(async move {
+                    basisu_encoder_init().await;
+                    r.store(1, Ordering::Release);
+                    bevy::log::debug!("Basisu wasm initialized")
+                })
+                .detach();
+            app.insert_resource(ready);
+        }
+        #[cfg(not(all(
+            target_arch = "wasm32",
+            target_vendor = "unknown",
+            target_os = "unknown",
+        )))]
+        bevy::tasks::block_on(basisu_encoder_init());
 
         if !app.is_plugin_added::<BasisuLoaderPlugin>() {
             app.add_plugins(BasisuLoaderPlugin);

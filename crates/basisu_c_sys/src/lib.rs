@@ -24,6 +24,13 @@ mod web;
 ))]
 pub use web::*;
 
+#[cfg(not(all(
+    target_arch = "wasm32",
+    target_vendor = "unknown",
+    target_os = "unknown",
+)))]
+pub async fn basisu_builtin_wasm_instantiate() {}
+
 pub mod common {
     include!(concat!(env!("OUT_DIR"), "/basisu_api_common.rs"));
 }
