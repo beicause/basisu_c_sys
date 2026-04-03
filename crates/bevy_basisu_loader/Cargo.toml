@@ -6,6 +6,7 @@ repository.workspace = true
 license.workspace = true
 description = "Provides a lightweight, cross-platform KTX2 Basis Universal texture loader for Bevy"
 keywords = ["bevy", "basis-universal", "asset", "transcoder"]
+exclude = ["src/snapshots"]
 
 [dependencies]
 basisu_c_sys = { version = "0.4", features = [
