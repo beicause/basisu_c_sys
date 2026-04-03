@@ -1,6 +1,6 @@
 [package]
 name = "bevy_basisu_saver"
-version = "0.2.0"
+version = "0.3.0"
 edition = "2024"
 repository.workspace = true
 license.workspace = true
@@ -12,7 +12,7 @@ basisu_c_sys = { version = "0.4", features = [
   "encoder",
   "serde",
 ], path = "../basisu_c_sys" }
-bevy_basisu_loader = { version = "0.4", path = "../bevy_basisu_loader" }
+bevy_basisu_loader = { version = "0.5", path = "../bevy_basisu_loader" }
 
 bevy = { version = "0.18", default-features = false, features = [
   "bevy_asset",
