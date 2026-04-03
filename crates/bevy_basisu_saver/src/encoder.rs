@@ -1,4 +1,5 @@
 use async_lock::OnceCell;
+use basisu_c_sys::BasisTextureFormat;
 use basisu_c_sys::common;
 use basisu_c_sys::encoder as enc_sys;
 use bevy::{
@@ -12,7 +13,7 @@ static BASISU_INITIALIZED: OnceCell<()> = OnceCell::new();
 pub async fn basisu_encoder_init() {
     BASISU_INITIALIZED
         .get_or_init(async || {
-            basisu_c_sys::instantiate_builtin_wasm().await;
+            basisu_c_sys::instantiate_embedded_basisu_wasm().await;
             unsafe { enc_sys::bu_init() };
         })
         .await;
@@ -20,44 +21,6 @@ pub async fn basisu_encoder_init() {
 
 pub fn basisu_encoder_enable_debug_printf(enable: bool) {
     unsafe { enc_sys::bu_enable_debug_printf(enable as u32) };
-}
-
-#[derive(Debug, Clone, Copy, Serialize, Deserialize)]
-#[repr(u32)]
-pub enum BasisTextureFormat {
-    Etc1s = common::BTF_ETC1S,
-    UastcLdr4x4 = common::BTF_UASTC_LDR_4X4,
-    UastcHdr4x4 = common::BTF_UASTC_HDR_4X4,
-    AstcHdr6x6 = common::BTF_ASTC_HDR_6X6,
-    UastcHdr6x6 = common::BTF_UASTC_HDR_6X6,
-    XuastcLdr4x4 = common::BTF_XUASTC_LDR_4X4,
-    XuastcLdr5x4 = common::BTF_XUASTC_LDR_5X4,
-    XuastcLdr5x5 = common::BTF_XUASTC_LDR_5X5,
-    XuastcLdr6x5 = common::BTF_XUASTC_LDR_6X5,
-    XuastcLdr6x6 = common::BTF_XUASTC_LDR_6X6,
-    XuastcLdr8x5 = common::BTF_XUASTC_LDR_8X5,
-    XuastcLdr8x6 = common::BTF_XUASTC_LDR_8X6,
-    XuastcLdr10x5 = common::BTF_XUASTC_LDR_10X5,
-    XuastcLdr10x6 = common::BTF_XUASTC_LDR_10X6,
-    XuastcLdr8x8 = common::BTF_XUASTC_LDR_8X8,
-    XuastcLdr10x8 = common::BTF_XUASTC_LDR_10X8,
-    XuastcLdr10x10 = common::BTF_XUASTC_LDR_10X10,
-    XuastcLdr12x10 = common::BTF_XUASTC_LDR_12X10,
-    XuastcLdr12x12 = common::BTF_XUASTC_LDR_12X12,
-    AstcLdr4x4 = common::BTF_ASTC_LDR_4X4,
-    AstcLdr5x4 = common::BTF_ASTC_LDR_5X4,
-    AstcLdr5x5 = common::BTF_ASTC_LDR_5X5,
-    AstcLdr6x5 = common::BTF_ASTC_LDR_6X5,
-    AstcLdr6x6 = common::BTF_ASTC_LDR_6X6,
-    AstcLdr8x5 = common::BTF_ASTC_LDR_8X5,
-    AstcLdr8x6 = common::BTF_ASTC_LDR_8X6,
-    AstcLdr10x5 = common::BTF_ASTC_LDR_10X5,
-    AstcLdr10x6 = common::BTF_ASTC_LDR_10X6,
-    AstcLdr8x8 = common::BTF_ASTC_LDR_8X8,
-    AstcLdr10x8 = common::BTF_ASTC_LDR_10X8,
-    AstcLdr10x10 = common::BTF_ASTC_LDR_10X10,
-    AstcLdr12x10 = common::BTF_ASTC_LDR_12X10,
-    AstcLdr12x12 = common::BTF_ASTC_LDR_12X12,
 }
 
 pub struct BasisuEncoder {
@@ -73,7 +36,7 @@ impl Default for BasisuEncoder {
 #[derive(Debug, thiserror::Error)]
 pub enum BasisuEncodeError {
     #[error("Image data must not be None")]
-    DataIsNone,
+    ImageDataIsNone,
     #[error("Mip level count must be 1")]
     MipLevelCountNotOne,
     #[error("Unsupported texture format: {0:?}")]
@@ -158,6 +121,9 @@ impl BasisuEncoderParams {
 
 impl BasisuEncoder {
     pub fn new() -> Self {
+        if !BASISU_INITIALIZED.is_initialized() {
+            panic!("`basisu_encoder_init` must be called before create encoder");
+        }
         Self {
             params: unsafe { enc_sys::bu_new_comp_params() },
         }
@@ -167,7 +133,7 @@ impl BasisuEncoder {
         self.clear_image();
 
         let Some(data) = image.data.as_ref() else {
-            return Err(BasisuEncodeError::DataIsNone);
+            return Err(BasisuEncodeError::ImageDataIsNone);
         };
         if image.texture_descriptor.mip_level_count != 1 {
             return Err(BasisuEncodeError::MipLevelCountNotOne);
@@ -195,7 +161,7 @@ impl BasisuEncoder {
         match image.texture_descriptor.format {
             TextureFormat::Rgba8Unorm | TextureFormat::Rgba8UnormSrgb => unsafe {
                 let basisu_ptr = enc_sys::bu_alloc(data.len() as u64);
-                basisu_c_sys::copy_host_memory_to_basisu(&data, basisu_ptr);
+                basisu_c_sys::copy_host_memory_to_basisu(data, basisu_ptr);
                 for i in 0..image.texture_descriptor.array_layer_count() {
                     if enc_sys::bu_comp_params_set_image_rgba32(
                         self.params,
@@ -215,7 +181,7 @@ impl BasisuEncoder {
             },
             TextureFormat::Rgba32Float => unsafe {
                 let basisu_ptr = enc_sys::bu_alloc(data.len() as u64);
-                basisu_c_sys::copy_host_memory_to_basisu(&data, basisu_ptr);
+                basisu_c_sys::copy_host_memory_to_basisu(data, basisu_ptr);
                 for i in 0..image.texture_descriptor.array_layer_count() {
                     if enc_sys::bu_comp_params_set_image_float_rgba(
                         self.params,
@@ -248,7 +214,7 @@ impl BasisuEncoder {
 
     pub fn set_image_slice(&mut self, index: u32, image: &Image) -> Result<(), BasisuEncodeError> {
         let Some(data) = image.data.as_ref() else {
-            return Err(BasisuEncodeError::DataIsNone);
+            return Err(BasisuEncodeError::ImageDataIsNone);
         };
         if image.texture_descriptor.mip_level_count != 1 {
             return Err(BasisuEncodeError::MipLevelCountNotOne);
@@ -279,7 +245,7 @@ impl BasisuEncoder {
         match image.texture_descriptor.format {
             TextureFormat::Rgba8Unorm | TextureFormat::Rgba8UnormSrgb => unsafe {
                 let basisu_ptr = enc_sys::bu_alloc(data.len() as u64);
-                basisu_c_sys::copy_host_memory_to_basisu(&data, basisu_ptr);
+                basisu_c_sys::copy_host_memory_to_basisu(data, basisu_ptr);
                 if enc_sys::bu_comp_params_set_image_rgba32(
                     self.params,
                     index,
@@ -297,7 +263,7 @@ impl BasisuEncoder {
             },
             TextureFormat::Rgba32Float => unsafe {
                 let basisu_ptr = enc_sys::bu_alloc(data.len() as u64);
-                basisu_c_sys::copy_host_memory_to_basisu(&data, basisu_ptr);
+                basisu_c_sys::copy_host_memory_to_basisu(data, basisu_ptr);
                 if enc_sys::bu_comp_params_set_image_float_rgba(
                     self.params,
                     index,

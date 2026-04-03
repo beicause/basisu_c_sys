@@ -21,7 +21,7 @@ impl Default for BasisuTextureSaverSettings {
     fn default() -> Self {
         Self {
             params: BasisuEncoderParams::new_with_srgb_defaults(
-                crate::encoder::BasisTextureFormat::XuastcLdr4x4,
+                basisu_c_sys::BasisTextureFormat::XuastcLdr4x4,
             ),
         }
     }

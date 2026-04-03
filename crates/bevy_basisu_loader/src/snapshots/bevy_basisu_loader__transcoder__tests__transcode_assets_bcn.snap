@@ -1,0 +1,377 @@
+---
+source: crates/bevy_basisu_loader/src/transcoder.rs
+expression: results
+---
+[
+    (
+        "alpha0_etc1s_mips.basisu.ktx2",
+        TranscodeInfo {
+            width: 256,
+            height: 256,
+            levels: 9,
+            layers: 0,
+            faces: 1,
+            is_srgb: true,
+            basis_format: Etc1s,
+            preferred_target: Bc7Rgba,
+        },
+        Image {
+            data: None,
+            data_order: MipMajor,
+            texture_descriptor: TextureDescriptor {
+                label: None,
+                size: (
+                    256,
+                    256,
+                    1,
+                ),
+                mip_level_count: 9,
+                sample_count: 1,
+                dimension: D2,
+                format: Bc7RgbaUnormSrgb,
+                usage: TextureUsages(
+                    COPY_SRC | COPY_DST | TEXTURE_BINDING,
+                ),
+                view_formats: [],
+            },
+            sampler: Default,
+            texture_view_descriptor: Some(
+                TextureViewDescriptor {
+                    label: None,
+                    format: None,
+                    dimension: Some(
+                        D2,
+                    ),
+                    usage: None,
+                    aspect: All,
+                    base_mip_level: 0,
+                    mip_level_count: None,
+                    base_array_layer: 0,
+                    array_layer_count: None,
+                },
+            ),
+            asset_usage: RenderAssetUsages(
+                MAIN_WORLD | RENDER_WORLD,
+            ),
+            copy_on_resize: false,
+        },
+    ),
+    (
+        "desk_uastc_hdr_4x4.basisu.ktx2",
+        TranscodeInfo {
+            width: 648,
+            height: 876,
+            levels: 1,
+            layers: 0,
+            faces: 1,
+            is_srgb: false,
+            basis_format: UastcHdr4x4,
+            preferred_target: Bc6H,
+        },
+        Image {
+            data: None,
+            data_order: MipMajor,
+            texture_descriptor: TextureDescriptor {
+                label: None,
+                size: (
+                    648,
+                    876,
+                    1,
+                ),
+                mip_level_count: 1,
+                sample_count: 1,
+                dimension: D2,
+                format: Bc6hRgbUfloat,
+                usage: TextureUsages(
+                    COPY_SRC | COPY_DST | TEXTURE_BINDING,
+                ),
+                view_formats: [],
+            },
+            sampler: Default,
+            texture_view_descriptor: Some(
+                TextureViewDescriptor {
+                    label: None,
+                    format: None,
+                    dimension: Some(
+                        D2,
+                    ),
+                    usage: None,
+                    aspect: All,
+                    base_mip_level: 0,
+                    mip_level_count: None,
+                    base_array_layer: 0,
+                    array_layer_count: None,
+                },
+            ),
+            asset_usage: RenderAssetUsages(
+                MAIN_WORLD | RENDER_WORLD,
+            ),
+            copy_on_resize: false,
+        },
+    ),
+    (
+        "desk_uastc_hdr_6x6_mips.basisu.ktx2",
+        TranscodeInfo {
+            width: 648,
+            height: 876,
+            levels: 10,
+            layers: 0,
+            faces: 1,
+            is_srgb: false,
+            basis_format: UastcHdr6x6,
+            preferred_target: Bc6H,
+        },
+        Image {
+            data: None,
+            data_order: MipMajor,
+            texture_descriptor: TextureDescriptor {
+                label: None,
+                size: (
+                    648,
+                    876,
+                    1,
+                ),
+                mip_level_count: 10,
+                sample_count: 1,
+                dimension: D2,
+                format: Bc6hRgbUfloat,
+                usage: TextureUsages(
+                    COPY_SRC | COPY_DST | TEXTURE_BINDING,
+                ),
+                view_formats: [],
+            },
+            sampler: Default,
+            texture_view_descriptor: Some(
+                TextureViewDescriptor {
+                    label: None,
+                    format: None,
+                    dimension: Some(
+                        D2,
+                    ),
+                    usage: None,
+                    aspect: All,
+                    base_mip_level: 0,
+                    mip_level_count: None,
+                    base_array_layer: 0,
+                    array_layer_count: None,
+                },
+            ),
+            asset_usage: RenderAssetUsages(
+                MAIN_WORLD | RENDER_WORLD,
+            ),
+            copy_on_resize: false,
+        },
+    ),
+    (
+        "kodim20_astc_ldr_8x8_mips.basisu.ktx2",
+        TranscodeInfo {
+            width: 768,
+            height: 512,
+            levels: 10,
+            layers: 0,
+            faces: 1,
+            is_srgb: true,
+            basis_format: AstcLdr8x8,
+            preferred_target: Bc7Rgba,
+        },
+        Image {
+            data: None,
+            data_order: MipMajor,
+            texture_descriptor: TextureDescriptor {
+                label: None,
+                size: (
+                    768,
+                    512,
+                    1,
+                ),
+                mip_level_count: 10,
+                sample_count: 1,
+                dimension: D2,
+                format: Bc7RgbaUnormSrgb,
+                usage: TextureUsages(
+                    COPY_SRC | COPY_DST | TEXTURE_BINDING,
+                ),
+                view_formats: [],
+            },
+            sampler: Default,
+            texture_view_descriptor: Some(
+                TextureViewDescriptor {
+                    label: None,
+                    format: None,
+                    dimension: Some(
+                        D2,
+                    ),
+                    usage: None,
+                    aspect: All,
+                    base_mip_level: 0,
+                    mip_level_count: None,
+                    base_array_layer: 0,
+                    array_layer_count: None,
+                },
+            ),
+            asset_usage: RenderAssetUsages(
+                MAIN_WORLD | RENDER_WORLD,
+            ),
+            copy_on_resize: false,
+        },
+    ),
+    (
+        "skybox_xuastc_ldr_8x8_cubemap_mips.basisu.ktx2",
+        TranscodeInfo {
+            width: 2048,
+            height: 2048,
+            levels: 12,
+            layers: 0,
+            faces: 6,
+            is_srgb: true,
+            basis_format: XuastcLdr8x8,
+            preferred_target: Bc7Rgba,
+        },
+        Image {
+            data: None,
+            data_order: MipMajor,
+            texture_descriptor: TextureDescriptor {
+                label: None,
+                size: (
+                    2048,
+                    2048,
+                    6,
+                ),
+                mip_level_count: 12,
+                sample_count: 1,
+                dimension: D2,
+                format: Bc7RgbaUnormSrgb,
+                usage: TextureUsages(
+                    COPY_SRC | COPY_DST | TEXTURE_BINDING,
+                ),
+                view_formats: [],
+            },
+            sampler: Default,
+            texture_view_descriptor: Some(
+                TextureViewDescriptor {
+                    label: None,
+                    format: None,
+                    dimension: Some(
+                        Cube,
+                    ),
+                    usage: None,
+                    aspect: All,
+                    base_mip_level: 0,
+                    mip_level_count: None,
+                    base_array_layer: 0,
+                    array_layer_count: None,
+                },
+            ),
+            asset_usage: RenderAssetUsages(
+                MAIN_WORLD | RENDER_WORLD,
+            ),
+            copy_on_resize: false,
+        },
+    ),
+    (
+        "tough_uastc_ldr_4x4.basisu.ktx2",
+        TranscodeInfo {
+            width: 1120,
+            height: 1104,
+            levels: 1,
+            layers: 0,
+            faces: 1,
+            is_srgb: true,
+            basis_format: UastcLdr4x4,
+            preferred_target: Bc7Rgba,
+        },
+        Image {
+            data: None,
+            data_order: MipMajor,
+            texture_descriptor: TextureDescriptor {
+                label: None,
+                size: (
+                    1120,
+                    1104,
+                    1,
+                ),
+                mip_level_count: 1,
+                sample_count: 1,
+                dimension: D2,
+                format: Bc7RgbaUnormSrgb,
+                usage: TextureUsages(
+                    COPY_SRC | COPY_DST | TEXTURE_BINDING,
+                ),
+                view_formats: [],
+            },
+            sampler: Default,
+            texture_view_descriptor: Some(
+                TextureViewDescriptor {
+                    label: None,
+                    format: None,
+                    dimension: Some(
+                        D2,
+                    ),
+                    usage: None,
+                    aspect: All,
+                    base_mip_level: 0,
+                    mip_level_count: None,
+                    base_array_layer: 0,
+                    array_layer_count: None,
+                },
+            ),
+            asset_usage: RenderAssetUsages(
+                MAIN_WORLD | RENDER_WORLD,
+            ),
+            copy_on_resize: false,
+        },
+    ),
+    (
+        "wikipedia_xuastc_ldr_8x8_mips.basisu.ktx2",
+        TranscodeInfo {
+            width: 1848,
+            height: 888,
+            levels: 11,
+            layers: 0,
+            faces: 1,
+            is_srgb: true,
+            basis_format: XuastcLdr8x8,
+            preferred_target: Bc7Rgba,
+        },
+        Image {
+            data: None,
+            data_order: MipMajor,
+            texture_descriptor: TextureDescriptor {
+                label: None,
+                size: (
+                    1848,
+                    888,
+                    1,
+                ),
+                mip_level_count: 11,
+                sample_count: 1,
+                dimension: D2,
+                format: Bc7RgbaUnormSrgb,
+                usage: TextureUsages(
+                    COPY_SRC | COPY_DST | TEXTURE_BINDING,
+                ),
+                view_formats: [],
+            },
+            sampler: Default,
+            texture_view_descriptor: Some(
+                TextureViewDescriptor {
+                    label: None,
+                    format: None,
+                    dimension: Some(
+                        D2,
+                    ),
+                    usage: None,
+                    aspect: All,
+                    base_mip_level: 0,
+                    mip_level_count: None,
+                    base_array_layer: 0,
+                    array_layer_count: None,
+                },
+            ),
+            asset_usage: RenderAssetUsages(
+                MAIN_WORLD | RENDER_WORLD,
+            ),
+            copy_on_resize: false,
+        },
+    ),
+]

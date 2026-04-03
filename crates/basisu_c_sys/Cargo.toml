@@ -9,12 +9,17 @@ keywords = ["basis-universal", "ffi"]
 include = ["vendor/basis_universal", "build.rs", "README.md", "src/*.rs"]
 
 [features]
-default = ["encoder"]
+default = []
 encoder = []
+serde = ["dep:serde"]
 __build-wasm-cli = ["dep:clap"]
 
 [dependencies]
 clap = { version = "4.5", features = ["derive"], optional = true }
+serde = { version = "1.0.228", optional = true, default-features = false, features = [
+  "derive",
+] }
+
 
 [target.wasm32-unknown-unknown.dependencies]
 wasm-bindgen = "0.2"
@@ -24,7 +29,11 @@ wasm-bindgen-futures = "0.4"
 [build-dependencies]
 cc = { version = "1.2", features = ["parallel"] }
 bindgen = "0.72"
-syn = { version = "2.0.117", default-features = false, features = ["full", "parsing", "printing"] }
+syn = { version = "2.0.117", default-features = false, features = [
+  "full",
+  "parsing",
+  "printing",
+] }
 prettyplease = "0.2.37"
 
 [[bin]]

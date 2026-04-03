@@ -28,7 +28,7 @@ use binding::Basisu;
 #[cfg(feature = "encoder")]
 const BASISU_WASM: &[u8] = include_bytes!("../wasm/basisu_encoder.wasm");
 #[cfg(not(feature = "encoder"))]
-const BASISU_WASM: &[u8] = include_bytes!("../wasm/basisu_encoder.wasm");
+const BASISU_WASM: &[u8] = include_bytes!("../wasm/basisu_transcoder.wasm");
 
 thread_local! {
     static BASISU_INSTANCE: OnceCell<Basisu> = OnceCell::new();
@@ -55,7 +55,12 @@ mod instance {
     }
 }
 
-pub async fn instantiate_builtin_wasm() {
+/// Instantiate the embedded basisu wasm, required on web before calling other functions.
+/// This is no-op on native platform.
+pub async fn instantiate_embedded_basisu_wasm() {
+    if BASISU_INSTANCE.with(|cell| cell.get().is_some()) {
+        return;
+    }
     let binary = Uint8Array::new_from_slice(BASISU_WASM);
     let args = Object::new();
     Reflect::set(&args, &"wasmBinary".into(), &binary).unwrap();
@@ -78,6 +83,9 @@ pub mod transcoder {
     include!(concat!(env!("OUT_DIR"), "/wasm_transcoder_pub_funcs.rs"));
 }
 
+/// # Safety
+/// `basisu_ptr` must be valid pointer allocated by `bu_alloc` or `bt_alloc`
+/// and must be valid for writes of `data.len()` bytes.
 pub unsafe fn copy_host_memory_to_basisu(data: &[u8], basisu_ptr: u64) {
     BASISU_INSTANCE.with(|inst| {
         let inst = inst.get().unwrap();
@@ -86,6 +94,9 @@ pub unsafe fn copy_host_memory_to_basisu(data: &[u8], basisu_ptr: u64) {
     });
 }
 
+/// # Safety
+/// `basisu_ptr` must be valid pointer allocated by `bu_alloc` or `bt_alloc`
+/// and must be valid for reads of `count` bytes.
 pub unsafe fn copy_basisu_memory_to_host(basisu_ptr: u64, count: u64) -> alloc::vec::Vec<u8> {
     BASISU_INSTANCE.with(|inst| {
         let inst = inst.get().unwrap();

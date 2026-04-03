@@ -270,8 +270,7 @@ fn wasm_bindgen() {
     let transcoder_binding_apis = gen_binding_funcs(&transcoder_ast);
 
     std::fs::write(
-        std::path::Path::new(&std::env::var("OUT_DIR").unwrap())
-            .join(format!("wasm_encoder_binding.rs")),
+        std::path::Path::new(&std::env::var("OUT_DIR").unwrap()).join("wasm_encoder_binding.rs"),
         prettyplease::unparse(&syn::parse_quote!(
             #[wasm_bindgen]
             extern "C" {
@@ -289,13 +288,15 @@ fn wasm_bindgen() {
     .unwrap();
 
     std::fs::write(
-        std::path::Path::new(&std::env::var("OUT_DIR").unwrap())
-            .join(format!("wasm_transcoder_binding.rs")),
+        std::path::Path::new(&std::env::var("OUT_DIR").unwrap()).join("wasm_transcoder_binding.rs"),
         prettyplease::unparse(&syn::parse_quote!(
             #[wasm_bindgen]
             extern "C" {
                 #[derive(Debug)]
                 pub type Basisu;
+
+                #[wasm_bindgen(method,getter,js_name=HEAPU8)]
+                pub(crate) fn wasm_heap_memory(this: &Basisu) -> Uint8Array;
 
                 #(#transcoder_binding_apis)*
             }
@@ -307,8 +308,7 @@ fn wasm_bindgen() {
     let transcoder_pub_funcs = gen_public_funcs(&transcoder_ast);
 
     std::fs::write(
-        std::path::Path::new(&std::env::var("OUT_DIR").unwrap())
-            .join(format!("wasm_encoder_pub_funcs.rs")),
+        std::path::Path::new(&std::env::var("OUT_DIR").unwrap()).join("wasm_encoder_pub_funcs.rs"),
         prettyplease::unparse(&syn::parse_quote!(
             #(#encoder_pub_funcs)*
         )),
@@ -317,7 +317,7 @@ fn wasm_bindgen() {
 
     std::fs::write(
         std::path::Path::new(&std::env::var("OUT_DIR").unwrap())
-            .join(format!("wasm_transcoder_pub_funcs.rs")),
+            .join("wasm_transcoder_pub_funcs.rs"),
         prettyplease::unparse(&syn::parse_quote!(
             #(#transcoder_pub_funcs)*
         )),

@@ -9,7 +9,7 @@ Basis universal texture encoder and bevy asset processor to transform images to 
 
 This is based on [basisu_c_sys](../basisu_c_sys/) and [bevy_basisu_loader](../bevy_basisu_loader/).
 
-This doesn't support `wasm32-unknown-unknown`.
+`wasm32-unknown-unknown` should be supported but untested.
 
 ## Usage
 

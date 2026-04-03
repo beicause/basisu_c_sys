@@ -4,7 +4,6 @@ use bevy::{
     log::LogPlugin,
     math::Affine2,
     prelude::*,
-    render::render_resource::TextureFormat,
 };
 use bevy_basisu_loader::{BasisuLoaderPlugin, BasisuLoaderSettings};
 
@@ -91,7 +90,8 @@ fn setup(
             base_color_texture: Some(asset_server.load_with_settings(
                 IMAGE_PATH_DESK2,
                 |s: &mut BasisuLoaderSettings| {
-                    s.force_transcode_target = Some(TextureFormat::Rgb9e5Ufloat);
+                    s.force_transcode_target =
+                        Some(bevy_basisu_loader::basisu_c_sys::TranscodeTargetFormat::Rgb9e5);
                     s.sampler =
                         bevy::image::ImageSampler::Descriptor(bevy::image::ImageSamplerDescriptor {
                             address_mode_u: bevy::image::ImageAddressMode::Repeat,
@@ -112,7 +112,7 @@ fn setup(
             base_color_texture: Some(asset_server.load_with_settings(
                 IMAGE_PATH_ALPHA0,
                 |s: &mut BasisuLoaderSettings| {
-                    s.channel_type_hint = bevy_basisu_loader::ChannelType::Rg;
+                    s.channel_type_hint = bevy_basisu_loader::transcoder::ChannelType::Rg;
                 },
             )),
             alpha_mode: AlphaMode::Blend,

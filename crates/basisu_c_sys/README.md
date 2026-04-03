@@ -7,4 +7,4 @@
 
 See also https://github.com/BinomialLLC/basis_universal/wiki#encoder-and-transcoding-c-api-documentation
 
-This doesn't support `wasm32-unknown-unknown`.
+Supports `wasm32-unknown-unknown` by `instantiate_embedded_basisu_wasm`.

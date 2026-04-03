@@ -2,20 +2,23 @@
 //!
 //! This is based on [basisu_c_sys](https://crates.io/crates/basisu_c_sys) and [bevy_basisu_loader](https://crates.io/crates/bevy_basisu_loader).
 
+use crate::{encoder::basisu_encoder_init, saver::BasisuTextureSaver};
+#[cfg(all(
+    target_arch = "wasm32",
+    target_vendor = "unknown",
+    target_os = "unknown",
+))]
+use bevy::platform::sync::{
+    Arc,
+    atomic::{AtomicUsize, Ordering},
+};
 use bevy::{
     app::Plugin,
     asset::{processor::LoadTransformAndSave, transformer::IdentityAssetTransformer},
-    ecs::resource::Resource,
     image::{Image, ImageLoader},
-    platform::sync::{
-        Arc,
-        atomic::{AtomicUsize, Ordering},
-    },
     prelude::*,
 };
 use bevy_basisu_loader::BasisuLoaderPlugin;
-
-use crate::{encoder::basisu_encoder_init, saver::BasisuTextureSaver};
 
 pub mod encoder;
 pub mod saver;
