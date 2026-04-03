@@ -17,7 +17,7 @@ This plugin adds a loader for Basis Universal KTX2 textures with support for all
 
 Web demo: https://beicause.github.io/bevy_basisu_loader
 
-Note: This doesn't include BasisU encoder. To encode textures to `.ktx2`,  use [bevy_basisu_saver](../bevy_basisu_saver/) or the command line tool in [Basis Universal](https://github.com/BinomialLLC/basis_universal/?tab=readme-ov-file#compressing-and-unpacking-ktx2basis-files) repo.
+To encode textures to basisu `.ktx2`,  use [bevy_basisu_saver](../bevy_basisu_saver/) or the command line tool in [Basis Universal](https://github.com/BinomialLLC/basis_universal/?tab=readme-ov-file#compressing-and-unpacking-ktx2basis-files) repo.
 
 ## Usage
 
@@ -51,24 +51,16 @@ the texture dimensions should satisfy all possible block sizes. For example, XUA
 
 TLDR: Just build your bevy application to `wasm32-unknown-unknown` normally.
 
-The prebuilt wasm in `crates/bevy_basisu_loader_sys/wasm` is automatically embedded in binary when building `wasm32-unknown-unknown`. It was prebuilt through CI with:
+This crate is based on [basisu_c_sys](../basisu_c_sys/). The prebuilt wasm in `crates/basisu_c_sys/wasm` is automatically embedded in binary when building `wasm32-unknown-unknown`. It was prebuilt through:
 ```sh
-cargo r -p bevy_basisu_loader_sys --bin build-wasm-cli --features build-wasm-cli -- --emcc-flags="-Os -msimd128 -flto=full -sEVAL_CTORS" --wasm-opt-flags="-Os --enable-simd --enable-bulk-memory-opt --enable-nontrapping-float-to-int"
+cargo r -p basisu_c_sys --bin build-wasm-cli --features __build-wasm-cli -- --emcc-flags="-Os -msimd128 -flto=full -sEVAL_CTORS" --wasm-opt-flags="-Os --enable-simd --enable-bulk-memory-opt --enable-nontrapping-float-to-int"
 ```
-
-To run on web, this repo uses a solution:
-
-The `crates/bevy_basisu_loader_sys/` contains a high level wrapper of the basis universal C++ library.
-
-For native platforms, it just builds and statically links the C++ library.
-
-For web, it contains a tool to build vendored basisu using Emscripten and produce js and wasm files. The basisu wrapper is designed so that it does not need to share memory with main Wasm module, instead its memory is copied from/into main Wasm module through javascript. When building this plugin targeting `wasm32-unknown-unknown`, the basisu js and wasm files are embedded into binary and is called through `wasm-bindgen` and `js-sys`.
 
 ## Bevy version compatibility
 
 | `bevy` | `bevy_basisu_loader` | `basis_universal` |
 | ------ | -------------------- | ----------------- |
-| 0.18   | 0.3, 0.4             | v2_1_0            |
+| 0.18   | 0.3, 0.4, 0.5        | v2_1_0            |
 | 0.17   | 0.1, 0.2             | v1_60_snapshot    |
 
 ## License

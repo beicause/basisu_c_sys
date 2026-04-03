@@ -13,7 +13,6 @@ concurrency:
 
 env:
   CARGO_TERM_COLOR: always
-  EM_VERSION: 5.0.0
   ANDROID_NDK_VERSION: 28.1.13356709
 
 jobs:
@@ -53,7 +52,7 @@ jobs:
           RUSTDOCFLAGS: -D warnings
 
       - name: Build ${{ matrix.cargo-flags }}
-        run: cargo build ${{ matrix.cargo-flags }}
+        run: cargo build --workspace ${{ matrix.cargo-flags }}
 
       - name: Test ${{ matrix.cargo-flags }}
         run: cargo test --workspace ${{ matrix.cargo-flags }}
@@ -70,24 +69,8 @@ jobs:
           toolchain: stable
           targets: wasm32-unknown-unknown
 
-      - name: Install Emscripten
-        uses: mymindstorm/setup-emsdk@v14
-        with:
-          version: ${{ env.EM_VERSION }}
-
-      - name: Install wasm-opt
-        run: wget https://github.com/WebAssembly/binaryen/releases/download/version_125/binaryen-version_125-x86_64-linux.tar.gz && tar -xvf binaryen-version_125-x86_64-linux.tar.gz && sudo cp binaryen-version_125/bin/wasm-opt /usr/local/bin/ && rm -r binaryen-version_125 && rm binaryen-version_125-x86_64-linux.tar.gz
-
-      - name: Build vendored basisu to wasm
-        run: cargo r -p bevy_basisu_loader_sys --bin build-wasm-cli --features build-wasm-cli -- --emcc-flags="-Os -msimd128 -flto=full -sEVAL_CTORS" --wasm-opt-flags="-Os --enable-simd --enable-bulk-memory-opt --enable-nontrapping-float-to-int"
-
-      - name: Upload artifact
-        uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6.0.0
-        with:
-          path: crates/bevy_basisu_loader_sys/wasm/
-
       - name: Build wasm
-        run: RUSTFLAGS="-Ctarget-feature=+simd128" cargo build -p test_scene --target wasm32-unknown-unknown
+        run: RUSTFLAGS="-Ctarget-feature=+simd128" cargo build --workspace --target wasm32-unknown-unknown
 
   build-android:
     name: Build android

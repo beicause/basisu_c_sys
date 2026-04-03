@@ -4,6 +4,11 @@
 
 -
 
+## v0.5.0
+
+- `bevy_basisu_loader_sys` is replaced by `basisu_c_sys` thus some types are changed.
+- Add `BasisuTranscoder` which is a thin wrapper of `basisu_c_sys`.
+
 ## v0.4.4
 
 - `bevy_basisu_loader_sys`: Fix some potential unsoundness.

@@ -58,7 +58,7 @@ fn encode_cubemap(face_paths: &[String; 6], debug: bool) -> Vec<u8> {
         encoder.set_image_slice(i as u32, &image).unwrap();
     }
     let params = BasisuEncoderParams::new_with_srgb_defaults(
-        bevy_basisu_saver::encoder::BasisTextureFormat::XuastcLdr6x6,
+        bevy_basisu_saver::c_sys::BasisTextureFormat::XuastcLdr6x6,
     )
     .with_tex_type(TextureViewDimension::Cube);
 
@@ -73,7 +73,7 @@ fn encode_cubemap(face_paths: &[String; 6], debug: bool) -> Vec<u8> {
 
 #[cfg(test)]
 mod tests {
-    use bevy_basisu_saver::encoder::{basisu_enable_debug_printf, basisu_init};
+    use bevy_basisu_saver::encoder::{basisu_encoder_enable_debug_printf, basisu_encoder_init};
 
     use super::*;
 
@@ -120,7 +120,7 @@ mod tests {
         encoder
             .compress(
                 BasisuEncoderParams::new_with_srgb_defaults(
-                    bevy_basisu_saver::encoder::BasisTextureFormat::XuastcLdr4x4,
+                    bevy_basisu_saver::c_sys::BasisTextureFormat::XuastcLdr4x4,
                 )
                 .with_tex_type(TextureViewDimension::Cube)
                 .with_flags(BU_COMP_FLAGS_DEBUG_OUTPUT | BU_COMP_FLAGS_VALIDATE_OUTPUT),
@@ -130,8 +130,8 @@ mod tests {
 
     #[test]
     fn validate_encoding_via_set_image() {
-        basisu_init();
-        basisu_enable_debug_printf(true);
+        bevy::tasks::block_on(basisu_encoder_init());
+        basisu_encoder_enable_debug_printf(true);
 
         let paths = [
             "skybox/right.jpg",
@@ -148,8 +148,8 @@ mod tests {
 
     #[test]
     fn validate_encoding_via_set_image_slice() {
-        basisu_init();
-        basisu_enable_debug_printf(true);
+        bevy::tasks::block_on(basisu_encoder_init());
+        basisu_encoder_enable_debug_printf(true);
 
         let paths = [
             "skybox/right.jpg",

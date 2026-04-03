@@ -1,4 +1,5 @@
-include!(concat!(env!("OUT_DIR"), "/build_wasm_emcc_args.rs"));
+include!(concat!(env!("OUT_DIR"), "/build_encoder_emcc_args.rs"));
+include!(concat!(env!("OUT_DIR"), "/build_transcoder_emcc_args.rs"));
 
 use clap::Parser;
 
@@ -13,12 +14,12 @@ struct Args {
     wasm_opt_flags: Option<String>,
 }
 
-pub fn build_wasm_cmd() {
+pub fn build_wasm_cmd(name: &str, default_emcc_args: &[&str]) {
     let manifest_dir = std::env::var("CARGO_MANIFEST_DIR").unwrap();
     std::env::set_current_dir(manifest_dir).unwrap();
 
     let mut emcc_cmd = std::process::Command::new("em++");
-    emcc_cmd.args(DEFAULT_EMCC_ARGS);
+    emcc_cmd.args(default_emcc_args);
 
     let user_args = Args::parse();
     if let Some(flags) = user_args.emcc_flags {
@@ -44,7 +45,11 @@ pub fn build_wasm_cmd() {
 
     if let Some(flags) = user_args.wasm_opt_flags {
         let mut wasm_opt_cmd = std::process::Command::new("wasm-opt");
-        wasm_opt_cmd.args(["wasm/basisu_vendor.wasm", "-o", "wasm/basisu_vendor.wasm"]);
+        wasm_opt_cmd.args([
+            format!("wasm/basisu_{name}.wasm"),
+            "-o".to_string(),
+            format!("wasm/basisu_{name}.wasm"),
+        ]);
 
         wasm_opt_cmd.args(flags.split(" ").filter(|s| !s.is_empty()));
 
@@ -72,5 +77,10 @@ pub fn build_wasm_cmd() {
 }
 
 fn main() {
-    build_wasm_cmd();
+    for (name, args) in [
+        ("encoder", DEFAULT_ENCODER_EMCC_ARGS),
+        ("transcoder", DEFAULT_TRANSCODER_EMCC_ARGS),
+    ] {
+        build_wasm_cmd(name, args);
+    }
 }
