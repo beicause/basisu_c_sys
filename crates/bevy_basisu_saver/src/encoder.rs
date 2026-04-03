@@ -194,36 +194,44 @@ impl BasisuEncoder {
         };
         match image.texture_descriptor.format {
             TextureFormat::Rgba8Unorm | TextureFormat::Rgba8UnormSrgb => unsafe {
+                let basisu_ptr = enc_sys::bu_alloc(data.len() as u64);
+                basisu_c_sys::copy_host_memory_to_basisu(&data, basisu_ptr);
                 for i in 0..image.texture_descriptor.array_layer_count() {
                     if enc_sys::bu_comp_params_set_image_rgba32(
                         self.params,
                         i,
-                        data.as_ptr() as u64 + (i * image.width() * image.height() * 4) as u64,
+                        basisu_ptr + (i * image.width() * image.height() * 4) as u64,
                         image.width(),
                         image.height(),
                         image.width() * 4,
                     )
                     .is_err()
                     {
+                        enc_sys::bu_free(basisu_ptr);
                         return Err(BasisuEncodeError::BuSetImageFailed);
                     }
                 }
+                enc_sys::bu_free(basisu_ptr);
             },
             TextureFormat::Rgba32Float => unsafe {
+                let basisu_ptr = enc_sys::bu_alloc(data.len() as u64);
+                basisu_c_sys::copy_host_memory_to_basisu(&data, basisu_ptr);
                 for i in 0..image.texture_descriptor.array_layer_count() {
                     if enc_sys::bu_comp_params_set_image_float_rgba(
                         self.params,
                         i,
-                        data.as_ptr() as u64 + (i * image.width() * image.height() * 16) as u64,
+                        basisu_ptr + (i * image.width() * image.height() * 16) as u64,
                         image.width(),
                         image.height(),
                         image.width() * 16,
                     )
                     .is_err()
                     {
+                        enc_sys::bu_free(basisu_ptr);
                         return Err(BasisuEncodeError::BuSetImageFailed);
                     }
                 }
+                enc_sys::bu_free(basisu_ptr);
             },
             _ => {
                 return Err(BasisuEncodeError::UnsupportedTextureFormat(
@@ -270,32 +278,40 @@ impl BasisuEncoder {
         };
         match image.texture_descriptor.format {
             TextureFormat::Rgba8Unorm | TextureFormat::Rgba8UnormSrgb => unsafe {
+                let basisu_ptr = enc_sys::bu_alloc(data.len() as u64);
+                basisu_c_sys::copy_host_memory_to_basisu(&data, basisu_ptr);
                 if enc_sys::bu_comp_params_set_image_rgba32(
                     self.params,
                     index,
-                    data.as_ptr() as u64,
+                    basisu_ptr,
                     image.width(),
                     image.height(),
                     image.width() * 4,
                 )
                 .is_err()
                 {
+                    enc_sys::bu_free(basisu_ptr);
                     return Err(BasisuEncodeError::BuSetImageFailed);
                 }
+                enc_sys::bu_free(basisu_ptr);
             },
             TextureFormat::Rgba32Float => unsafe {
+                let basisu_ptr = enc_sys::bu_alloc(data.len() as u64);
+                basisu_c_sys::copy_host_memory_to_basisu(&data, basisu_ptr);
                 if enc_sys::bu_comp_params_set_image_float_rgba(
                     self.params,
                     index,
-                    data.as_ptr() as u64,
+                    basisu_ptr,
                     image.width(),
                     image.height(),
                     image.width() * 16,
                 )
                 .is_err()
                 {
+                    enc_sys::bu_free(basisu_ptr);
                     return Err(BasisuEncodeError::BuSetImageFailed);
                 }
+                enc_sys::bu_free(basisu_ptr);
             },
             _ => {
                 return Err(BasisuEncodeError::UnsupportedTextureFormat(
@@ -321,9 +337,8 @@ impl BasisuEncoder {
                 return Err(BasisuEncodeError::BuCompressFailed);
             }
             let out_size = enc_sys::bu_comp_params_get_comp_data_size(self.params);
-            let out_ptr = enc_sys::bu_comp_params_get_comp_data_ofs(self.params) as *const u8;
-            let mut result = vec![0u8; out_size as usize];
-            core::ptr::copy_nonoverlapping(out_ptr, result.as_mut_ptr(), out_size as usize);
+            let out_ptr = enc_sys::bu_comp_params_get_comp_data_ofs(self.params);
+            let result = basisu_c_sys::copy_basisu_memory_to_host(out_ptr, out_size);
             Ok(result)
         }
     }

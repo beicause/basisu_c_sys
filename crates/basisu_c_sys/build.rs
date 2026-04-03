@@ -278,6 +278,9 @@ fn wasm_bindgen() {
                 #[derive(Debug)]
                 pub type Basisu;
 
+                #[wasm_bindgen(method,getter,js_name=HEAPU8)]
+                pub(crate) fn wasm_heap_memory(this: &Basisu) -> Uint8Array;
+
                 #(#encoder_binding_apis)*
                 #(#transcoder_binding_apis)*
             }

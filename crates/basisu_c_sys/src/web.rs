@@ -15,7 +15,9 @@ impl Bool32 {
 }
 
 mod binding {
+    use js_sys::Uint8Array;
     use wasm_bindgen::prelude::*;
+
     #[cfg(feature = "encoder")]
     include!(concat!(env!("OUT_DIR"), "/wasm_encoder_binding.rs"));
     #[cfg(not(feature = "encoder"))]
@@ -74,4 +76,21 @@ pub mod transcoder {
     use super::BASISU_INSTANCE;
     use super::Bool32;
     include!(concat!(env!("OUT_DIR"), "/wasm_transcoder_pub_funcs.rs"));
+}
+
+pub unsafe fn copy_host_memory_to_basisu(data: &[u8], basisu_ptr: u64) {
+    BASISU_INSTANCE.with(|inst| {
+        let inst = inst.get().unwrap();
+        inst.wasm_heap_memory()
+            .set(&Uint8Array::from(data), basisu_ptr as u32);
+    });
+}
+
+pub unsafe fn copy_basisu_memory_to_host(basisu_ptr: u64, count: u64) -> alloc::vec::Vec<u8> {
+    BASISU_INSTANCE.with(|inst| {
+        let inst = inst.get().unwrap();
+        inst.wasm_heap_memory()
+            .subarray(basisu_ptr as u32, (basisu_ptr + count) as u32)
+            .to_vec()
+    })
 }
