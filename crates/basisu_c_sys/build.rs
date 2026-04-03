@@ -28,7 +28,8 @@ const DEFINES: &[(&str, &str)] = &[
     ("BASISD_SUPPORT_PVRTC2", "0"),
     // ("BASISD_SUPPORT_UASTC_HDR", "1"),
 ];
-const SRCS: &[&str] = &[
+
+const ENCODER_SRCS: &[&str] = &[
     "vendor/basis_universal/encoder/basisu_astc_hdr_6x6_enc.cpp",
     "vendor/basis_universal/encoder/basisu_astc_hdr_common.cpp",
     "vendor/basis_universal/encoder/basisu_astc_ldr_common.cpp",
@@ -59,13 +60,19 @@ const SRCS: &[&str] = &[
     "vendor/basis_universal/zstd/zstd.c",
 ];
 
+const TRANSCODER_SRCS: &[&str] = &[
+    "vendor/basis_universal/encoder/basisu_wasm_transcoder_api.cpp",
+    "vendor/basis_universal/transcoder/basisu_transcoder.cpp",
+    "vendor/basis_universal/zstd/zstddeclib.c",
+];
+
 fn main() {
     bindgen();
+    wasm_bindgen();
+    gen_wasm_build_cmd();
     let target = std::env::var("TARGET").unwrap();
     if target != "wasm32-unknown-unknown" {
         compile_basisu_static();
-    } else {
-        panic!("basisu_c_sys doesn't support wasm32-unknown-unknown yet");
     }
     println!("cargo::rerun-if-changed=vendor/");
 }
@@ -105,7 +112,7 @@ impl bindgen::callbacks::ParseCallbacks for WasmBoolRenameCallbacks {
 
 fn bindgen() {
     let binding_file =
-        std::path::PathBuf::from(std::env::var("OUT_DIR").unwrap()).join("basisu_api_common.rs");
+        std::path::Path::new(&std::env::var("OUT_DIR").unwrap()).join("basisu_api_common.rs");
     bindgen::Builder::default()
         .clang_args(&["-fvisibility=default"])
         .header("vendor/basis_universal/encoder/basisu_wasm_api_common.h")
@@ -124,7 +131,7 @@ fn bindgen() {
         .expect("Couldn't write bindings!");
 
     let binding_file =
-        std::path::PathBuf::from(std::env::var("OUT_DIR").unwrap()).join("basisu_c_api.rs");
+        std::path::Path::new(&std::env::var("OUT_DIR").unwrap()).join("basisu_c_api.rs");
     bindgen::Builder::default()
         .clang_args(&["-fvisibility=default"])
         .header("vendor/basis_universal/encoder/basisu_wasm_api.h")
@@ -139,8 +146,8 @@ fn bindgen() {
         .write_to_file(binding_file)
         .expect("Couldn't write bindings!");
 
-    let binding_file = std::path::PathBuf::from(std::env::var("OUT_DIR").unwrap())
-        .join("basisu_c_transcoder_api.rs");
+    let binding_file =
+        std::path::Path::new(&std::env::var("OUT_DIR").unwrap()).join("basisu_c_transcoder_api.rs");
     bindgen::Builder::default()
         .clang_args(&["-fvisibility=default"])
         .header("vendor/basis_universal/encoder/basisu_wasm_transcoder_api.h")
@@ -154,6 +161,83 @@ fn bindgen() {
         .expect("Unable to generate bindings")
         .write_to_file(binding_file)
         .expect("Couldn't write bindings!");
+}
+
+fn wasm_bindgen() {
+    let encoder_api_file =
+        std::path::Path::new(&std::env::var("OUT_DIR").unwrap()).join("basisu_c_api.rs");
+    let transcoder_api_file =
+        std::path::Path::new(&std::env::var("OUT_DIR").unwrap()).join("basisu_c_transcoder_api.rs");
+    let encoder_api_file = std::fs::read_to_string(encoder_api_file).unwrap();
+    let transcoder_api_file = std::fs::read_to_string(transcoder_api_file).unwrap();
+    let mut encoder = vec![
+        "#[wasm_bindgen]".to_string(),
+        "extern \"C\" {".to_string(),
+        "    #[derive(Debug)]".to_string(),
+        "    pub type Basisu;".to_string(),
+    ];
+    encoder.extend(process_file_to_wasm_binding(encoder_api_file));
+    let transcoder = process_file_to_wasm_binding(transcoder_api_file);
+
+    encoder.extend(transcoder.iter().cloned());
+    encoder.push("}".to_string());
+    std::fs::write(
+        std::path::Path::new(&std::env::var("OUT_DIR").unwrap())
+            .join(format!("wasm_encoder_binding.rs")),
+        encoder.join("\n"),
+    )
+    .unwrap();
+
+    let mut transcoder_file = vec![
+        "#[wasm_bindgen]".to_string(),
+        "extern \"C\" {".to_string(),
+        "    #[derive(Debug)]".to_string(),
+        "    pub type Basisu;".to_string(),
+    ];
+    transcoder_file.extend(transcoder);
+    transcoder_file.push("}".to_string());
+    std::fs::write(
+        std::path::Path::new(&std::env::var("OUT_DIR").unwrap())
+            .join(format!("wasm_transcoder_binding.rs")),
+        encoder.join("\n"),
+    )
+    .unwrap();
+}
+
+fn process_file_to_wasm_binding(mut api_file: String) -> Vec<String> {
+    let s = "pub struct Bool32(pub u32);";
+    let pos = api_file.find(s).unwrap() + s.len();
+    api_file.replace_range(0..pos, "");
+    let lines0: Vec<&str> = api_file.lines().collect();
+    let mut lines: Vec<String> = api_file.lines().map(str::to_string).collect();
+    for (idx, line) in lines.iter_mut().enumerate() {
+        *line = line.replace("Bool32", "u32");
+        if line.starts_with(r#"unsafe extern "C" {"#) {
+            *line = "    #[wasm_bindgen(method,js_name=_".to_string()
+                + extract_func_name(lines0[idx + 1])
+                    .or_else(|| extract_func_name(lines0[idx + 2]))
+                    .unwrap()
+                + ")]";
+        } else if line.starts_with("}") {
+            *line = "".to_string();
+        } else if line.trim_start().starts_with("pub fn ")
+            && let Some(end) = line.rfind("(")
+        {
+            line.insert_str(end + 1, "this: &Basisu,");
+        }
+    }
+    lines
+}
+
+fn extract_func_name(line: &str) -> Option<&str> {
+    let line = line.trim_start();
+    if let Some(start) = line.find("pub fn ")
+        && let Some(end) = line.rfind("(")
+    {
+        Some(&line[(start + "pub fn ".len())..end])
+    } else {
+        None
+    }
 }
 
 fn compile_basisu_static() {
@@ -172,5 +256,69 @@ fn compile_basisu_static() {
     for (define, value) in DEFINES {
         build.define(define, *value);
     }
-    build.files(SRCS).compile("basisu_c_api_vendor");
+    if cfg!(feature = "encoder") {
+        build.files(ENCODER_SRCS);
+    } else {
+        build.files(TRANSCODER_SRCS);
+    }
+    build.compile("basisu_c_api_vendor");
+}
+
+fn gen_wasm_build_cmd() {
+    let encoder_api_file =
+        std::path::Path::new(&std::env::var("OUT_DIR").unwrap()).join("basisu_c_api.rs");
+    let transcoder_api_file =
+        std::path::Path::new(&std::env::var("OUT_DIR").unwrap()).join("basisu_c_transcoder_api.rs");
+    let mut encoder_apis = Vec::new();
+    let mut transcoder_apis = Vec::new();
+    for (vec, file) in [
+        (&mut encoder_apis, encoder_api_file),
+        (&mut transcoder_apis, transcoder_api_file),
+    ] {
+        for line in std::fs::read_to_string(file).unwrap().lines() {
+            if let Some(func) = extract_func_name(line) {
+                vec.push(func.to_string());
+            }
+        }
+    }
+    encoder_apis.extend(transcoder_apis.iter().cloned());
+    for (name, apis, srcs) in [
+        ("encoder", encoder_apis, ENCODER_SRCS),
+        ("transcoder", transcoder_apis, TRANSCODER_SRCS),
+    ] {
+        let emcc_args = [
+            "-sSTRICT".to_string(),
+            "-sEXPORT_ES6".to_string(),
+            "-sINCOMING_MODULE_JS_API=wasmBinary".to_string(),
+            "-sALLOW_MEMORY_GROWTH".to_string(),
+            "-sEXPORTED_RUNTIME_METHODS=HEAPU8".to_string(),
+            "-sEXPORTED_FUNCTIONS=".to_string() + &apis.join(","),
+        ];
+        let mut cmd = std::process::Command::new("em++");
+        cmd.args(["-xc++", "-std=c++17"])
+            .args(FLAGS)
+            .args(
+                DEFINES
+                    .iter()
+                    .map(|(define, value)| format!("-D{define}={value}")),
+            )
+            .args(emcc_args)
+            .args(srcs);
+        cmd.args(["-o".to_string(), format!("wasm/basisu_{name}.js")]);
+        let default_emcc_args = cmd
+            .get_args()
+            .map(|s| s.to_string_lossy().to_string())
+            .collect::<Vec<String>>();
+
+        std::fs::write(
+            std::path::Path::new(&std::env::var("OUT_DIR").unwrap())
+                .join(format!("build_{name}_emcc_args.rs")),
+            format!(
+                "const DEFAULT_{}_EMCC_ARGS: &[&str] = &{:?};",
+                name.to_uppercase(),
+                default_emcc_args
+            ),
+        )
+        .unwrap();
+    }
 }

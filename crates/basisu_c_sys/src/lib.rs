@@ -2,12 +2,40 @@
 //!
 //! See also <https://github.com/BinomialLLC/basis_universal/wiki#encoder-and-transcoding-c-api-documentation>.
 
-#![no_std]
+#![cfg_attr(
+    not(all(
+        target_arch = "wasm32",
+        target_vendor = "unknown",
+        target_os = "unknown",
+    )),
+    no_std
+)]
+
+#[cfg(all(
+    target_arch = "wasm32",
+    target_vendor = "unknown",
+    target_os = "unknown",
+))]
+mod web;
+#[cfg(all(
+    target_arch = "wasm32",
+    target_vendor = "unknown",
+    target_os = "unknown",
+))]
+pub use web::*;
 
 pub mod common {
     include!(concat!(env!("OUT_DIR"), "/basisu_api_common.rs"));
 }
 
+#[cfg(all(
+    not(all(
+        target_arch = "wasm32",
+        target_vendor = "unknown",
+        target_os = "unknown",
+    )),
+    feature = "encoder"
+))]
 pub mod encoder {
     include!(concat!(env!("OUT_DIR"), "/basisu_c_api.rs"));
 
@@ -21,6 +49,11 @@ pub mod encoder {
     }
 }
 
+#[cfg(not(all(
+    target_arch = "wasm32",
+    target_vendor = "unknown",
+    target_os = "unknown",
+)))]
 pub mod transcoder {
     include!(concat!(env!("OUT_DIR"), "/basisu_c_transcoder_api.rs"));
 
