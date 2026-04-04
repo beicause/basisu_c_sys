@@ -651,11 +651,12 @@ mod tests {
                     .prepare(&data, $supported_format, ChannelType::Auto)
                     .unwrap();
                 let mut image = transcoder.transcode(None, None).unwrap();
+                let image_data = image.data.take().unwrap();
                 // The bcn test failed on macos, disable it for now.
                 if !(cfg!(target_os = "macos") && $prefix == "bcn_") {
                     insta::assert_binary_snapshot!(
                         &($prefix.to_string() + &file_name.replace(".basisu.ktx2", ".bin")),
-                        image.data.take().unwrap()
+                        image_data
                     );
                 }
                 results.push((file_name, info, image));
