@@ -651,10 +651,13 @@ mod tests {
                     .prepare(&data, $supported_format, ChannelType::Auto)
                     .unwrap();
                 let mut image = transcoder.transcode(None, None).unwrap();
-                insta::assert_binary_snapshot!(
-                    &($prefix.to_string() + &file_name.replace(".basisu.ktx2", ".bin")),
-                    image.data.take().unwrap()
-                );
+                // The bcn test failed on macos, disable it for now.
+                if !(cfg!(target_os = "macos") && $prefix == "bcn_") {
+                    insta::assert_binary_snapshot!(
+                        &($prefix.to_string() + &file_name.replace(".basisu.ktx2", ".bin")),
+                        image.data.take().unwrap()
+                    );
+                }
                 results.push((file_name, info, image));
             }
             results.sort_unstable_by(|a, b| a.0.cmp(&b.0));
@@ -663,7 +666,6 @@ mod tests {
     }
 
     #[test]
-    #[cfg(not(target_os = "macos"))] // This test failed on macos, disable it for now.
     fn transcode_assets_bcn() {
         snapshot_test!("bcn_", SupportedTextureCompression::BC);
     }

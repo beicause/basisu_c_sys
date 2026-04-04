@@ -91,7 +91,7 @@ fn setup(
                 IMAGE_PATH_DESK2,
                 |s: &mut BasisuLoaderSettings| {
                     s.force_transcode_target =
-                        Some(bevy_basisu_loader::basisu_c_sys::TranscodeTargetFormat::Rgb9e5);
+                        Some(bevy_basisu_loader::sys::TranscodeTargetFormat::Rgb9e5);
                     s.sampler =
                         bevy::image::ImageSampler::Descriptor(bevy::image::ImageSamplerDescriptor {
                             address_mode_u: bevy::image::ImageAddressMode::Repeat,
