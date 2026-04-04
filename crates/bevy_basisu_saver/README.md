@@ -7,9 +7,7 @@
 
 Basis universal texture encoder and bevy asset processor to transform images to basisu ktx2 textures.
 
-This is based on [basisu_c_sys](../basisu_c_sys/) and [bevy_basisu_loader](../bevy_basisu_loader/).
-
-`wasm32-unknown-unknown` should be supported but is less tested.
+This is based on [basisu_c_sys](../basisu_c_sys/) and [bevy_basisu_loader](../bevy_basisu_loader/). `wasm32-unknown-unknown` should be supported but is less tested.
 
 ## Usage
 
@@ -29,33 +27,7 @@ pub fn main() {
 }
 ```
 
-3. High level basisu encoder API which is a wrapper of `basisu_c_sys`:
-```rs
-    let mut encoder = BasisuEncoder::new();
-    for (i, path) in face_paths.iter().enumerate() {
-        let image = Image::from_buffer(
-            &std::fs::read(Path::new(dir).join(path)).unwrap(),
-            bevy::image::ImageType::Extension(
-                Path::new(path).extension().unwrap().to_str().unwrap(),
-            ),
-            CompressedImageFormats::empty(),
-            true,
-            bevy::image::ImageSampler::Default,
-            RenderAssetUsages::all(),
-        )
-        .unwrap();
-        encoder.set_image_slice(i as u32, &image).unwrap();
-    }
-    let compressed = encoder
-        .compress(
-            BasisuEncoderParams::new_with_srgb_defaults(
-                bevy_basisu_saver::encoder::BasisTextureFormat::XuastcLdr6x6,
-            )
-            .with_tex_type(TextureViewDimension::Cube),
-        )
-        .unwrap();
-```
-See also [examples/test_processor](../../examples/test_processor)
+3. To setup asset processor, see also [examples/test_processor](../../examples/test_processor)
 
 ## Bevy version compatibility
 
