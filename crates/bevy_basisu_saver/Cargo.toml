@@ -11,6 +11,7 @@ keywords = ["basis-universal", "bevy", "asset", "encoder"]
 basisu_c_sys = { version = "0.4", features = [
   "encoder",
   "serde",
+  "extra",
 ], path = "../basisu_c_sys" }
 bevy_basisu_loader = { version = "0.5", path = "../bevy_basisu_loader" }
 

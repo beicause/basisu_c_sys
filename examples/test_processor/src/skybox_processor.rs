@@ -7,8 +7,8 @@ use bevy::{
     render::render_resource::TextureViewDimension,
 };
 use bevy_basisu_loader::{BasisuLoader, BasisuLoaderSettings};
-use bevy_basisu_saver::encoder::{BasisuEncoder, BasisuEncoderParams};
 use bevy_basisu_saver::sys::common::{BU_COMP_FLAGS_DEBUG_OUTPUT, BU_COMP_FLAGS_VALIDATE_OUTPUT};
+use bevy_basisu_saver::sys::extra::{BasisuEncoder, BasisuEncoderParams};
 
 #[derive(TypePath)]
 pub(crate) struct SkyboxProcessor;
@@ -55,7 +55,16 @@ fn encode_cubemap(face_paths: &[String; 6], debug: bool) -> Vec<u8> {
             RenderAssetUsages::all(),
         )
         .unwrap();
-        encoder.set_image_slice(i as u32, &image).unwrap();
+        encoder
+            .set_image_slice(
+                i as u32,
+                bevy_basisu_saver::sys::extra::SourceImage {
+                    data: image.data.as_deref().unwrap_or(&[]),
+                    texture_descriptor: &image.texture_descriptor,
+                    texture_view_descriptor: &image.texture_view_descriptor,
+                },
+            )
+            .unwrap();
     }
     let params = BasisuEncoderParams::new_with_srgb_defaults(
         bevy_basisu_saver::sys::BasisTextureFormat::XuastcLdr8x8,

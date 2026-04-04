@@ -11,6 +11,7 @@ exclude = ["src/snapshots"]
 [dependencies]
 basisu_c_sys = { version = "0.4", features = [
   "serde",
+  "extra",
 ], path = "../basisu_c_sys" }
 
 bevy = { version = "0.18", default-features = false, features = [

@@ -1,19 +1,41 @@
+use crate::common;
+use crate::encoder as enc_sys;
+use crate::utils::BasisTextureFormat;
+use alloc::vec::Vec;
 use async_lock::OnceCell;
-use basisu_c_sys::BasisTextureFormat;
-use basisu_c_sys::common;
-use basisu_c_sys::encoder as enc_sys;
-use bevy::{
-    image::Image,
-    render::render_resource::{TextureDimension, TextureFormat, TextureViewDimension},
-};
-use serde::{Deserialize, Serialize};
+use wgpu_types::TextureDescriptor;
+use wgpu_types::TextureDimension;
+use wgpu_types::TextureFormat;
+use wgpu_types::TextureViewDescriptor;
+use wgpu_types::TextureViewDimension;
 
-static BASISU_INITIALIZED: OnceCell<()> = OnceCell::new();
+#[derive(Debug, Clone, PartialEq)]
+pub struct SourceImage<'a> {
+    pub data: &'a [u8],
+    pub texture_descriptor: &'a TextureDescriptor<Option<&'static str>, &'static [TextureFormat]>,
+    pub texture_view_descriptor: &'a Option<TextureViewDescriptor<Option<&'static str>>>,
+}
+
+impl SourceImage<'_> {
+    /// Returns the width of a 2D image.
+    #[inline]
+    pub fn width(&self) -> u32 {
+        self.texture_descriptor.size.width
+    }
+
+    /// Returns the height of a 2D image.
+    #[inline]
+    pub fn height(&self) -> u32 {
+        self.texture_descriptor.size.height
+    }
+}
+
+static BASISU_ENCODER_INITIALIZED: OnceCell<()> = OnceCell::new();
 
 pub async fn basisu_encoder_init() {
-    BASISU_INITIALIZED
+    BASISU_ENCODER_INITIALIZED
         .get_or_init(async || {
-            basisu_c_sys::instantiate_embedded_basisu_wasm().await;
+            crate::instantiate_embedded_basisu_wasm().await;
             unsafe { enc_sys::bu_init() };
         })
         .await;
@@ -35,8 +57,6 @@ impl Default for BasisuEncoder {
 
 #[derive(Debug, thiserror::Error)]
 pub enum BasisuEncodeError {
-    #[error("Image data must not be None")]
-    ImageDataIsNone,
     #[error("Mip level count must be 1")]
     MipLevelCountNotOne,
     #[error("Unsupported texture format: {0:?}")]
@@ -53,7 +73,8 @@ pub enum BasisuEncodeError {
     BuCompressFailed,
 }
 
-#[derive(Debug, Clone, Copy, Serialize, Deserialize)]
+#[derive(Debug, Clone, Copy)]
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub struct BasisuEncoderParams {
     /// Target file format — one of the BTF_* constants (e.g. BTF_ETC1S, BTF_UASTC_LDR_4X4).
     pub basis_tex_format: BasisTextureFormat,
@@ -121,7 +142,7 @@ impl BasisuEncoderParams {
 
 impl BasisuEncoder {
     pub fn new() -> Self {
-        if !BASISU_INITIALIZED.is_initialized() {
+        if !BASISU_ENCODER_INITIALIZED.is_initialized() {
             panic!("`basisu_encoder_init` must be called before create encoder");
         }
         Self {
@@ -129,12 +150,9 @@ impl BasisuEncoder {
         }
     }
 
-    pub fn set_image(&mut self, image: &Image) -> Result<(), BasisuEncodeError> {
+    pub fn set_image(&mut self, image: SourceImage) -> Result<(), BasisuEncodeError> {
         self.clear_image();
 
-        let Some(data) = image.data.as_ref() else {
-            return Err(BasisuEncodeError::ImageDataIsNone);
-        };
         if image.texture_descriptor.mip_level_count != 1 {
             return Err(BasisuEncodeError::MipLevelCountNotOne);
         }
@@ -158,10 +176,11 @@ impl BasisuEncoder {
                 _ => {}
             }
         };
+        let data = image.data;
         match image.texture_descriptor.format {
             TextureFormat::Rgba8Unorm | TextureFormat::Rgba8UnormSrgb => unsafe {
                 let basisu_ptr = enc_sys::bu_alloc(data.len() as u64);
-                basisu_c_sys::copy_host_memory_to_basisu(data, basisu_ptr);
+                crate::copy_host_memory_to_basisu(data, basisu_ptr);
                 for i in 0..image.texture_descriptor.array_layer_count() {
                     if enc_sys::bu_comp_params_set_image_rgba32(
                         self.params,
@@ -181,7 +200,7 @@ impl BasisuEncoder {
             },
             TextureFormat::Rgba32Float => unsafe {
                 let basisu_ptr = enc_sys::bu_alloc(data.len() as u64);
-                basisu_c_sys::copy_host_memory_to_basisu(data, basisu_ptr);
+                crate::copy_host_memory_to_basisu(data, basisu_ptr);
                 for i in 0..image.texture_descriptor.array_layer_count() {
                     if enc_sys::bu_comp_params_set_image_float_rgba(
                         self.params,
@@ -212,10 +231,11 @@ impl BasisuEncoder {
         assert!(unsafe { enc_sys::bu_comp_params_clear(self.params) }.is_ok());
     }
 
-    pub fn set_image_slice(&mut self, index: u32, image: &Image) -> Result<(), BasisuEncodeError> {
-        let Some(data) = image.data.as_ref() else {
-            return Err(BasisuEncodeError::ImageDataIsNone);
-        };
+    pub fn set_image_slice(
+        &mut self,
+        index: u32,
+        image: SourceImage,
+    ) -> Result<(), BasisuEncodeError> {
         if image.texture_descriptor.mip_level_count != 1 {
             return Err(BasisuEncodeError::MipLevelCountNotOne);
         }
@@ -242,10 +262,11 @@ impl BasisuEncoder {
                 _ => {}
             }
         };
+        let data = image.data;
         match image.texture_descriptor.format {
             TextureFormat::Rgba8Unorm | TextureFormat::Rgba8UnormSrgb => unsafe {
                 let basisu_ptr = enc_sys::bu_alloc(data.len() as u64);
-                basisu_c_sys::copy_host_memory_to_basisu(data, basisu_ptr);
+                crate::copy_host_memory_to_basisu(data, basisu_ptr);
                 if enc_sys::bu_comp_params_set_image_rgba32(
                     self.params,
                     index,
@@ -263,7 +284,7 @@ impl BasisuEncoder {
             },
             TextureFormat::Rgba32Float => unsafe {
                 let basisu_ptr = enc_sys::bu_alloc(data.len() as u64);
-                basisu_c_sys::copy_host_memory_to_basisu(data, basisu_ptr);
+                crate::copy_host_memory_to_basisu(data, basisu_ptr);
                 if enc_sys::bu_comp_params_set_image_float_rgba(
                     self.params,
                     index,
@@ -304,7 +325,7 @@ impl BasisuEncoder {
             }
             let out_size = enc_sys::bu_comp_params_get_comp_data_size(self.params);
             let out_ptr = enc_sys::bu_comp_params_get_comp_data_ofs(self.params);
-            let result = basisu_c_sys::copy_basisu_memory_to_host(out_ptr, out_size);
+            let result = crate::copy_basisu_memory_to_host(out_ptr, out_size);
             Ok(result)
         }
     }
@@ -320,12 +341,21 @@ impl Drop for BasisuEncoder {
 mod tests {
     use std::path::Path;
 
-    use basisu_c_sys::common::{
-        BU_COMP_FLAGS_DEBUG_OUTPUT, BU_COMP_FLAGS_GEN_MIPS_CLAMP, BU_COMP_FLAGS_VALIDATE_OUTPUT,
+    use crate::{
+        common::{
+            BU_COMP_FLAGS_DEBUG_OUTPUT, BU_COMP_FLAGS_GEN_MIPS_CLAMP, BU_COMP_FLAGS_VALIDATE_OUTPUT,
+        },
+        extra::{
+            BasisuEncoder, BasisuEncoderParams, SourceImage, basisu_encoder_enable_debug_printf,
+            basisu_encoder_init,
+        },
+        utils::BasisTextureFormat,
     };
-    use bevy::{asset::RenderAssetUsages, image::CompressedImageFormats};
-
-    use super::*;
+    use bevy::{
+        asset::RenderAssetUsages,
+        image::{CompressedImageFormats, Image},
+    };
+    use wgpu_types::TextureViewDimension;
 
     const SKYBOX_PATHS: &[&str] = &[
         "../../original_assets/skybox/right.jpg",
@@ -335,6 +365,16 @@ mod tests {
         "../../original_assets/skybox/front.jpg",
         "../../original_assets/skybox/back.jpg",
     ];
+
+    impl<'a> From<&'a Image> for SourceImage<'a> {
+        fn from(value: &'a Image) -> Self {
+            Self {
+                data: value.data.as_deref().unwrap_or(&[]),
+                texture_descriptor: &value.texture_descriptor,
+                texture_view_descriptor: &value.texture_view_descriptor,
+            }
+        }
+    }
 
     #[test]
     fn encode_cubemap_xuastc_ldr_4x4_by_slice() {
@@ -355,7 +395,7 @@ mod tests {
                 RenderAssetUsages::all(),
             )
             .unwrap();
-            encoder.set_image_slice(i as u32, &image).unwrap();
+            encoder.set_image_slice(i as u32, (&image).into()).unwrap();
         }
         let params = BasisuEncoderParams::new_with_srgb_defaults(BasisTextureFormat::XuastcLdr4x4)
             .with_tex_type(TextureViewDimension::Cube);
@@ -411,7 +451,7 @@ mod tests {
             }),
             ..Default::default()
         };
-        encoder.set_image(&cube_image).unwrap();
+        encoder.set_image((&cube_image).into()).unwrap();
         let res = encoder
             .compress(
                 BasisuEncoderParams::new_with_srgb_defaults(BasisTextureFormat::AstcLdr8x8)

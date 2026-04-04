@@ -1,19 +1,42 @@
+use crate::{
+    transcoder as trans_sys,
+    utils::{BasisTextureFormat, TranscodeTargetFormat},
+};
+use alloc::vec::Vec;
 use async_lock::OnceCell;
-use basisu_c_sys::{BasisTextureFormat, TranscodeTargetFormat, transcoder as trans_sys};
-use bevy::{
-    image::Image,
-    render::render_resource::{
-        AstcBlock, AstcChannel, Extent3d, TextureDataOrder, TextureDescriptor, TextureDimension,
-        TextureFormat, TextureViewDescriptor, TextureViewDimension,
-    },
+use wgpu_types::{
+    AstcBlock, AstcChannel, Extent3d, TextureDataOrder, TextureDescriptor, TextureDimension,
+    TextureFormat, TextureUsages, TextureViewDescriptor, TextureViewDimension,
 };
 
-static BASISU_INITIALIZED: OnceCell<()> = OnceCell::new();
+#[derive(Debug, Clone, PartialEq)]
+pub struct TranscodedImage {
+    pub data: Option<Vec<u8>>,
+    pub data_order: TextureDataOrder,
+    pub texture_descriptor: TextureDescriptor<Option<&'static str>, &'static [TextureFormat]>,
+    pub texture_view_descriptor: Option<TextureViewDescriptor<Option<&'static str>>>,
+}
+
+impl TranscodedImage {
+    /// Returns the width of a 2D image.
+    #[inline]
+    pub fn width(&self) -> u32 {
+        self.texture_descriptor.size.width
+    }
+
+    /// Returns the height of a 2D image.
+    #[inline]
+    pub fn height(&self) -> u32 {
+        self.texture_descriptor.size.height
+    }
+}
+
+static BASISU_TRANSCODER_INITIALIZED: OnceCell<()> = OnceCell::new();
 
 pub async fn basisu_transcoder_init() {
-    BASISU_INITIALIZED
+    BASISU_TRANSCODER_INITIALIZED
         .get_or_init(async || {
-            basisu_c_sys::instantiate_embedded_basisu_wasm().await;
+            crate::instantiate_embedded_basisu_wasm().await;
             unsafe { trans_sys::bt_init() };
         })
         .await;
@@ -69,7 +92,7 @@ impl Default for BasisuTranscoder {
 
 impl BasisuTranscoder {
     pub fn new() -> Self {
-        if !BASISU_INITIALIZED.is_initialized() {
+        if !BASISU_TRANSCODER_INITIALIZED.is_initialized() {
             panic!("`basisu_transcoder_init` must be called before create transcoder");
         }
         Self {
@@ -96,7 +119,7 @@ impl BasisuTranscoder {
             }
 
             let basisu_ptr = trans_sys::bt_alloc(input.len() as u64);
-            basisu_c_sys::copy_host_memory_to_basisu(input, basisu_ptr);
+            crate::copy_host_memory_to_basisu(input, basisu_ptr);
             let ktx2_handle = trans_sys::bt_ktx2_open(basisu_ptr, input.len() as u32);
             if ktx2_handle == 0 {
                 return Err(BasisuTranscodeError::LoadKtx2DataFailed);
@@ -155,7 +178,7 @@ impl BasisuTranscoder {
         &self,
         transcode_target: Option<TranscodeTargetFormat>,
         is_srgb: Option<bool>,
-    ) -> Result<Image, BasisuTranscodeError> {
+    ) -> Result<TranscodedImage, BasisuTranscodeError> {
         if self.data_ptr == 0 || self.ktx2_handle == 0 {
             return Err(BasisuTranscodeError::TranscodingBeforePrepared);
         }
@@ -253,7 +276,7 @@ impl BasisuTranscoder {
                     }
                 }
             }
-            let data = basisu_c_sys::copy_basisu_memory_to_host(basisu_ptr, total_bytes.into());
+            let data = crate::copy_basisu_memory_to_host(basisu_ptr, total_bytes.into());
             trans_sys::bt_free(basisu_ptr);
             data
         };
@@ -283,38 +306,34 @@ impl BasisuTranscoder {
         } else {
             out_format.remove_srgb_suffix()
         };
-        let default = Image::default();
-        Ok(Image {
+        Ok(TranscodedImage {
             data: Some(data),
             data_order: TextureDataOrder::MipMajor,
             texture_descriptor: TextureDescriptor {
                 // Note: we must give wgpu the logical texture dimensions, so it can correctly compute mip sizes.
                 // However this currently causes wgpu to panic if the dimensions aren't a multiple of blocksize.
                 // See https://github.com/gfx-rs/wgpu/issues/7677 for more context.
-                size: {
-                    #[cfg(debug_assertions)]
-                    if extent != extent.physical_size(out_format) {
-                        bevy::log::error!(
-                            "BasisU texture size has to be a multiple of block size to ensure correct mip levels transcoding, otherwise it will panic for now. This is due to a wgpu limitation, see https://github.com/gfx-rs/wgpu/issues/7677"
-                        );
-                    }
-                    extent
-                },
+                size: extent,
                 format: out_format,
                 dimension: TextureDimension::D2,
                 mip_level_count: info.levels,
-                ..default.texture_descriptor
+                label: None,
+                sample_count: 1,
+                usage: TextureUsages::TEXTURE_BINDING
+                    | TextureUsages::COPY_DST
+                    | TextureUsages::COPY_SRC,
+                view_formats: &[],
             },
             texture_view_descriptor: Some(TextureViewDescriptor {
                 dimension: Some(view_dimension),
                 ..Default::default()
             }),
-            ..default
         })
     }
 }
 
-#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub enum ChannelType {
     #[default]
     Auto,
@@ -572,17 +591,18 @@ pub fn transcode_target_to_wgpu_format(transcode: TranscodeTargetFormat) -> Opti
 
 #[cfg(test)]
 mod tests {
-    use basisu_c_sys::TranscodeTargetFormat;
-
-    use crate::transcoder::{
-        BASISU_INITIALIZED, BasisuTranscoder, ChannelType, SupportedTextureCompression,
-        basisu_transcoder_init,
+    use crate::{
+        extra::transcoder::BASISU_TRANSCODER_INITIALIZED,
+        extra::{
+            BasisuTranscoder, ChannelType, SupportedTextureCompression, basisu_transcoder_init,
+        },
+        utils::TranscodeTargetFormat,
     };
 
     #[test]
     #[should_panic]
     fn transcoder_create_before_init() {
-        if BASISU_INITIALIZED.is_initialized() {
+        if BASISU_TRANSCODER_INITIALIZED.is_initialized() {
             panic!("Basisu is already initialized, panic to skip this test");
         } else {
             BasisuTranscoder::new();
@@ -591,7 +611,7 @@ mod tests {
 
     #[test]
     fn transcode_invalid_data_info_is_none() {
-        block_on(basisu_transcoder_init());
+        bevy::tasks::block_on(basisu_transcoder_init());
         let mut transcoder = BasisuTranscoder::new();
         let info = transcoder.prepare(&[], SupportedTextureCompression::empty(), ChannelType::Auto);
         assert!(info.is_err());
@@ -608,7 +628,7 @@ mod tests {
 
     #[test]
     fn transcode_before_prepare_panic() {
-        block_on(basisu_transcoder_init());
+        bevy::tasks::block_on(basisu_transcoder_init());
         let transcoder = BasisuTranscoder::new();
         assert!(
             transcoder
@@ -619,7 +639,7 @@ mod tests {
 
     #[test]
     fn transcode_invalid_data_output_panic() {
-        block_on(basisu_transcoder_init());
+        bevy::tasks::block_on(basisu_transcoder_init());
         let mut transcoder = BasisuTranscoder::new();
         let _info = transcoder.prepare(
             &[1, 2, 1],
@@ -637,7 +657,7 @@ mod tests {
             let mut path = std::path::PathBuf::new();
             path.push(std::env!("CARGO_MANIFEST_DIR"));
             path.push("../../assets");
-            block_on(basisu_transcoder_init());
+            bevy::tasks::block_on(basisu_transcoder_init());
             let mut results = Vec::new();
             let mut transcoder = BasisuTranscoder::new();
             for file in std::fs::read_dir(path).unwrap() {
@@ -677,26 +697,5 @@ mod tests {
             "astc_",
             SupportedTextureCompression::ASTC_LDR | SupportedTextureCompression::ASTC_HDR,
         );
-    }
-
-    /// Blocks on the supplied `future`.
-    /// This implementation will busy-wait until it is completed.
-    /// Consider enabling the `async-io` or `futures-lite` features.
-    fn block_on<T>(future: impl Future<Output = T>) -> T {
-        use core::task::{Context, Poll};
-
-        // Pin the future on the stack.
-        let mut future = core::pin::pin!(future);
-
-        // We don't care about the waker as we're just going to poll as fast as possible.
-        let cx = &mut Context::from_waker(core::task::Waker::noop());
-
-        // Keep polling until the future is ready.
-        loop {
-            match future.as_mut().poll(cx) {
-                Poll::Ready(output) => return output,
-                Poll::Pending => core::hint::spin_loop(),
-            }
-        }
     }
 }
