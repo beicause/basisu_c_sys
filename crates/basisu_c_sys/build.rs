@@ -326,17 +326,6 @@ fn wasm_bindgen() {
     .unwrap();
 }
 
-fn extract_func_name(line: &str) -> Option<&str> {
-    let line = line.trim_start();
-    if let Some(start) = line.find("pub fn ")
-        && let Some(end) = line.rfind("(")
-    {
-        Some(&line[(start + "pub fn ".len())..end])
-    } else {
-        None
-    }
-}
-
 fn compile_basisu_static() {
     let mut build = cc::Build::new();
 
@@ -369,6 +358,18 @@ fn gen_wasm_build_cmd() {
         std::path::Path::new(&std::env::var("OUT_DIR").unwrap()).join("basisu_c_transcoder_api.rs");
     let mut encoder_apis = Vec::new();
     let mut transcoder_apis = Vec::new();
+
+    fn extract_func_name(line: &str) -> Option<&str> {
+        let line = line.trim_start();
+        if let Some(start) = line.find("pub fn ")
+            && let Some(end) = line.rfind("(")
+        {
+            Some(&line[(start + "pub fn ".len())..end])
+        } else {
+            None
+        }
+    }
+
     for (vec, file) in [
         (&mut encoder_apis, encoder_api_file),
         (&mut transcoder_apis, transcoder_api_file),

@@ -5,7 +5,7 @@
 [![Cargo](https://img.shields.io/crates/v/basisu_c_sys.svg)](https://crates.io/crates/basisu_c_sys)
 [![Documentation](https://docs.rs/basisu_c_sys/badge.svg)](https://docs.rs/basisu_c_sys)
 
-Raw Rust binding for the basisu pure C API, through FFI on native and wasm-bindgen on web. See also https://github.com/BinomialLLC/basis_universal/wiki#encoder-and-transcoding-c-api-documentation. This is used by [bevy_basisu_loader](../bevy_basisu_loader/) and [bevy_basisu_saver](../bevy_basisu_saver/).
+Raw Rust binding for the basisu pure C API, through FFI on native and wasm-bindgen on web. See also <https://github.com/BinomialLLC/basis_universal/wiki#encoder-and-transcoding-c-api-documentation>. This is used by [bevy_basisu_loader](../bevy_basisu_loader/) and [bevy_basisu_saver](../bevy_basisu_saver/).
 
 Note that BC1, PVRTC1, ATC, FXT1, PVRTC2 are not compiled to reduce size as they are rarely used.
 
