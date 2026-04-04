@@ -315,3 +315,112 @@ impl Drop for BasisuEncoder {
         assert!(unsafe { enc_sys::bu_delete_comp_params(self.params).is_ok() });
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use std::path::Path;
+
+    use basisu_c_sys::common::{
+        BU_COMP_FLAGS_DEBUG_OUTPUT, BU_COMP_FLAGS_GEN_MIPS_CLAMP, BU_COMP_FLAGS_VALIDATE_OUTPUT,
+    };
+    use bevy::{asset::RenderAssetUsages, image::CompressedImageFormats};
+
+    use super::*;
+
+    const SKYBOX_PATHS: &[&str] = &[
+        "../../original_assets/skybox/right.jpg",
+        "../../original_assets/skybox/left.jpg",
+        "../../original_assets/skybox/top.jpg",
+        "../../original_assets/skybox/bottom.jpg",
+        "../../original_assets/skybox/front.jpg",
+        "../../original_assets/skybox/back.jpg",
+    ];
+
+    #[test]
+    fn encode_cubemap_xuastc_ldr_4x4_by_slice() {
+        bevy::tasks::block_on(basisu_encoder_init());
+        basisu_encoder_enable_debug_printf(true);
+
+        let dir = std::env!("CARGO_MANIFEST_DIR");
+        let mut encoder = BasisuEncoder::new();
+        for (i, path) in SKYBOX_PATHS.iter().enumerate() {
+            let image = Image::from_buffer(
+                &std::fs::read(Path::new(dir).join(path)).unwrap(),
+                bevy::image::ImageType::Extension(
+                    Path::new(path).extension().unwrap().to_str().unwrap(),
+                ),
+                CompressedImageFormats::empty(),
+                true,
+                bevy::image::ImageSampler::Default,
+                RenderAssetUsages::all(),
+            )
+            .unwrap();
+            encoder.set_image_slice(i as u32, &image).unwrap();
+        }
+        let params = BasisuEncoderParams::new_with_srgb_defaults(BasisTextureFormat::XuastcLdr4x4)
+            .with_tex_type(TextureViewDimension::Cube);
+
+        let res = encoder
+            .compress(params.with_flags(BU_COMP_FLAGS_DEBUG_OUTPUT | BU_COMP_FLAGS_VALIDATE_OUTPUT))
+            .unwrap();
+        insta::assert_binary_snapshot!("skybox_astc_ldr_8x8.basisu.ktx2", res);
+    }
+
+    #[test]
+    fn encode_cubemap_astc_ldr_8x8_mips_by_image() {
+        bevy::tasks::block_on(basisu_encoder_init());
+        basisu_encoder_enable_debug_printf(true);
+
+        let dir = std::env!("CARGO_MANIFEST_DIR");
+        let mut images = Vec::new();
+        let mut encoder = BasisuEncoder::new();
+        for path in SKYBOX_PATHS {
+            let image = Image::from_buffer(
+                &std::fs::read(Path::new(dir).join(path)).unwrap(),
+                bevy::image::ImageType::Extension(
+                    Path::new(path).extension().unwrap().to_str().unwrap(),
+                ),
+                CompressedImageFormats::empty(),
+                true,
+                bevy::image::ImageSampler::Default,
+                RenderAssetUsages::all(),
+            )
+            .unwrap();
+            images.push(image);
+        }
+        let cube_image = Image {
+            data: Some(
+                images
+                    .iter_mut()
+                    .flat_map(|img| img.data.take().unwrap())
+                    .collect(),
+            ),
+            texture_descriptor: bevy::render::render_resource::TextureDescriptor {
+                size: bevy::render::render_resource::Extent3d {
+                    width: images[0].width(),
+                    height: images[0].height(),
+                    depth_or_array_layers: images.len() as u32,
+                },
+                ..images[0].texture_descriptor
+            },
+            texture_view_descriptor: Some(bevy::render::render_resource::TextureViewDescriptor {
+                dimension: Some(TextureViewDimension::Cube),
+                ..Default::default()
+            }),
+            ..Default::default()
+        };
+        encoder.set_image(&cube_image).unwrap();
+        let res = encoder
+            .compress(
+                BasisuEncoderParams::new_with_srgb_defaults(BasisTextureFormat::AstcLdr8x8)
+                    .with_tex_type(TextureViewDimension::Cube)
+                    .with_flags(
+                        BU_COMP_FLAGS_DEBUG_OUTPUT
+                            | BU_COMP_FLAGS_VALIDATE_OUTPUT
+                            | BU_COMP_FLAGS_GEN_MIPS_CLAMP,
+                    ),
+            )
+            .unwrap();
+        insta::assert_binary_snapshot!("skybox_astc_ldr_8x8_mips.basisu.ktx2", res);
+    }
+}

@@ -22,7 +22,7 @@ use bevy_basisu_loader::BasisuLoaderPlugin;
 
 pub mod encoder;
 pub mod saver;
-pub use basisu_c_sys as c_sys;
+pub use basisu_c_sys as sys;
 
 pub type BasisuProcessor =
     LoadTransformAndSave<ImageLoader, IdentityAssetTransformer<Image>, BasisuTextureSaver>;

@@ -23,3 +23,7 @@ bevy = { version = "0.18", default-features = false, features = [
 serde = { version = "1", features = ["derive"] }
 thiserror = { version = "2", default-features = false }
 async-lock = "3.4.2"
+
+[dev-dependencies]
+insta = "1.47.2"
+bevy = { version = "0.18", default-features = false, features = ["jpeg"] }
