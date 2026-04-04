@@ -1,7 +1,4 @@
-//! Raw Rust ffi binding for the basis universal pure C API.
-//!
-//! See also <https://github.com/BinomialLLC/basis_universal/wiki#encoder-and-transcoding-c-api-documentation>.
-
+#![doc = include_str!("../README.md")]
 #![cfg_attr(
     not(all(
         target_arch = "wasm32",
@@ -42,6 +39,7 @@ mod native;
 )))]
 pub use native::*;
 
+/// A enum that wraps `common::BTF_*`.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 #[repr(u32)]
@@ -93,6 +91,7 @@ impl TryFrom<u32> for BasisTextureFormat {
     }
 }
 
+/// A enum that wraps `common::TF_*`.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 #[repr(u32)]
@@ -104,16 +103,14 @@ pub enum TranscodeTargetFormat {
     Bc4R = common::TF_BC4_R,
     Bc5Rg = common::TF_BC5_RG,
     Bc7Rgba = common::TF_BC7_RGBA,
-    // These formats is disabled in compile-time
-    // Pvrtc1_4Rgb = common::TF_PVRTC1_4_RGB,
-    // Pvrtc1_4Rgba = common::TF_PVRTC1_4_RGBA,
+    Pvrtc1_4Rgb = common::TF_PVRTC1_4_RGB,
+    Pvrtc1_4Rgba = common::TF_PVRTC1_4_RGBA,
     AstcLdr4x4Rgba = common::TF_ASTC_LDR_4X4_RGBA,
-    // These formats is disabled in compile-time
-    // AtcRgb = common::TF_ATC_RGB,
-    // AtcRgba = common::TF_ATC_RGBA,
-    // Fxt1Rgb = common::TF_FXT1_RGB,
-    // Pvrtc2_4Rgb = common::TF_PVRTC2_4_RGB,
-    // Pvrtc2_4Rgba = common::TF_PVRTC2_4_RGBA,
+    AtcRgb = common::TF_ATC_RGB,
+    AtcRgba = common::TF_ATC_RGBA,
+    Fxt1Rgb = common::TF_FXT1_RGB,
+    Pvrtc2_4Rgb = common::TF_PVRTC2_4_RGB,
+    Pvrtc2_4Rgba = common::TF_PVRTC2_4_RGBA,
     Etc2EacR11 = common::TF_ETC2_EAC_R11,
     Etc2EacRg11 = common::TF_ETC2_EAC_RG11,
     Bc6H = common::TF_BC6H,
@@ -145,18 +142,7 @@ impl TryFrom<u32> for TranscodeTargetFormat {
     type Error = ();
 
     fn try_from(value: u32) -> Result<Self, Self::Error> {
-        if value >= common::TF_TOTAL_TEXTURE_FORMATS
-            || [
-                common::TF_PVRTC1_4_RGB,
-                common::TF_PVRTC1_4_RGBA,
-                common::TF_ATC_RGB,
-                common::TF_ATC_RGBA,
-                common::TF_FXT1_RGB,
-                common::TF_PVRTC2_4_RGB,
-                common::TF_PVRTC2_4_RGBA,
-            ]
-            .contains(&value)
-        {
+        if value >= common::TF_TOTAL_TEXTURE_FORMATS {
             Err(())
         } else {
             Ok(unsafe { core::mem::transmute::<u32, TranscodeTargetFormat>(value) })

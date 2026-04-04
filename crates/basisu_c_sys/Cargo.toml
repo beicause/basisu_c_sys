@@ -4,7 +4,7 @@ version = "0.4.1"
 edition = "2024"
 repository.workspace = true
 license.workspace = true
-description = "Raw Rust ffi binding for the Basis Universal pure C API"
+description = "Raw Rust binding for the Basis Universal pure C API"
 keywords = ["basis-universal", "ffi", "wasm-bindgen"]
 include = [
   "vendor/basis_universal",
@@ -16,12 +16,13 @@ include = [
 
 [package.metadata.docs.rs]
 targets = ["x86_64-unknown-linux-gnu", "wasm32-unknown-unknown"]
+features = ["encoder", "serde"]
 
 [features]
 default = []
 encoder = []
 serde = ["dep:serde"]
-__build-wasm-cli = ["dep:clap"]
+__build_wasm_cli = ["dep:clap"]
 
 [dependencies]
 clap = { version = "4.5", features = ["derive"], optional = true }
@@ -48,4 +49,4 @@ prettyplease = "0.2.37"
 [[bin]]
 name = "build-wasm-cli"
 path = "bin/build_wasm_cli.rs"
-required-features = ["__build-wasm-cli"]
+required-features = ["__build_wasm_cli"]

@@ -7,8 +7,13 @@
 
 Raw Rust binding for the basisu pure C API, through FFI on native and wasm-bindgen on web. See also https://github.com/BinomialLLC/basis_universal/wiki#encoder-and-transcoding-c-api-documentation. This is used by [bevy_basisu_loader](../bevy_basisu_loader/) and [bevy_basisu_saver](../bevy_basisu_saver/).
 
-This supports `wasm32-unknown-unknown` by embedding prebuilt basisu wasm binary and `wasm-bindgen`. You need to call `instantiate_embedded_basisu_wasm` before calling other functions if running on web.
+Note that BC1, PVRTC1, ATC, FXT1, PVRTC2 are not compiled to reduce size as they are rarely used.
 
-Optional features:
+This supports `wasm32-unknown-unknown` by embedding prebuilt basisu wasm binary and `wasm-bindgen`. You need to call `instantiate_embedded_basisu_wasm` before calling other functions if running on web. The prebuilt wasm was prebuilt through:
+```sh
+cargo r -p basisu_c_sys --bin build-wasm-cli --features __build_wasm_cli -- --emcc-flags="-Os -msimd128 -flto=full -sEVAL_CTORS" --wasm-opt-flags="-Os --enable-simd --enable-bulk-memory-opt --enable-nontrapping-float-to-int"
+```
+
+Feature flags:
 - `encoder`: Enable basisu encoder. By default only transcoder is enabled.
 - `serde`: Enable serde on structs.

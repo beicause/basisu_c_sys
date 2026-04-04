@@ -69,9 +69,10 @@ const TRANSCODER_SRCS: &[&str] = &[
 fn main() {
     bindgen();
     wasm_bindgen();
+    #[cfg(feature = "__build_wasm_cli")]
     gen_wasm_build_cmd();
     let target = std::env::var("TARGET").unwrap();
-    if target != "wasm32-unknown-unknown" {
+    if std::env::var("DOCS_RS").is_err() && target != "wasm32-unknown-unknown" {
         compile_basisu_static();
     }
     println!("cargo::rerun-if-changed=vendor/");
@@ -360,6 +361,7 @@ fn compile_basisu_static() {
     build.compile("basisu_c_api_vendor");
 }
 
+#[cfg(feature = "__build_wasm_cli")]
 fn gen_wasm_build_cmd() {
     let encoder_api_file =
         std::path::Path::new(&std::env::var("OUT_DIR").unwrap()).join("basisu_c_api.rs");
