@@ -54,11 +54,8 @@ jobs:
       - name: Build ${{ matrix.cargo-flags }}
         run: cargo build --workspace ${{ matrix.cargo-flags }}
 
-      - name: Test -p bevy_basisu_loader ${{ matrix.cargo-flags }}
-        run: cargo test -p bevy_basisu_loader ${{ matrix.cargo-flags }}
-
-      - name: Test -p bevy_basisu_saver ${{ matrix.cargo-flags }}
-        run: cargo test -p bevy_basisu_saver ${{ matrix.cargo-flags }}
+      - name: Test -p basisu_c_sys --features encoder,extra ${{ matrix.cargo-flags }}
+        run: cargo test -p basisu_c_sys --features encoder,extra ${{ matrix.cargo-flags }}
 
   build-wasm:
     name: Build wasm

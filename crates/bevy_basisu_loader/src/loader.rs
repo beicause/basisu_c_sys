@@ -1,14 +1,13 @@
 use basisu_c_sys::TranscodeTargetFormat;
+use basisu_c_sys::extra::{
+    BasisuTranscodeError, BasisuTranscoder, ChannelType, SupportedTextureCompression,
+};
 use bevy::asset::{AssetLoader, RenderAssetUsages};
 use bevy::image::ImageSampler;
 use bevy::prelude::*;
 use bevy::render::render_resource::WgpuFeatures as Features;
 use serde::{Deserialize, Serialize};
 use thiserror::Error;
-
-use crate::transcoder::{
-    BasisuTranscodeError, BasisuTranscoder, ChannelType, SupportedTextureCompression,
-};
 
 #[derive(TypePath)]
 pub struct BasisuLoader {
@@ -102,8 +101,7 @@ impl AssetLoader for BasisuLoader {
             settings.channel_type_hint,
         )?;
 
-        let mut out_image =
-            transcoder.transcode(settings.force_transcode_target, settings.is_srgb)?;
+        let out_image = transcoder.transcode(settings.force_transcode_target, settings.is_srgb)?;
 
         if log::STATIC_MAX_LEVEL >= log::LevelFilter::Debug {
             bevy::log::debug!(
@@ -124,9 +122,15 @@ impl AssetLoader for BasisuLoader {
                 time.unwrap().elapsed(),
             );
         }
-        out_image.sampler = settings.sampler.clone();
-        out_image.asset_usage = settings.asset_usage;
-        Ok(out_image)
+        Ok(Image {
+            data: out_image.data,
+            data_order: out_image.data_order,
+            texture_descriptor: out_image.texture_descriptor,
+            texture_view_descriptor: out_image.texture_view_descriptor,
+            copy_on_resize: false,
+            sampler: settings.sampler.clone(),
+            asset_usage: settings.asset_usage,
+        })
     }
 
     fn extensions(&self) -> &[&str] {
