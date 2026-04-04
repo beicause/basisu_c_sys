@@ -1,6 +1,0 @@
----
-source: crates/bevy_basisu_loader/src/transcoder.rs
-expression: image.data.take().unwrap()
-extension: bin
-snapshot_kind: binary
----

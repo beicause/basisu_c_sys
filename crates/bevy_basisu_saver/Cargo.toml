@@ -1,6 +1,6 @@
 [package]
 name = "bevy_basisu_saver"
-version = "0.3.0"
+version = "0.4.0"
 edition = "2024"
 repository.workspace = true
 license.workspace = true
@@ -8,11 +8,12 @@ description = "A bevy asset processor to transform images to basisu ktx2 texture
 keywords = ["basis-universal", "bevy", "asset", "encoder"]
 
 [dependencies]
-basisu_c_sys = { version = "0.4", features = [
+basisu_c_sys = { version = "0.5", features = [
   "encoder",
   "serde",
+  "extra",
 ], path = "../basisu_c_sys" }
-bevy_basisu_loader = { version = "0.5", path = "../bevy_basisu_loader" }
+bevy_basisu_loader = { version = "0.6", path = "../bevy_basisu_loader" }
 
 bevy = { version = "0.18", default-features = false, features = [
   "bevy_asset",

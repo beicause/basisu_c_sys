@@ -2,7 +2,7 @@
 //!
 //! This is based on [basisu_c_sys](https://crates.io/crates/basisu_c_sys) and [bevy_basisu_loader](https://crates.io/crates/bevy_basisu_loader).
 
-use crate::{encoder::basisu_encoder_init, saver::BasisuTextureSaver};
+use crate::saver::BasisuTextureSaver;
 #[cfg(all(
     target_arch = "wasm32",
     target_vendor = "unknown",
@@ -20,7 +20,6 @@ use bevy::{
 };
 use bevy_basisu_loader::BasisuLoaderPlugin;
 
-pub mod encoder;
 pub mod saver;
 pub use basisu_c_sys as sys;
 
@@ -64,7 +63,7 @@ impl Plugin for BasisuSaverPlugin {
             let r = ready.clone();
             bevy::tasks::IoTaskPool::get()
                 .spawn_local(async move {
-                    basisu_encoder_init().await;
+                    basisu_c_sys::extra::basisu_encoder_init().await;
                     r.store(1, Ordering::Release);
                     bevy::log::debug!("Basisu wasm initialized")
                 })
@@ -76,7 +75,7 @@ impl Plugin for BasisuSaverPlugin {
             target_vendor = "unknown",
             target_os = "unknown",
         )))]
-        bevy::tasks::block_on(basisu_encoder_init());
+        bevy::tasks::block_on(basisu_c_sys::extra::basisu_encoder_init());
 
         if !app.is_plugin_added::<BasisuLoaderPlugin>() {
             app.add_plugins(BasisuLoaderPlugin);

@@ -1,5 +1,5 @@
 ---
-source: crates/bevy_basisu_loader/src/transcoder.rs
+source: crates/basisu_c_sys/src/extra/transcoder.rs
 expression: results
 ---
 [
@@ -13,9 +13,9 @@ expression: results
             faces: 1,
             is_srgb: true,
             basis_format: Etc1s,
-            preferred_target: RGBA32,
+            preferred_target: Bc7Rgba,
         },
-        Image {
+        TranscodedImage {
             data: None,
             data_order: MipMajor,
             texture_descriptor: TextureDescriptor {
@@ -28,13 +28,12 @@ expression: results
                 mip_level_count: 9,
                 sample_count: 1,
                 dimension: D2,
-                format: Rgba8UnormSrgb,
+                format: Bc7RgbaUnormSrgb,
                 usage: TextureUsages(
                     COPY_SRC | COPY_DST | TEXTURE_BINDING,
                 ),
                 view_formats: [],
             },
-            sampler: Default,
             texture_view_descriptor: Some(
                 TextureViewDescriptor {
                     label: None,
@@ -50,10 +49,6 @@ expression: results
                     array_layer_count: None,
                 },
             ),
-            asset_usage: RenderAssetUsages(
-                MAIN_WORLD | RENDER_WORLD,
-            ),
-            copy_on_resize: false,
         },
     ),
     (
@@ -66,9 +61,9 @@ expression: results
             faces: 1,
             is_srgb: false,
             basis_format: UastcHdr4x4,
-            preferred_target: AstcHdr4x4Rgba,
+            preferred_target: Bc6H,
         },
-        Image {
+        TranscodedImage {
             data: None,
             data_order: MipMajor,
             texture_descriptor: TextureDescriptor {
@@ -81,16 +76,12 @@ expression: results
                 mip_level_count: 1,
                 sample_count: 1,
                 dimension: D2,
-                format: Astc {
-                    block: B4x4,
-                    channel: Hdr,
-                },
+                format: Bc6hRgbUfloat,
                 usage: TextureUsages(
                     COPY_SRC | COPY_DST | TEXTURE_BINDING,
                 ),
                 view_formats: [],
             },
-            sampler: Default,
             texture_view_descriptor: Some(
                 TextureViewDescriptor {
                     label: None,
@@ -106,10 +97,6 @@ expression: results
                     array_layer_count: None,
                 },
             ),
-            asset_usage: RenderAssetUsages(
-                MAIN_WORLD | RENDER_WORLD,
-            ),
-            copy_on_resize: false,
         },
     ),
     (
@@ -122,9 +109,9 @@ expression: results
             faces: 1,
             is_srgb: false,
             basis_format: UastcHdr6x6,
-            preferred_target: AstcHdr6x6Rgba,
+            preferred_target: Bc6H,
         },
-        Image {
+        TranscodedImage {
             data: None,
             data_order: MipMajor,
             texture_descriptor: TextureDescriptor {
@@ -137,16 +124,12 @@ expression: results
                 mip_level_count: 10,
                 sample_count: 1,
                 dimension: D2,
-                format: Astc {
-                    block: B6x6,
-                    channel: Hdr,
-                },
+                format: Bc6hRgbUfloat,
                 usage: TextureUsages(
                     COPY_SRC | COPY_DST | TEXTURE_BINDING,
                 ),
                 view_formats: [],
             },
-            sampler: Default,
             texture_view_descriptor: Some(
                 TextureViewDescriptor {
                     label: None,
@@ -162,10 +145,6 @@ expression: results
                     array_layer_count: None,
                 },
             ),
-            asset_usage: RenderAssetUsages(
-                MAIN_WORLD | RENDER_WORLD,
-            ),
-            copy_on_resize: false,
         },
     ),
     (
@@ -178,9 +157,9 @@ expression: results
             faces: 1,
             is_srgb: true,
             basis_format: AstcLdr8x8,
-            preferred_target: AstcLdr8x8Rgba,
+            preferred_target: Bc7Rgba,
         },
-        Image {
+        TranscodedImage {
             data: None,
             data_order: MipMajor,
             texture_descriptor: TextureDescriptor {
@@ -193,16 +172,12 @@ expression: results
                 mip_level_count: 10,
                 sample_count: 1,
                 dimension: D2,
-                format: Astc {
-                    block: B8x8,
-                    channel: UnormSrgb,
-                },
+                format: Bc7RgbaUnormSrgb,
                 usage: TextureUsages(
                     COPY_SRC | COPY_DST | TEXTURE_BINDING,
                 ),
                 view_formats: [],
             },
-            sampler: Default,
             texture_view_descriptor: Some(
                 TextureViewDescriptor {
                     label: None,
@@ -218,10 +193,6 @@ expression: results
                     array_layer_count: None,
                 },
             ),
-            asset_usage: RenderAssetUsages(
-                MAIN_WORLD | RENDER_WORLD,
-            ),
-            copy_on_resize: false,
         },
     ),
     (
@@ -234,9 +205,9 @@ expression: results
             faces: 6,
             is_srgb: true,
             basis_format: XuastcLdr8x8,
-            preferred_target: AstcLdr8x8Rgba,
+            preferred_target: Bc7Rgba,
         },
-        Image {
+        TranscodedImage {
             data: None,
             data_order: MipMajor,
             texture_descriptor: TextureDescriptor {
@@ -249,16 +220,12 @@ expression: results
                 mip_level_count: 12,
                 sample_count: 1,
                 dimension: D2,
-                format: Astc {
-                    block: B8x8,
-                    channel: UnormSrgb,
-                },
+                format: Bc7RgbaUnormSrgb,
                 usage: TextureUsages(
                     COPY_SRC | COPY_DST | TEXTURE_BINDING,
                 ),
                 view_formats: [],
             },
-            sampler: Default,
             texture_view_descriptor: Some(
                 TextureViewDescriptor {
                     label: None,
@@ -274,10 +241,6 @@ expression: results
                     array_layer_count: None,
                 },
             ),
-            asset_usage: RenderAssetUsages(
-                MAIN_WORLD | RENDER_WORLD,
-            ),
-            copy_on_resize: false,
         },
     ),
     (
@@ -290,9 +253,9 @@ expression: results
             faces: 1,
             is_srgb: true,
             basis_format: UastcLdr4x4,
-            preferred_target: AstcLdr4x4Rgba,
+            preferred_target: Bc7Rgba,
         },
-        Image {
+        TranscodedImage {
             data: None,
             data_order: MipMajor,
             texture_descriptor: TextureDescriptor {
@@ -305,16 +268,12 @@ expression: results
                 mip_level_count: 1,
                 sample_count: 1,
                 dimension: D2,
-                format: Astc {
-                    block: B4x4,
-                    channel: UnormSrgb,
-                },
+                format: Bc7RgbaUnormSrgb,
                 usage: TextureUsages(
                     COPY_SRC | COPY_DST | TEXTURE_BINDING,
                 ),
                 view_formats: [],
             },
-            sampler: Default,
             texture_view_descriptor: Some(
                 TextureViewDescriptor {
                     label: None,
@@ -330,10 +289,6 @@ expression: results
                     array_layer_count: None,
                 },
             ),
-            asset_usage: RenderAssetUsages(
-                MAIN_WORLD | RENDER_WORLD,
-            ),
-            copy_on_resize: false,
         },
     ),
     (
@@ -346,9 +301,9 @@ expression: results
             faces: 1,
             is_srgb: true,
             basis_format: XuastcLdr8x8,
-            preferred_target: AstcLdr8x8Rgba,
+            preferred_target: Bc7Rgba,
         },
-        Image {
+        TranscodedImage {
             data: None,
             data_order: MipMajor,
             texture_descriptor: TextureDescriptor {
@@ -361,16 +316,12 @@ expression: results
                 mip_level_count: 11,
                 sample_count: 1,
                 dimension: D2,
-                format: Astc {
-                    block: B8x8,
-                    channel: UnormSrgb,
-                },
+                format: Bc7RgbaUnormSrgb,
                 usage: TextureUsages(
                     COPY_SRC | COPY_DST | TEXTURE_BINDING,
                 ),
                 view_formats: [],
             },
-            sampler: Default,
             texture_view_descriptor: Some(
                 TextureViewDescriptor {
                     label: None,
@@ -386,10 +337,6 @@ expression: results
                     array_layer_count: None,
                 },
             ),
-            asset_usage: RenderAssetUsages(
-                MAIN_WORLD | RENDER_WORLD,
-            ),
-            copy_on_resize: false,
         },
     ),
 ]

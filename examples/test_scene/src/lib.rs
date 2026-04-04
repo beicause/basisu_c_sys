@@ -112,7 +112,7 @@ fn setup(
             base_color_texture: Some(asset_server.load_with_settings(
                 IMAGE_PATH_ALPHA0,
                 |s: &mut BasisuLoaderSettings| {
-                    s.channel_type_hint = bevy_basisu_loader::transcoder::ChannelType::Rg;
+                    s.channel_type_hint = bevy_basisu_loader::sys::extra::ChannelType::Rg;
                 },
             )),
             alpha_mode: AlphaMode::Blend,

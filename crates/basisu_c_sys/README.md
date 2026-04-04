@@ -17,3 +17,4 @@ cargo r -p basisu_c_sys --bin build-wasm-cli --features __build_wasm_cli -- --em
 Feature flags:
 - `encoder`: Enable basisu encoder. By default only transcoder is enabled.
 - `serde`: Enable serde on structs.
+- `extra`: Enable extra high level API for easier usage.

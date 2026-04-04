@@ -1,0 +1,6 @@
+---
+source: crates/basisu_c_sys/src/extra/transcoder.rs
+expression: image_data
+extension: bin
+snapshot_kind: binary
+---

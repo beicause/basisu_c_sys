@@ -7,7 +7,7 @@ use bevy_basisu_loader::{BasisuLoader, BasisuLoaderSettings};
 use serde::{Deserialize, Serialize};
 use thiserror::Error;
 
-use crate::encoder::{BasisuEncodeError, BasisuEncoder, BasisuEncoderParams};
+use basisu_c_sys::extra::{BasisuEncodeError, BasisuEncoder, BasisuEncoderParams};
 
 #[derive(TypePath)]
 pub struct BasisuTextureSaver;
@@ -49,7 +49,11 @@ impl AssetSaver for BasisuTextureSaver {
         settings: &Self::Settings,
     ) -> Result<<Self::OutputLoader as bevy::asset::AssetLoader>::Settings, Self::Error> {
         let mut encoder = BasisuEncoder::new();
-        encoder.set_image(&asset)?;
+        encoder.set_image(basisu_c_sys::extra::SourceImage {
+            data: asset.data.as_deref().unwrap_or(&[]),
+            texture_descriptor: &asset.texture_descriptor,
+            texture_view_descriptor: &asset.texture_view_descriptor,
+        })?;
         let result = encoder.compress(settings.params)?;
         writer.write_all(&result).await?;
 
