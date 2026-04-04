@@ -1,0 +1,6 @@
+---
+source: crates/bevy_basisu_saver/src/encoder.rs
+expression: res
+extension: basisu.ktx2
+snapshot_kind: binary
+---
