@@ -53,7 +53,7 @@ TLDR: Just build your bevy application to `wasm32-unknown-unknown` normally.
 
 This crate is based on [basisu_c_sys](../basisu_c_sys/). The prebuilt wasm in `crates/basisu_c_sys/wasm` is automatically embedded in binary when building `wasm32-unknown-unknown`. It was prebuilt through:
 ```sh
-cargo r -p basisu_c_sys --bin build-wasm-cli --features __build-wasm-cli -- --emcc-flags="-Os -msimd128 -flto=full -sEVAL_CTORS" --wasm-opt-flags="-Os --enable-simd --enable-bulk-memory-opt --enable-nontrapping-float-to-int"
+cargo r -p basisu_c_sys --bin build-wasm-cli --features __build_wasm_cli -- --emcc-flags="-Os -msimd128 -flto=full -sEVAL_CTORS" --wasm-opt-flags="-Os --enable-simd --enable-bulk-memory-opt --enable-nontrapping-float-to-int"
 ```
 
 ## Bevy version compatibility
