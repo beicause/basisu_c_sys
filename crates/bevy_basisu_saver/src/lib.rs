@@ -91,4 +91,25 @@ impl Plugin for BasisuSaverPlugin {
             }
         }
     }
+
+    #[cfg(all(
+        target_arch = "wasm32",
+        target_vendor = "unknown",
+        target_os = "unknown",
+    ))]
+    fn ready(&self, app: &App) -> bool {
+        app.world()
+            .resource::<BasisuWasmReady>()
+            .load(Ordering::Acquire)
+            != 0
+    }
+
+    fn finish(&self, _app: &mut App) {
+        #[cfg(all(
+            target_arch = "wasm32",
+            target_vendor = "unknown",
+            target_os = "unknown",
+        ))]
+        _app.world_mut().remove_resource::<BasisuWasmReady>();
+    }
 }
