@@ -611,7 +611,7 @@ mod tests {
 
     #[test]
     fn transcode_invalid_data_info_is_none() {
-        bevy::tasks::block_on(basisu_transcoder_init());
+        block_on(basisu_transcoder_init());
         let mut transcoder = BasisuTranscoder::new();
         let info = transcoder.prepare(&[], SupportedTextureCompression::empty(), ChannelType::Auto);
         assert!(info.is_err());
@@ -628,7 +628,7 @@ mod tests {
 
     #[test]
     fn transcode_before_prepare_panic() {
-        bevy::tasks::block_on(basisu_transcoder_init());
+        block_on(basisu_transcoder_init());
         let transcoder = BasisuTranscoder::new();
         assert!(
             transcoder
@@ -639,7 +639,7 @@ mod tests {
 
     #[test]
     fn transcode_invalid_data_output_panic() {
-        bevy::tasks::block_on(basisu_transcoder_init());
+        block_on(basisu_transcoder_init());
         let mut transcoder = BasisuTranscoder::new();
         let _info = transcoder.prepare(
             &[1, 2, 1],
@@ -657,7 +657,7 @@ mod tests {
             let mut path = std::path::PathBuf::new();
             path.push(std::env!("CARGO_MANIFEST_DIR"));
             path.push("../../assets");
-            bevy::tasks::block_on(basisu_transcoder_init());
+            block_on(basisu_transcoder_init());
             let mut results = Vec::new();
             let mut transcoder = BasisuTranscoder::new();
             for file in std::fs::read_dir(path).unwrap() {
@@ -697,5 +697,26 @@ mod tests {
             "astc_",
             SupportedTextureCompression::ASTC_LDR | SupportedTextureCompression::ASTC_HDR,
         );
+    }
+
+    /// Blocks on the supplied `future`.
+    /// This implementation will busy-wait until it is completed.
+    /// Consider enabling the `async-io` or `futures-lite` features.
+    fn block_on<T>(future: impl Future<Output = T>) -> T {
+        use core::task::{Context, Poll};
+
+        // Pin the future on the stack.
+        let mut future = core::pin::pin!(future);
+
+        // We don't care about the waker as we're just going to poll as fast as possible.
+        let cx = &mut Context::from_waker(core::task::Waker::noop());
+
+        // Keep polling until the future is ready.
+        loop {
+            match future.as_mut().poll(cx) {
+                Poll::Ready(output) => return output,
+                Poll::Pending => core::hint::spin_loop(),
+            }
+        }
     }
 }

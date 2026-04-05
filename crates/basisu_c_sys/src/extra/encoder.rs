@@ -351,10 +351,7 @@ mod tests {
         },
         utils::BasisTextureFormat,
     };
-    use bevy::{
-        asset::RenderAssetUsages,
-        image::{CompressedImageFormats, Image},
-    };
+    use bevy_image::{CompressedImageFormats, Image};
     use wgpu_types::TextureViewDimension;
 
     const SKYBOX_PATHS: &[&str] = &[
@@ -378,7 +375,7 @@ mod tests {
 
     #[test]
     fn encode_cubemap_xuastc_ldr_4x4_by_slice() {
-        bevy::tasks::block_on(basisu_encoder_init());
+        block_on(basisu_encoder_init());
         basisu_encoder_enable_debug_printf(true);
 
         let dir = std::env!("CARGO_MANIFEST_DIR");
@@ -386,13 +383,13 @@ mod tests {
         for (i, path) in SKYBOX_PATHS.iter().enumerate() {
             let image = Image::from_buffer(
                 &std::fs::read(Path::new(dir).join(path)).unwrap(),
-                bevy::image::ImageType::Extension(
+                bevy_image::ImageType::Extension(
                     Path::new(path).extension().unwrap().to_str().unwrap(),
                 ),
                 CompressedImageFormats::empty(),
                 true,
-                bevy::image::ImageSampler::Default,
-                RenderAssetUsages::all(),
+                bevy_image::ImageSampler::Default,
+                Default::default(),
             )
             .unwrap();
             encoder.set_image_slice(i as u32, (&image).into()).unwrap();
@@ -410,7 +407,7 @@ mod tests {
 
     #[test]
     fn encode_cubemap_astc_ldr_8x8_mips_by_image() {
-        bevy::tasks::block_on(basisu_encoder_init());
+        block_on(basisu_encoder_init());
         basisu_encoder_enable_debug_printf(true);
 
         let dir = std::env!("CARGO_MANIFEST_DIR");
@@ -419,13 +416,13 @@ mod tests {
         for path in SKYBOX_PATHS {
             let image = Image::from_buffer(
                 &std::fs::read(Path::new(dir).join(path)).unwrap(),
-                bevy::image::ImageType::Extension(
+                bevy_image::ImageType::Extension(
                     Path::new(path).extension().unwrap().to_str().unwrap(),
                 ),
                 CompressedImageFormats::empty(),
                 true,
-                bevy::image::ImageSampler::Default,
-                RenderAssetUsages::all(),
+                bevy_image::ImageSampler::Default,
+                Default::default(),
             )
             .unwrap();
             images.push(image);
@@ -437,15 +434,15 @@ mod tests {
                     .flat_map(|img| img.data.take().unwrap())
                     .collect(),
             ),
-            texture_descriptor: bevy::render::render_resource::TextureDescriptor {
-                size: bevy::render::render_resource::Extent3d {
+            texture_descriptor: wgpu_types::TextureDescriptor {
+                size: wgpu_types::Extent3d {
                     width: images[0].width(),
                     height: images[0].height(),
                     depth_or_array_layers: images.len() as u32,
                 },
                 ..images[0].texture_descriptor
             },
-            texture_view_descriptor: Some(bevy::render::render_resource::TextureViewDescriptor {
+            texture_view_descriptor: Some(wgpu_types::TextureViewDescriptor {
                 dimension: Some(TextureViewDimension::Cube),
                 ..Default::default()
             }),
@@ -466,5 +463,26 @@ mod tests {
         // The test failed on macos, disable it for now.
         #[cfg(not(target_os = "macos"))]
         insta::assert_binary_snapshot!("skybox_astc_ldr_8x8_mips.basisu.ktx2", res);
+    }
+
+    /// Blocks on the supplied `future`.
+    /// This implementation will busy-wait until it is completed.
+    /// Consider enabling the `async-io` or `futures-lite` features.
+    fn block_on<T>(future: impl Future<Output = T>) -> T {
+        use core::task::{Context, Poll};
+
+        // Pin the future on the stack.
+        let mut future = core::pin::pin!(future);
+
+        // We don't care about the waker as we're just going to poll as fast as possible.
+        let cx = &mut Context::from_waker(core::task::Waker::noop());
+
+        // Keep polling until the future is ready.
+        loop {
+            match future.as_mut().poll(cx) {
+                Poll::Ready(output) => return output,
+                Poll::Pending => core::hint::spin_loop(),
+            }
+        }
     }
 }
