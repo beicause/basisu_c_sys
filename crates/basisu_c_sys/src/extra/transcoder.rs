@@ -118,15 +118,14 @@ impl BasisuTranscoder {
                 self.ktx2_handle = 0;
             }
 
-            let basisu_ptr = trans_sys::bt_alloc(input.len() as u64);
-            crate::copy_host_memory_to_basisu(input, basisu_ptr);
-            let ktx2_handle = trans_sys::bt_ktx2_open(basisu_ptr, input.len() as u32);
+            self.data_ptr = trans_sys::bt_alloc(input.len() as u64);
+            crate::copy_host_memory_to_basisu(input, self.data_ptr);
+            self.ktx2_handle = trans_sys::bt_ktx2_open(self.data_ptr, input.len() as u32);
+            let ktx2_handle = self.ktx2_handle;
             if ktx2_handle == 0 {
                 return Err(BasisuTranscodeError::LoadKtx2DataFailed);
             }
             if trans_sys::bt_ktx2_start_transcoding(ktx2_handle).is_err() {
-                trans_sys::bt_free(basisu_ptr);
-                trans_sys::bt_ktx2_close(ktx2_handle);
                 return Err(BasisuTranscodeError::BtStartTranscodingFailed);
             }
             let width = trans_sys::bt_ktx2_get_width(ktx2_handle);
@@ -163,8 +162,6 @@ impl BasisuTranscoder {
                 preferred_target,
             };
 
-            self.data_ptr = basisu_ptr;
-            self.ktx2_handle = ktx2_handle;
             self.info = Some(info);
             Ok(info)
         }
