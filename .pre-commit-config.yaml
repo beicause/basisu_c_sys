@@ -21,6 +21,13 @@ repos:
       - id: end-of-file-fixer
   - repo: local
     hooks:
+      - id: taplo-toml
+        name: taplo-toml
+        description: Format toml with taplo.
+        entry: taplo fmt
+        language: system
+        types: [toml]
+
       - id: cargo-fmt
         name: cargo-fmt
         description: Format files with cargo fmt.
@@ -50,10 +57,3 @@ repos:
           ]
         types: [rust]
         pass_filenames: false
-
-      - id: taplo-toml
-        name: taplo-toml
-        description: Format toml with taplo.
-        entry: taplo fmt
-        language: system
-        types: [toml]
