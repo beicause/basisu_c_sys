@@ -3,6 +3,7 @@
 pub async fn instantiate_embedded_basisu_wasm() {}
 
 #[cfg(feature = "encoder")]
+#[cfg_attr(docsrs, doc(cfg(feature = "encoder")))]
 pub mod encoder {
     include!(concat!(env!("OUT_DIR"), "/basisu_c_api.rs"));
 
