@@ -1,3 +1,4 @@
+use async_lock::OnceCell as AsyncOnceCell;
 use js_sys::{Object, Reflect, Uint8Array};
 use std::cell::OnceCell;
 
@@ -34,6 +35,8 @@ thread_local! {
     static BASISU_INSTANCE: OnceCell<Basisu> = OnceCell::new();
 }
 
+static BASISU_INITIALIZED: AsyncOnceCell<()> = AsyncOnceCell::new();
+
 mod instance {
     use js_sys::Object;
     use wasm_bindgen::prelude::wasm_bindgen;
@@ -58,16 +61,18 @@ mod instance {
 /// Instantiate the embedded basisu wasm, required on web before calling other functions.
 /// This is no-op on native platform.
 pub async fn instantiate_embedded_basisu_wasm() {
-    if BASISU_INSTANCE.with(|cell| cell.get().is_some()) {
-        return;
-    }
-    let binary = Uint8Array::new_from_slice(BASISU_WASM);
-    let args = Object::new();
-    Reflect::set(&args, &"wasmBinary".into(), &binary).unwrap();
-    let instance = instance::new_instance(&args).await;
-    BASISU_INSTANCE.with(|cell| {
-        cell.set(instance).unwrap();
-    });
+    BASISU_INITIALIZED
+        .get_or_init(async || {
+            let binary = Uint8Array::new_from_slice(BASISU_WASM);
+            let args = Object::new();
+            Reflect::set(&args, &"wasmBinary".into(), &binary).unwrap();
+            let instance = instance::new_instance(&args).await;
+            BASISU_INSTANCE.with(|cell| {
+                cell.set(instance).unwrap();
+            });
+            ()
+        })
+        .await;
 }
 
 #[cfg(feature = "encoder")]
