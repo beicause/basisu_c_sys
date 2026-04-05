@@ -1,4 +1,5 @@
 #![doc = include_str!("../README.md")]
+#![cfg_attr(docsrs, feature(doc_cfg), doc(auto_cfg = false))]
 #![cfg_attr(
     all(
         not(all(
@@ -13,6 +14,7 @@
 extern crate alloc;
 
 #[cfg(feature = "extra")]
+#[cfg_attr(docsrs, doc(cfg(feature = "extra")))]
 pub mod extra;
 
 pub mod common {

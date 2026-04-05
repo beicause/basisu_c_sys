@@ -71,6 +71,7 @@ pub async fn instantiate_embedded_basisu_wasm() {
 }
 
 #[cfg(feature = "encoder")]
+#[cfg_attr(docsrs, doc(cfg(feature = "encoder")))]
 pub mod encoder {
     use super::BASISU_INSTANCE;
     use super::Bool32;
