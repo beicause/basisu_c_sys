@@ -11,7 +11,8 @@ Note that BC1, PVRTC1, ATC, FXT1, PVRTC2 are not compiled to reduce size as they
 
 This supports `wasm32-unknown-unknown` by embedding prebuilt basisu wasm binary and `wasm-bindgen`. You need to call `instantiate_embedded_basisu_wasm` before calling other functions if running on web. The prebuilt wasm was prebuilt through:
 ```sh
-cargo r -p basisu_c_sys --bin build-wasm-cli --features __build_wasm_cli -- --emcc-flags="-Os -msimd128 -flto=full -sEVAL_CTORS" --wasm-opt-flags="-Os --enable-simd --enable-bulk-memory-opt --enable-nontrapping-float-to-int"
+cargo r -p basisu_c_sys --bin gen_make_wasm --features __gen_make_wasm -- --emcc-flags="-Os -msimd128 -flto=full -sEVAL_CTORS" --wasm-opt-flags="-Os --enable-simd --enable-bulk-memory-opt --enable-nontrapping-float-to-int"
+make -j$(nproc)
 ```
 
 Feature flags:

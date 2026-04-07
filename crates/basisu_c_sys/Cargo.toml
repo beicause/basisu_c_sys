@@ -24,7 +24,7 @@ default = []
 encoder = []
 extra = ["dep:wgpu-types", "dep:async-lock", "dep:thiserror", "dep:bitflags"]
 serde = ["dep:serde"]
-__build_wasm_cli = ["dep:clap"]
+__gen_make_wasm = ["dep:clap"]
 
 [dependencies]
 async-lock = { version = "3.4.2", default-features = false, optional = true }
@@ -54,9 +54,9 @@ syn = { version = "2.0.117", default-features = false, features = [
 prettyplease = "0.2.37"
 
 [[bin]]
-name = "build-wasm-cli"
-path = "bin/build_wasm_cli.rs"
-required-features = ["__build_wasm_cli"]
+name = "gen_make_wasm"
+path = "bin/gen_make_wasm.rs"
+required-features = ["__gen_make_wasm"]
 
 [dev-dependencies]
 bevy_image = { git = "https://github.com/bevyengine/bevy", rev = "28f99e9618398cc999e6f92d3d9373b82af146cf", default-features = false, features = [
