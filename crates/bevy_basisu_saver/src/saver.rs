@@ -45,8 +45,9 @@ impl AssetSaver for BasisuTextureSaver {
     async fn save(
         &self,
         writer: &mut bevy::asset::io::Writer,
-        asset: bevy::asset::saver::SavedAsset<'_, Self::Asset>,
+        asset: bevy::asset::saver::SavedAsset<'_, '_, Self::Asset>,
         settings: &Self::Settings,
+        _asset_path: bevy::asset::AssetPath<'_>,
     ) -> Result<<Self::OutputLoader as bevy::asset::AssetLoader>::Settings, Self::Error> {
         let mut encoder = BasisuEncoder::new();
         encoder.set_image(basisu_c_sys::extra::SourceImage {
