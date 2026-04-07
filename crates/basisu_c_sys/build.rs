@@ -1,4 +1,5 @@
 const FLAGS: &[&str] = &[
+    "/wd4189",
     "-Wno-unused-variable",
     "-Wno-type-limits",
     "-Wno-unused-but-set-variable",
@@ -403,7 +404,12 @@ fn make_wasm_build_cmd() {
         ];
         let mut default_emcc_args = Vec::new();
         default_emcc_args.extend(["-xc++", "-std=c++17"].map(ToString::to_string));
-        default_emcc_args.extend(FLAGS.iter().map(ToString::to_string));
+        default_emcc_args.extend(
+            FLAGS
+                .iter()
+                .filter(|f| !f.starts_with("/wd"))
+                .map(ToString::to_string),
+        );
         default_emcc_args.extend(
             DEFINES
                 .iter()
