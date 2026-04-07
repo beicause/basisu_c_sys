@@ -13,10 +13,10 @@ expression: results
             faces: 1,
             is_srgb: true,
             basis_format: Etc1s,
-            preferred_target: RGBA32,
+            preferred_target: Etc2Rgba,
         },
         TranscodedImage {
-            data: None,
+            data: [],
             data_order: MipMajor,
             texture_descriptor: TextureDescriptor {
                 label: None,
@@ -28,7 +28,7 @@ expression: results
                 mip_level_count: 9,
                 sample_count: 1,
                 dimension: D2,
-                format: Rgba8UnormSrgb,
+                format: Etc2Rgba8UnormSrgb,
                 usage: TextureUsages(
                     COPY_SRC | COPY_DST | TEXTURE_BINDING,
                 ),
@@ -64,7 +64,7 @@ expression: results
             preferred_target: AstcHdr4x4Rgba,
         },
         TranscodedImage {
-            data: None,
+            data: [],
             data_order: MipMajor,
             texture_descriptor: TextureDescriptor {
                 label: None,
@@ -115,7 +115,7 @@ expression: results
             preferred_target: AstcHdr6x6Rgba,
         },
         TranscodedImage {
-            data: None,
+            data: [],
             data_order: MipMajor,
             texture_descriptor: TextureDescriptor {
                 label: None,
@@ -166,7 +166,7 @@ expression: results
             preferred_target: AstcLdr8x8Rgba,
         },
         TranscodedImage {
-            data: None,
+            data: [],
             data_order: MipMajor,
             texture_descriptor: TextureDescriptor {
                 label: None,
@@ -217,7 +217,7 @@ expression: results
             preferred_target: AstcLdr8x8Rgba,
         },
         TranscodedImage {
-            data: None,
+            data: [],
             data_order: MipMajor,
             texture_descriptor: TextureDescriptor {
                 label: None,
@@ -268,7 +268,7 @@ expression: results
             preferred_target: AstcLdr4x4Rgba,
         },
         TranscodedImage {
-            data: None,
+            data: [],
             data_order: MipMajor,
             texture_descriptor: TextureDescriptor {
                 label: None,
@@ -319,7 +319,7 @@ expression: results
             preferred_target: AstcLdr8x8Rgba,
         },
         TranscodedImage {
-            data: None,
+            data: [],
             data_order: MipMajor,
             texture_descriptor: TextureDescriptor {
                 label: None,

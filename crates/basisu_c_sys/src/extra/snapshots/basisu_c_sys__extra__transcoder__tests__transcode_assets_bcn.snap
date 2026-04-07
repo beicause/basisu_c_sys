@@ -16,7 +16,7 @@ expression: results
             preferred_target: Bc7Rgba,
         },
         TranscodedImage {
-            data: None,
+            data: [],
             data_order: MipMajor,
             texture_descriptor: TextureDescriptor {
                 label: None,
@@ -64,7 +64,7 @@ expression: results
             preferred_target: Bc6H,
         },
         TranscodedImage {
-            data: None,
+            data: [],
             data_order: MipMajor,
             texture_descriptor: TextureDescriptor {
                 label: None,
@@ -112,7 +112,7 @@ expression: results
             preferred_target: Bc6H,
         },
         TranscodedImage {
-            data: None,
+            data: [],
             data_order: MipMajor,
             texture_descriptor: TextureDescriptor {
                 label: None,
@@ -160,7 +160,7 @@ expression: results
             preferred_target: Bc7Rgba,
         },
         TranscodedImage {
-            data: None,
+            data: [],
             data_order: MipMajor,
             texture_descriptor: TextureDescriptor {
                 label: None,
@@ -208,7 +208,7 @@ expression: results
             preferred_target: Bc7Rgba,
         },
         TranscodedImage {
-            data: None,
+            data: [],
             data_order: MipMajor,
             texture_descriptor: TextureDescriptor {
                 label: None,
@@ -256,7 +256,7 @@ expression: results
             preferred_target: Bc7Rgba,
         },
         TranscodedImage {
-            data: None,
+            data: [],
             data_order: MipMajor,
             texture_descriptor: TextureDescriptor {
                 label: None,
@@ -304,7 +304,7 @@ expression: results
             preferred_target: Bc7Rgba,
         },
         TranscodedImage {
-            data: None,
+            data: [],
             data_order: MipMajor,
             texture_descriptor: TextureDescriptor {
                 label: None,

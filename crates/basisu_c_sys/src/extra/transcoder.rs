@@ -11,7 +11,7 @@ use wgpu_types::{
 
 #[derive(Debug, Clone, PartialEq)]
 pub struct TranscodedImage {
-    pub data: Option<Vec<u8>>,
+    pub data: Vec<u8>,
     pub data_order: TextureDataOrder,
     pub texture_descriptor: TextureDescriptor<Option<&'static str>, &'static [TextureFormat]>,
     pub texture_view_descriptor: Option<TextureViewDescriptor<Option<&'static str>>>,
@@ -304,7 +304,7 @@ impl BasisuTranscoder {
             out_format.remove_srgb_suffix()
         };
         Ok(TranscodedImage {
-            data: Some(data),
+            data,
             data_order: TextureDataOrder::MipMajor,
             texture_descriptor: TextureDescriptor {
                 // Note: we must give wgpu the logical texture dimensions, so it can correctly compute mip sizes.
@@ -668,7 +668,7 @@ mod tests {
                     .prepare(&data, $supported_format, ChannelType::Auto)
                     .unwrap();
                 let mut image = transcoder.transcode(None, None).unwrap();
-                let image_data = image.data.take().unwrap();
+                let image_data = std::mem::take(&mut image.data);
                 // The bcn test failed on macos, disable it for now.
                 if !(cfg!(target_os = "macos") && $prefix == "bcn_") {
                     insta::assert_binary_snapshot!(
@@ -692,7 +692,9 @@ mod tests {
     fn transcode_assets_astc() {
         snapshot_test!(
             "astc_",
-            SupportedTextureCompression::ASTC_LDR | SupportedTextureCompression::ASTC_HDR,
+            SupportedTextureCompression::ASTC_LDR
+                | SupportedTextureCompression::ASTC_HDR
+                | SupportedTextureCompression::ETC2,
         );
     }
 
