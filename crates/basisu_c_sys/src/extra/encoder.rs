@@ -3,11 +3,9 @@ use crate::encoder as enc_sys;
 use crate::utils::BasisTextureFormat;
 use alloc::vec::Vec;
 use async_lock::OnceCell;
-use wgpu_types::TextureDescriptor;
-use wgpu_types::TextureDimension;
-use wgpu_types::TextureFormat;
-use wgpu_types::TextureViewDescriptor;
-use wgpu_types::TextureViewDimension;
+use wgpu_types::{
+    TextureDescriptor, TextureDimension, TextureFormat, TextureViewDescriptor, TextureViewDimension,
+};
 
 #[derive(Debug, Clone, PartialEq)]
 pub struct SourceImage<'a> {
