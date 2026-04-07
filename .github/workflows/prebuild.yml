@@ -1,0 +1,34 @@
+name: Prebuild basisu wasm
+
+on:
+  workflow_dispatch:
+
+concurrency:
+  group: ${{github.workflow}}-${{github.ref}}
+  cancel-in-progress: true
+
+env:
+  EM_VERSION: 5.0.5
+
+jobs:
+  prebuild-basisu-wasm:
+    name: Prebuild basisu wasm
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+
+      - name: Install Emscripten
+        uses: mymindstorm/setup-emsdk@v14
+        with:
+          version: ${{ env.EM_VERSION }}
+
+      - name: Install wasm-opt
+        run: wget https://github.com/WebAssembly/binaryen/releases/download/version_129/binaryen-version_129-x86_64-linux.tar.gz && tar -xvf binaryen-version_129-x86_64-linux.tar.gz && sudo cp binaryen-version_129/bin/wasm-opt /usr/local/bin/ && rm -r binaryen-version_129 && rm binaryen-version_129-x86_64-linux.tar.gz
+
+      - name: Build vendored basisu wasm
+        run: make -j$(nproc)
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6.0.0
+        with:
+          path: crates/basisu_c_sys/wasm/

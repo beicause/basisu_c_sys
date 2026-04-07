@@ -1,5 +1,8 @@
 const FLAGS: &[&str] = &[
-    "-w",
+    "-Wno-unused-variable",
+    "-Wno-type-limits",
+    "-Wno-unused-but-set-variable",
+    "-Wno-misleading-indentation",
     "-fno-exceptions",
     // Fix gcc optimization issue.
     // See vendor/basis_universal/transcoder/basisu.h
@@ -69,8 +72,8 @@ const TRANSCODER_SRCS: &[&str] = &[
 fn main() {
     bindgen();
     wasm_bindgen();
-    #[cfg(feature = "__build_wasm_cli")]
-    gen_wasm_build_cmd();
+    #[cfg(feature = "__gen_make_wasm")]
+    make_wasm_build_cmd();
     let target = std::env::var("TARGET").unwrap();
     if std::env::var("DOCS_RS").is_err() && target != "wasm32-unknown-unknown" {
         compile_basisu_static();
@@ -350,8 +353,8 @@ fn compile_basisu_static() {
     build.compile("basisu_c_api_vendor");
 }
 
-#[cfg(feature = "__build_wasm_cli")]
-fn gen_wasm_build_cmd() {
+#[cfg(feature = "__gen_make_wasm")]
+fn make_wasm_build_cmd() {
     let encoder_api_file =
         std::path::Path::new(&std::env::var("OUT_DIR").unwrap()).join("basisu_c_api.rs");
     let transcoder_api_file =
@@ -376,7 +379,7 @@ fn gen_wasm_build_cmd() {
     ] {
         for line in std::fs::read_to_string(file).unwrap().lines() {
             if let Some(func) = extract_func_name(line) {
-                vec.push(func.to_string());
+                vec.push("_".to_string() + func);
             }
         }
     }
@@ -393,21 +396,15 @@ fn gen_wasm_build_cmd() {
             "-sEXPORTED_RUNTIME_METHODS=HEAPU8".to_string(),
             "-sEXPORTED_FUNCTIONS=".to_string() + &apis.join(","),
         ];
-        let mut cmd = std::process::Command::new("em++");
-        cmd.args(["-xc++", "-std=c++17"])
-            .args(FLAGS)
-            .args(
-                DEFINES
-                    .iter()
-                    .map(|(define, value)| format!("-D{define}={value}")),
-            )
-            .args(emcc_args)
-            .args(srcs);
-        cmd.args(["-o".to_string(), format!("wasm/basisu_{name}.js")]);
-        let default_emcc_args = cmd
-            .get_args()
-            .map(|s| s.to_string_lossy().to_string())
-            .collect::<Vec<String>>();
+        let mut default_emcc_args = Vec::new();
+        default_emcc_args.extend(["-xc++", "-std=c++17"].map(ToString::to_string));
+        default_emcc_args.extend(FLAGS.iter().map(ToString::to_string));
+        default_emcc_args.extend(
+            DEFINES
+                .iter()
+                .map(|(define, value)| format!("-D{define}={value}")),
+        );
+        default_emcc_args.extend(emcc_args);
 
         std::fs::write(
             std::path::Path::new(&std::env::var("OUT_DIR").unwrap())
@@ -416,6 +413,17 @@ fn gen_wasm_build_cmd() {
                 "const DEFAULT_{}_EMCC_ARGS: &[&str] = &{:?};",
                 name.to_uppercase(),
                 default_emcc_args
+            ),
+        )
+        .unwrap();
+
+        std::fs::write(
+            std::path::Path::new(&std::env::var("OUT_DIR").unwrap())
+                .join(format!("build_{name}_sources.rs")),
+            format!(
+                "const {}_SOURCES: &[&str] = &{:?};",
+                name.to_uppercase(),
+                srcs
             ),
         )
         .unwrap();
