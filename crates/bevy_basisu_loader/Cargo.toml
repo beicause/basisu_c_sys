@@ -9,9 +9,12 @@ keywords = ["bevy", "basis-universal", "asset", "transcoder"]
 exclude = ["src/snapshots"]
 
 [dependencies]
-basisu_c_sys = { version = "0.5", features = ["serde", "extra"] }
+basisu_c_sys = { version = "0.6", path = "../basisu_c_sys", features = [
+  "serde",
+  "extra",
+] }
 
-bevy = { version = "0.18", default-features = false, features = [
+bevy = { git = "https://github.com/bevyengine/bevy", rev = "28f99e9618398cc999e6f92d3d9373b82af146cf", default-features = false, features = [
   "bevy_asset",
   "bevy_image",
   "bevy_render",

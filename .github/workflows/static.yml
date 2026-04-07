@@ -48,15 +48,6 @@ jobs:
       - name: Install wasm-bindgen
         run: cargo binstall --version ^0.2 --force wasm-bindgen-cli
 
-      - name: Build webgl2
-        run: RUSTFLAGS="-Ctarget-feature=+simd128" cargo b -p test_scene --target wasm32-unknown-unknown --profile web_release
-
-      - name: Wasm bindgen webgl2
-        run: wasm-bindgen --out-name test_scene --out-dir web/target/webgl2/ --target web target/wasm32-unknown-unknown/web_release/test_scene.wasm
-
-      - name: Optimize wasm webgl2
-        run: wasm-opt --enable-simd --enable-bulk-memory-opt --enable-nontrapping-float-to-int -Os ./web/target/webgl2/test_scene_bg.wasm -o ./web/target/webgl2/test_scene_bg.wasm
-
       - name: Build webgpu
         run: RUSTFLAGS="-Ctarget-feature=+simd128" cargo b -p test_scene --features bevy/webgpu --target wasm32-unknown-unknown --profile web_release
 

@@ -11,7 +11,7 @@ crate-type = ["lib", "cdylib"]
 [dependencies]
 bevy_basisu_loader = { path = "../../crates/bevy_basisu_loader" }
 
-bevy = { version = "0.18", default-features = false, features = [
+bevy = { git = "https://github.com/bevyengine/bevy", rev = "28f99e9618398cc999e6f92d3d9373b82af146cf", default-features = false, features = [
   # collection: dev
   # "debug",
   # "bevy_dev_tools",
