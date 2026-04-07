@@ -2,6 +2,7 @@ const FLAGS: &[&str] = &[
     "-Wno-unused-variable",
     "-Wno-type-limits",
     "-Wno-unused-but-set-variable",
+    "-Wno-unused-function",
     "-Wno-misleading-indentation",
     "-fno-exceptions",
     // Fix gcc optimization issue.
@@ -338,7 +339,11 @@ fn compile_basisu_static() {
         build.cpp_link_stdlib("c++_static").flag("-U_GNU_SOURCE");
     }
 
-    build.cpp(true).std("c++17");
+    build
+        .cpp(true)
+        .flag_if_supported("-xc++")
+        .std("c++17")
+        .warnings_into_errors(true);
     for f in FLAGS {
         build.flag_if_supported(f);
     }
