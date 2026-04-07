@@ -109,7 +109,7 @@ impl AssetLoader for BasisuLoader {
                 info.basis_format,
                 out_image.texture_descriptor.format,
                 src_bytes as f32 / 1000.0,
-                out_image.data.as_ref().unwrap().len() as f32 / 1000.0,
+                out_image.data.len() as f32 / 1000.0,
                 info.preferred_target,
                 out_image.texture_descriptor.size,
                 info.levels,
@@ -123,7 +123,7 @@ impl AssetLoader for BasisuLoader {
             );
         }
         Ok(Image {
-            data: out_image.data,
+            data: Some(out_image.data),
             data_order: out_image.data_order,
             texture_descriptor: out_image.texture_descriptor,
             texture_view_descriptor: out_image.texture_view_descriptor,

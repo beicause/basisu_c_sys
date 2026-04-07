@@ -8,10 +8,14 @@ description = "A bevy asset processor to transform images to basisu ktx2 texture
 keywords = ["basis-universal", "bevy", "asset", "encoder"]
 
 [dependencies]
-basisu_c_sys = { version = "0.5", features = ["encoder", "serde", "extra"] }
+basisu_c_sys = { version = "0.6", path = "../basisu_c_sys", features = [
+  "encoder",
+  "serde",
+  "extra",
+] }
 bevy_basisu_loader = { version = "0.6", path = "../bevy_basisu_loader" }
 
-bevy = { version = "0.18", default-features = false, features = [
+bevy = { git = "https://github.com/bevyengine/bevy", rev = "28f99e9618398cc999e6f92d3d9373b82af146cf", default-features = false, features = [
   "bevy_asset",
   "bevy_image",
   "bevy_render",
@@ -23,4 +27,6 @@ async-lock = "3.4.2"
 
 [dev-dependencies]
 insta = "1.47.2"
-bevy = { version = "0.18", default-features = false, features = ["jpeg"] }
+bevy = { git = "https://github.com/bevyengine/bevy", rev = "28f99e9618398cc999e6f92d3d9373b82af146cf", default-features = false, features = [
+  "jpeg",
+] }
