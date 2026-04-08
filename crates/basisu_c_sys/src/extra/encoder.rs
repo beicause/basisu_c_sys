@@ -9,6 +9,7 @@ use wgpu_types::{
 
 #[derive(Debug, Clone, PartialEq)]
 pub struct SourceImage<'a> {
+    /// The input data of image pixels.
     pub data: &'a [u8],
     pub texture_descriptor: &'a TextureDescriptor<Option<&'static str>, &'static [TextureFormat]>,
     pub texture_view_descriptor: &'a Option<TextureViewDescriptor<Option<&'static str>>>,
@@ -30,6 +31,7 @@ impl SourceImage<'_> {
 
 static BASISU_ENCODER_INITIALIZED: OnceCell<()> = OnceCell::new();
 
+/// Init global data of encoder ([`enc_sys::bu_init`]), and basisu wasm if on web.
 pub async fn basisu_encoder_init() {
     BASISU_ENCODER_INITIALIZED
         .get_or_init(async || {
@@ -39,6 +41,7 @@ pub async fn basisu_encoder_init() {
         .await;
 }
 
+/// A wrapper of [`enc_sys::bu_enable_debug_printf`].
 pub fn basisu_encoder_enable_debug_printf(enable: bool) {
     unsafe { enc_sys::bu_enable_debug_printf(enable as u32) };
 }
@@ -112,6 +115,9 @@ impl BasisuEncoderParams {
         }
     }
 
+    /// Return [`Self`] with `common::BU_COMP_FLAGS_TEXTURE_TYPE_*` set according to the view dimension.
+    ///
+    /// Panic if the view dimension is D1 or D3.
     pub const fn with_tex_type(mut self, tex_type: TextureViewDimension) -> Self {
         self.flags_and_quality = self.flags_and_quality
             & !(common::BU_COMP_FLAGS_TEXTURE_TYPE_MASK
@@ -139,6 +145,7 @@ impl BasisuEncoderParams {
 }
 
 impl BasisuEncoder {
+    /// Create a encoder. Panic if [`basisu_encoder_init`] hasn't been called.
     pub fn new() -> Self {
         if !BASISU_ENCODER_INITIALIZED.is_initialized() {
             panic!("`basisu_encoder_init` must be called before create encoder");
@@ -148,6 +155,14 @@ impl BasisuEncoder {
         }
     }
 
+    /// Set the input image of the encoder and clear other image set before.
+    ///
+    /// This support setting image that has multiple layers at once to compress cubemap or texture array.
+    ///
+    /// A error will be returned if the input image doesn't meet:
+    /// - Mip level count is 1
+    /// - Dimension can't be D1 or D3
+    /// - Format is [`TextureFormat::Rgba8Unorm`], [`TextureFormat::Rgba8UnormSrgb`] or [`TextureFormat::Rgba32Float`]
     pub fn set_image(&mut self, image: SourceImage) -> Result<(), BasisuEncodeError> {
         self.clear_image();
 
@@ -225,10 +240,21 @@ impl BasisuEncoder {
         Ok(())
     }
 
+    /// Clear the input image of encoder that was set.
     pub fn clear_image(&mut self) {
         assert!(unsafe { enc_sys::bu_comp_params_clear(self.params) }.is_ok());
     }
 
+    /// Set a image slice at index. Other image set before is not cleared.
+    ///
+    /// This is mainly used to compress cubemap or texture array from a list of 2D images.
+    /// If you already have a layered image, [`Self::set_image`] can be used instead.
+    ///
+    /// A error will be returned if the input image doesn't meet:
+    /// - Mip level count is 1
+    /// - Dimension can't be D1 or D3
+    /// - Array layer count is 1
+    /// - Format is [`TextureFormat::Rgba8Unorm`], [`TextureFormat::Rgba8UnormSrgb`] or [`TextureFormat::Rgba32Float`]
     pub fn set_image_slice(
         &mut self,
         index: u32,
@@ -307,6 +333,7 @@ impl BasisuEncoder {
         Ok(())
     }
 
+    /// Compress the inputted image and return the bytes of ktx2 file result.
     pub fn compress(&mut self, params: BasisuEncoderParams) -> Result<Vec<u8>, BasisuEncodeError> {
         unsafe {
             if enc_sys::bu_compress_texture(
