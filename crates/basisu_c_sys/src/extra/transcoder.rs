@@ -11,7 +11,9 @@ use wgpu_types::{
 
 #[derive(Debug, Clone, PartialEq)]
 pub struct TranscodedImage {
+    /// The output data of image pixels.
     pub data: Vec<u8>,
+    /// The data order. Currently it's always [`TextureDataOrder::MipMajor`].
     pub data_order: TextureDataOrder,
     pub texture_descriptor: TextureDescriptor<Option<&'static str>, &'static [TextureFormat]>,
     pub texture_view_descriptor: Option<TextureViewDescriptor<Option<&'static str>>>,
@@ -33,6 +35,7 @@ impl TranscodedImage {
 
 static BASISU_TRANSCODER_INITIALIZED: OnceCell<()> = OnceCell::new();
 
+/// Init global data of transcoder ([`trans_sys::bt_init`]), and basisu wasm if on web.
 pub async fn basisu_transcoder_init() {
     BASISU_TRANSCODER_INITIALIZED
         .get_or_init(async || {
@@ -91,6 +94,7 @@ impl Default for BasisuTranscoder {
 }
 
 impl BasisuTranscoder {
+    /// Create a transcoder. Panic if [`basisu_transcoder_init`] hasn't been called.
     pub fn new() -> Self {
         if !BASISU_TRANSCODER_INITIALIZED.is_initialized() {
             panic!("`basisu_transcoder_init` must be called before create transcoder");
@@ -102,6 +106,19 @@ impl BasisuTranscoder {
         }
     }
 
+    /// Set the input data of ktx2 basisu file in bytes and return the info.
+    ///
+    /// `supported_compressed_formats` and `channel_type_hint` affect the preferred transcode target.
+    ///
+    /// `channel_type_hint` only has effect if the basisu texture is ETC1S, or device only supports ETC2.  If it's [`ChannelType::Auto`], it will be determined automatically according to ktx2 dfd channel ids.
+    ///
+    /// Default transcode target selection:
+    ///
+    /// | BasisU format                  | Target selection                                               |
+    /// | ------------------------------ | -------------------------------------------------------------- |
+    /// | ETC1S                          | Bc7Rgba/Bc5Rg/Bc4R > Etc2Rgba8/Etc2Rgb8/EacRg11/EacR11 > Rgba8 |
+    /// | UASTC_LDR, ASTC_LDR, XUASTC_LDR| Astc > Bc7Rgba > Etc2Rgba8/Etc2Rgb8/EacRg11/EacR11 > Rgba8     |
+    /// | UASTC_HDR, ASTC_HDR            | Astc > Bc6hRgbUfloat > Rgba16Float                             |
     pub fn prepare(
         &mut self,
         input: &[u8],
@@ -167,10 +184,14 @@ impl BasisuTranscoder {
         }
     }
 
+    /// Get the prepared info, return None if [`Self::prepare`] has not been called.
     pub fn get_prepared_info(&self) -> Option<TranscodeInfo> {
         self.info
     }
 
+    /// Transcode the input data and return the image. Return error if it's not prepared or transcoding failed.
+    ///
+    /// If `transcode_target`/`is_srgb` is None, it will use [`TranscodeInfo::preferred_target`]/[`TranscodeInfo::is_srgb`].
     pub fn transcode(
         &self,
         transcode_target: Option<TranscodeTargetFormat>,

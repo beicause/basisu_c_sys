@@ -1,3 +1,5 @@
+//! This is a command line tool to generate Makefile for building basisu wasm using Emscripten.
+
 include!(concat!(env!("OUT_DIR"), "/build_encoder_emcc_args.rs"));
 include!(concat!(env!("OUT_DIR"), "/build_transcoder_emcc_args.rs"));
 include!(concat!(env!("OUT_DIR"), "/build_encoder_sources.rs"));
