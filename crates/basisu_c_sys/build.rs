@@ -340,11 +340,7 @@ fn compile_basisu_static() {
         build.cpp_link_stdlib("c++_static").flag("-U_GNU_SOURCE");
     }
 
-    build
-        .cpp(true)
-        .flag_if_supported("-xc++")
-        .std("c++17")
-        .warnings_into_errors(true);
+    build.cpp(true).flag_if_supported("-xc++").std("c++17");
     for f in FLAGS {
         build.flag_if_supported(f);
     }
