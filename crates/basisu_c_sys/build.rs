@@ -337,8 +337,9 @@ fn compile_basisu_static() {
 
         // Use c++_static for Android.
         let target_os = std::env::var("CARGO_CFG_TARGET_OS").unwrap();
-        if is_cpp && target_os == "android" {
-            build.cpp_link_stdlib("c++_static").flag("-U_GNU_SOURCE");
+        if target_os == "android" {
+            build.flag("-U_GNU_SOURCE");
+            build.cpp_link_stdlib("c++_static");
         }
 
         build.cpp(is_cpp).std(if is_cpp { "c++17" } else { "c17" });
