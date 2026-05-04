@@ -24,6 +24,7 @@ bevy = { git = "https://github.com/bevyengine/bevy", rev = "28f99e9618398cc999e6
 serde = { version = "1", features = ["derive"] }
 thiserror = { version = "2", default-features = false }
 async-lock = "3.4.2"
+log = { version = "0.4", default-features = false }
 
 [dev-dependencies]
 insta = "1.47.2"
