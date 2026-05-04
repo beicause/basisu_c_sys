@@ -1,0 +1,3 @@
+vendor/basis_universal/encoder/basisu_wasm_transcoder_api.cpp
+vendor/basis_universal/transcoder/basisu_transcoder.cpp
+vendor/basis_universal/zstd/zstddeclib.c
