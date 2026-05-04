@@ -9,6 +9,19 @@ use bevy::{
     app::{App, Plugin},
     image::ImageLoader,
 };
+#[cfg(all(
+    target_arch = "wasm32",
+    target_vendor = "unknown",
+    target_os = "unknown",
+))]
+use bevy::{
+    ecs::resource::Resource,
+    platform::{
+        sync::Arc,
+        sync::atomic::{AtomicUsize, Ordering},
+    },
+    prelude::Deref,
+};
 use bevy_basisu_loader::BasisuLoaderPlugin;
 
 pub mod saver;
