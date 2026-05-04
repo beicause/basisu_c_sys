@@ -421,7 +421,7 @@ mod tests {
         }
         let params = BasisuEncoderParams::new_with_srgb_defaults(BasisTextureFormat::XuastcLdr4x4)
             .with_tex_type(TextureViewDimension::Cube);
-
+        #[cfg_attr(target_os = "macos", expect(unused_variables))]
         let res = encoder
             .compress(params.with_flags(BU_COMP_FLAGS_DEBUG_OUTPUT | BU_COMP_FLAGS_VALIDATE_OUTPUT))
             .unwrap();
@@ -474,6 +474,7 @@ mod tests {
             ..Default::default()
         };
         encoder.set_image((&cube_image).into()).unwrap();
+        #[cfg_attr(target_os = "macos", expect(unused_variables))]
         let res = encoder
             .compress(
                 BasisuEncoderParams::new_with_srgb_defaults(BasisTextureFormat::AstcLdr8x8)
