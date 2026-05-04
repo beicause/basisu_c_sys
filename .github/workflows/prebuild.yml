@@ -26,11 +26,18 @@ jobs:
         with:
           version: ${{ env.EM_VERSION }}
 
-      - name: Install wasm-opt
-        run: wget https://github.com/WebAssembly/binaryen/releases/download/version_129/binaryen-version_129-x86_64-linux.tar.gz && tar -xvf binaryen-version_129-x86_64-linux.tar.gz && sudo cp binaryen-version_129/bin/wasm-opt /usr/local/bin/ && rm -r binaryen-version_129 && rm binaryen-version_129-x86_64-linux.tar.gz
-
       - name: Build vendored basisu wasm
-        run: pushd crates/basisu_c_sys && make -j$(nproc) && popd
+        run: >
+          pushd crates/basisu_c_sys
+          && mkdir build
+          && cd build
+          && emcmake cmake ..
+          && emmake make -j$(nproc)
+          && cp ./basisu_encoder.js ../wasm/basisu_encoder.js
+          && cp ./basisu_transcoder.js ../wasm/basisu_transcoder.js
+          && cp ./basisu_encoder.wasm ../wasm/basisu_encoder.wasm
+          && cp ./basisu_transcoder.wasm ../wasm/basisu_transcoder.wasm
+          && popd
 
       - name: Upload artifact
         uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6.0.0

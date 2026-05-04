@@ -1,0 +1,16 @@
+-Wno-unused-variable
+-Wno-type-limits
+-Wno-unused-but-set-variable
+-Wno-unused-function
+-Wno-misleading-indentation
+-fno-exceptions
+-fno-strict-aliasing
+-DBASISD_SUPPORT_DXT1=0
+-DBASISD_SUPPORT_PVRTC1=0
+-DBASISD_SUPPORT_ATC=0
+-DBASISD_SUPPORT_FXT1=0
+-DBASISD_SUPPORT_PVRTC2=0
+-sSTRICT
+-Os
+-msimd128
+-flto=full

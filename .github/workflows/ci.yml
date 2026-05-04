@@ -27,9 +27,9 @@ jobs:
           - os: ubuntu-latest
             cargo-flags: --release
           - os: macos-latest
-            cargo-flags:
+            cargo-flags: ""
           - os: windows-latest
-            cargo-flags:
+            cargo-flags: ""
 
     steps:
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
@@ -39,12 +39,11 @@ jobs:
         uses: ./.github/actions/install-linux-deps
 
       - name: Install rust toolchain
-        uses: dtolnay/rust-toolchain@master
-        with:
-          toolchain: stable
+        run: |
+          rustup toolchain install stable --profile=minimal --component clippy
 
       - name: Clippy
-        run: cargo clippy -- -D warnings
+        run: cargo clippy --workspace --all-features --all-targets -- -Dwarnings
 
       - name: Doc ${{ matrix.cargo-flags }}
         run: cargo doc --workspace --all-features --no-deps --document-private-items --keep-going ${{ matrix.cargo-flags }}
@@ -64,10 +63,9 @@ jobs:
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
 
       - name: Install rust toolchain
-        uses: dtolnay/rust-toolchain@master
-        with:
-          toolchain: stable
-          targets: wasm32-unknown-unknown
+        run: |
+          rustup toolchain install stable --profile=minimal
+          rustup target add wasm32-unknown-unknown
 
       - name: Build wasm
         run: RUSTFLAGS="-Ctarget-feature=+simd128" cargo build --workspace --target wasm32-unknown-unknown
@@ -79,10 +77,9 @@ jobs:
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
 
       - name: Install rust toolchain
-        uses: dtolnay/rust-toolchain@master
-        with:
-          toolchain: stable
-          targets: aarch64-linux-android
+        run: |
+          rustup toolchain install stable --profile=minimal
+          rustup target add aarch64-linux-android
 
       - name: Install cargo-binstall
         uses: cargo-bins/cargo-binstall@v1.16.6
@@ -94,7 +91,7 @@ jobs:
         run: cargo binstall cargo-ndk
 
       - name: Build
-        run:
+        run: |
           export ANDROID_NDK_HOME=${ANDROID_HOME}/ndk/${{env.ANDROID_NDK_VERSION}} &&
           export ANDROID_NDK_ROOT=${ANDROID_NDK_HOME} &&
           cargo ndk-env -t arm64-v8a &&

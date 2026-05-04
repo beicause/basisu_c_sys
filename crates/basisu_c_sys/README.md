@@ -13,8 +13,10 @@ Note that BC1, PVRTC1, ATC, FXT1, PVRTC2 are not compiled to reduce size as they
 
 This supports `wasm32-unknown-unknown` by embedding prebuilt basisu wasm binary and `wasm-bindgen`. You need to call `instantiate_embedded_basisu_wasm` before calling other functions if running on web. The prebuilt wasm can be built through:
 ```sh
-cargo r -p basisu_c_sys --bin gen_make_wasm --features __gen_make_wasm -- --emcc-flags="-Os -msimd128 -flto=full -sEVAL_CTORS" --wasm-opt-flags="-Os --enable-simd --enable-bulk-memory-opt --enable-nontrapping-float-to-int"
-make -j$(nproc)
+cargo r -p basisu_c_sys --bin gen_make_wasm --features __gen_make_wasm -- --emcc-flags="-Os -msimd128 -flto=full -sEVAL_CTORS"
+mkdir build && cd build
+emcmake cmake ..
+emmake make -j$(nproc)
 ```
 The prebuilt basisu wasm is from [github artifact in CI](https://github.com/beicause/bevy_basisu_loader/actions/workflows/prebuild.yml), built with `make -j$(nproc)`.
 

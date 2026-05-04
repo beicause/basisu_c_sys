@@ -332,27 +332,37 @@ fn wasm_bindgen() {
 }
 
 fn compile_basisu_static() {
-    let mut build = cc::Build::new();
+    for is_cpp in [true, false] {
+        let mut build = cc::Build::new();
 
-    // Use c++_static for Android.
-    let target_os = std::env::var("CARGO_CFG_TARGET_OS").unwrap();
-    if target_os == "android" {
-        build.cpp_link_stdlib("c++_static").flag("-U_GNU_SOURCE");
-    }
+        // Use c++_static for Android.
+        let target_os = std::env::var("CARGO_CFG_TARGET_OS").unwrap();
+        if target_os == "android" {
+            build.flag("-U_GNU_SOURCE");
+            build.cpp_link_stdlib("c++_static");
+        }
 
-    build.cpp(true).flag_if_supported("-xc++").std("c++17");
-    for f in FLAGS {
-        build.flag_if_supported(f);
+        build.cpp(is_cpp).std(if is_cpp { "c++17" } else { "c17" });
+        for f in FLAGS {
+            build.flag_if_supported(f);
+        }
+        for (define, value) in DEFINES {
+            build.define(define, *value);
+        }
+        build.files(
+            if cfg!(feature = "encoder") {
+                ENCODER_SRCS
+            } else {
+                TRANSCODER_SRCS
+            }
+            .iter()
+            .filter(|src| src.ends_with(if is_cpp { ".cpp" } else { ".c" })),
+        );
+        build.compile(&format!(
+            "basisu_c_sys_{}",
+            if is_cpp { "cpp" } else { "c" }
+        ));
     }
-    for (define, value) in DEFINES {
-        build.define(define, *value);
-    }
-    if cfg!(feature = "encoder") {
-        build.files(ENCODER_SRCS);
-    } else {
-        build.files(TRANSCODER_SRCS);
-    }
-    build.compile("basisu_c_api_vendor");
 }
 
 #[cfg(feature = "__gen_make_wasm")]
@@ -399,7 +409,6 @@ fn make_wasm_build_cmd() {
             "-sEXPORTED_FUNCTIONS=".to_string() + &apis.join(","),
         ];
         let mut default_emcc_args = Vec::new();
-        default_emcc_args.extend(["-xc++", "-std=c++17"].map(ToString::to_string));
         default_emcc_args.extend(
             FLAGS
                 .iter()
