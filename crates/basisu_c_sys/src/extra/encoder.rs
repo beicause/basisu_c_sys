@@ -159,9 +159,10 @@ impl BasisuEncoder {
     ///
     /// This support setting image that has multiple layers at once to compress cubemap or texture array.
     ///
-    /// A error will be returned if the input image doesn't meet:
+    /// The input image must satisfy all of these conditions, otherwise an error will be returned:
     /// - Mip level count is 1
-    /// - Dimension can't be D1 or D3
+    /// - Dimension is D2
+    /// - Array layer count is 1
     /// - Format is [`TextureFormat::Rgba8Unorm`], [`TextureFormat::Rgba8UnormSrgb`] or [`TextureFormat::Rgba32Float`]
     pub fn set_image(&mut self, image: SourceImage) -> Result<(), BasisuEncodeError> {
         self.clear_image();
@@ -192,16 +193,17 @@ impl BasisuEncoder {
         let data = image.data;
         match image.texture_descriptor.format {
             TextureFormat::Rgba8Unorm | TextureFormat::Rgba8UnormSrgb => unsafe {
+                let pixel_bytes = 4;
                 let basisu_ptr = enc_sys::bu_alloc(data.len() as u64);
                 crate::copy_host_memory_to_basisu(data, basisu_ptr);
                 for i in 0..image.texture_descriptor.array_layer_count() {
                     if enc_sys::bu_comp_params_set_image_rgba32(
                         self.params,
                         i,
-                        basisu_ptr + (i * image.width() * image.height() * 4) as u64,
+                        basisu_ptr + (i * image.width() * image.height() * pixel_bytes) as u64,
                         image.width(),
                         image.height(),
-                        image.width() * 4,
+                        image.width() * pixel_bytes,
                     )
                     .is_err()
                     {
@@ -212,16 +214,17 @@ impl BasisuEncoder {
                 enc_sys::bu_free(basisu_ptr);
             },
             TextureFormat::Rgba32Float => unsafe {
+                let pixel_bytes = 16;
                 let basisu_ptr = enc_sys::bu_alloc(data.len() as u64);
                 crate::copy_host_memory_to_basisu(data, basisu_ptr);
                 for i in 0..image.texture_descriptor.array_layer_count() {
                     if enc_sys::bu_comp_params_set_image_float_rgba(
                         self.params,
                         i,
-                        basisu_ptr + (i * image.width() * image.height() * 16) as u64,
+                        basisu_ptr + (i * image.width() * image.height() * pixel_bytes) as u64,
                         image.width(),
                         image.height(),
-                        image.width() * 16,
+                        image.width() * pixel_bytes,
                     )
                     .is_err()
                     {
@@ -250,9 +253,9 @@ impl BasisuEncoder {
     /// This is mainly used to compress cubemap or texture array from a list of 2D images.
     /// If you already have a layered image, [`Self::set_image`] can be used instead.
     ///
-    /// A error will be returned if the input image doesn't meet:
+    /// The input image must satisfy all of these conditions, otherwise an error will be returned:
     /// - Mip level count is 1
-    /// - Dimension can't be D1 or D3
+    /// - Dimension is D2
     /// - Array layer count is 1
     /// - Format is [`TextureFormat::Rgba8Unorm`], [`TextureFormat::Rgba8UnormSrgb`] or [`TextureFormat::Rgba32Float`]
     pub fn set_image_slice(
@@ -289,6 +292,7 @@ impl BasisuEncoder {
         let data = image.data;
         match image.texture_descriptor.format {
             TextureFormat::Rgba8Unorm | TextureFormat::Rgba8UnormSrgb => unsafe {
+                let pixel_bytes = 4;
                 let basisu_ptr = enc_sys::bu_alloc(data.len() as u64);
                 crate::copy_host_memory_to_basisu(data, basisu_ptr);
                 if enc_sys::bu_comp_params_set_image_rgba32(
@@ -297,7 +301,7 @@ impl BasisuEncoder {
                     basisu_ptr,
                     image.width(),
                     image.height(),
-                    image.width() * 4,
+                    image.width() * pixel_bytes,
                 )
                 .is_err()
                 {
@@ -307,6 +311,7 @@ impl BasisuEncoder {
                 enc_sys::bu_free(basisu_ptr);
             },
             TextureFormat::Rgba32Float => unsafe {
+                let pixel_bytes = 16;
                 let basisu_ptr = enc_sys::bu_alloc(data.len() as u64);
                 crate::copy_host_memory_to_basisu(data, basisu_ptr);
                 if enc_sys::bu_comp_params_set_image_float_rgba(
@@ -315,7 +320,7 @@ impl BasisuEncoder {
                     basisu_ptr,
                     image.width(),
                     image.height(),
-                    image.width() * 16,
+                    image.width() * pixel_bytes,
                 )
                 .is_err()
                 {
