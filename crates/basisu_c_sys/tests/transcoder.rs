@@ -58,10 +58,10 @@ fn snapshot_test(
     supported_format: SupportedTextureCompression,
     each_data_result: impl Fn(&str, TranscodedImage),
 ) -> Vec<(String, TranscodeInfo, TranscodedImage)> {
+    block_on(basisu_transcoder_init());
     let mut path = std::path::PathBuf::new();
     path.push(std::env!("CARGO_MANIFEST_DIR"));
-    path.push("../../assets");
-    block_on(basisu_transcoder_init());
+    path.push("../../basisu_c_sys_asset_files/assets");
     let mut results = Vec::new();
     let mut transcoder = BasisuTranscoder::new();
     for file in std::fs::read_dir(path).unwrap() {
