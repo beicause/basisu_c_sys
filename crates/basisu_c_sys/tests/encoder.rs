@@ -38,8 +38,7 @@ fn read_image(path: &PathBuf) -> DynamicImage {
     reader.set_format(ImageFormat::Jpeg);
     reader.no_limits();
     let img = reader.decode().unwrap();
-    let img = DynamicImage::ImageRgba8(img.into_rgba8());
-    img
+    DynamicImage::ImageRgba8(img.into_rgba8())
 }
 
 fn encode_cubemap_xuastc_ldr_4x4_by_slice() {
@@ -93,8 +92,7 @@ fn encode_cubemap_astc_ldr_8x8_mips_by_image() {
     let cube_image = SourceImage {
         data: &images
             .iter()
-            .map(|img| img.as_bytes())
-            .flatten()
+            .flat_map(|img| img.as_bytes())
             .copied()
             .collect::<Vec<u8>>(),
         texture_descriptor: wgpu_types::TextureDescriptor {

@@ -11,7 +11,7 @@ use basisu_c_sys::{
     },
 };
 use image::{DynamicImage, ImageBuffer, ImageFormat};
-use wgpu_types::TextureFormat;
+use wgpu_types::{TextureDataOrder, TextureFormat};
 
 #[test]
 fn transcode_invalid_data_info_is_none() {
@@ -128,43 +128,67 @@ fn transcode_assets_uncompressed() {
                 ]
                 .contains(&transcoded_image.texture_descriptor.format)
             );
+            assert_eq!(transcoded_image.data_order, TextureDataOrder::MipMajor);
             let is_hdr = transcoded_image.texture_descriptor.format == TextureFormat::Rgba16Float;
             let data = core::mem::take(&mut transcoded_image.data);
-            let dynamic_image = if is_hdr {
-                DynamicImage::ImageRgba16(
-                    ImageBuffer::from_raw(
-                        transcoded_image.width(),
-                        transcoded_image.height(),
-                        bytemuck::cast_vec(data),
-                    )
-                    .unwrap(),
-                )
-            } else {
-                DynamicImage::ImageRgba8(
-                    ImageBuffer::from_raw(
-                        transcoded_image.width(),
-                        transcoded_image.height(),
-                        data,
-                    )
-                    .unwrap(),
-                )
-            };
-            let mut output = Vec::new();
-            dynamic_image
-                .write_to(
-                    Cursor::new(&mut output),
-                    if is_hdr {
-                        ImageFormat::OpenExr
+            let pixel_size = if is_hdr { 8 } else { 4 };
+            let mut offset = 0usize;
+            for mip in 0..transcoded_image.texture_descriptor.mip_level_count {
+                for layer in 0..transcoded_image.texture_descriptor.array_layer_count() {
+                    let width = (transcoded_image.width() >> mip).max(1);
+                    let height = (transcoded_image.height() >> mip).max(1);
+                    let bytes = width * height * pixel_size;
+                    let dynamic_image = if is_hdr {
+                        DynamicImage::ImageRgba32F(
+                            ImageBuffer::from_raw(
+                                width,
+                                height,
+                                bytemuck::cast_slice::<u8, half::f16>(
+                                    &data[offset..(offset + bytes as usize)],
+                                )
+                                .iter()
+                                .map(|hf| hf.to_f32())
+                                .collect(),
+                            )
+                            .unwrap(),
+                        )
                     } else {
-                        ImageFormat::WebP
-                    },
-                )
-                .unwrap();
-            insta::assert_binary_snapshot!(
-                &("uncompressed_".to_string()
-                    + &file_name.replace(".basisu.ktx2", if is_hdr { ".exr" } else { ".webp" })),
-                output
-            );
+                        DynamicImage::ImageRgba8(
+                            ImageBuffer::from_raw(
+                                width,
+                                height,
+                                data[offset..(offset + bytes as usize)].to_vec(),
+                            )
+                            .unwrap(),
+                        )
+                    };
+                    offset += bytes as usize;
+                    let mut output = Vec::new();
+                    dynamic_image
+                        .write_to(
+                            Cursor::new(&mut output),
+                            if is_hdr {
+                                ImageFormat::OpenExr
+                            } else {
+                                ImageFormat::WebP
+                            },
+                        )
+                        .unwrap();
+                    insta::assert_binary_snapshot!(
+                        &("uncompressed_".to_string()
+                            + &file_name.replace(
+                                ".basisu.ktx2",
+                                &format!(
+                                    "_layer{}_mip{}{}",
+                                    layer,
+                                    mip,
+                                    if is_hdr { ".exr" } else { ".webp" }
+                                )
+                            )),
+                        output
+                    );
+                }
+            }
         },
     );
     insta::assert_debug_snapshot!(results);

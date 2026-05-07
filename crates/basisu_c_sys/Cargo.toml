@@ -55,7 +55,12 @@ prettyplease = "0.2.37"
 
 [dev-dependencies]
 bytemuck = { version = "1.25.0", default-features = false }
-image = { version = "0.25.10", default-features = false, features = ["jpeg","exr","webp"] }
+half = { version = "2.7.1", default-features = false, features = ["bytemuck"] }
+image = { version = "0.25.10", default-features = false, features = [
+  "jpeg",
+  "exr",
+  "webp",
+] }
 insta = "1.47.2"
 
 [[bin]]

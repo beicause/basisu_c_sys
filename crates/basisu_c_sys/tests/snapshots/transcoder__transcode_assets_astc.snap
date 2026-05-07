@@ -1,5 +1,5 @@
 ---
-source: crates/basisu_c_sys/src/extra/transcoder.rs
+source: crates/basisu_c_sys/tests/transcoder.rs
 expression: results
 ---
 [
@@ -30,7 +30,7 @@ expression: results
                 dimension: D2,
                 format: Etc2Rgba8UnormSrgb,
                 usage: TextureUsages(
-                    COPY_SRC | COPY_DST | TEXTURE_BINDING,
+                    0x0,
                 ),
                 view_formats: [],
             },
@@ -81,7 +81,7 @@ expression: results
                     channel: Hdr,
                 },
                 usage: TextureUsages(
-                    COPY_SRC | COPY_DST | TEXTURE_BINDING,
+                    0x0,
                 ),
                 view_formats: [],
             },
@@ -132,7 +132,7 @@ expression: results
                     channel: Hdr,
                 },
                 usage: TextureUsages(
-                    COPY_SRC | COPY_DST | TEXTURE_BINDING,
+                    0x0,
                 ),
                 view_formats: [],
             },
@@ -183,7 +183,7 @@ expression: results
                     channel: UnormSrgb,
                 },
                 usage: TextureUsages(
-                    COPY_SRC | COPY_DST | TEXTURE_BINDING,
+                    0x0,
                 ),
                 view_formats: [],
             },
@@ -234,7 +234,7 @@ expression: results
                     channel: UnormSrgb,
                 },
                 usage: TextureUsages(
-                    COPY_SRC | COPY_DST | TEXTURE_BINDING,
+                    0x0,
                 ),
                 view_formats: [],
             },
@@ -285,7 +285,7 @@ expression: results
                     channel: UnormSrgb,
                 },
                 usage: TextureUsages(
-                    COPY_SRC | COPY_DST | TEXTURE_BINDING,
+                    0x0,
                 ),
                 view_formats: [],
             },
@@ -336,7 +336,7 @@ expression: results
                     channel: UnormSrgb,
                 },
                 usage: TextureUsages(
-                    COPY_SRC | COPY_DST | TEXTURE_BINDING,
+                    0x0,
                 ),
                 view_formats: [],
             },
