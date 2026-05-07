@@ -32,9 +32,6 @@ jobs:
             cargo-flags: ""
 
     steps:
-      - name: Configure git symlinks
-        run: git config --global core.symlinks true
-
       - uses: actions/checkout@v6
 
       - name: Clone `basisu_c_sys_asset_files`
