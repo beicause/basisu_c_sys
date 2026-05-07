@@ -66,8 +66,8 @@ impl AssetSaver for BasisuSaver {
         let mut encoder = BasisuEncoder::new();
         encoder.set_image(basisu_c_sys::extra::SourceImage {
             data: asset.data.as_deref().unwrap_or(&[]),
-            texture_descriptor: &asset.texture_descriptor,
-            texture_view_descriptor: &asset.texture_view_descriptor,
+            texture_descriptor: asset.texture_descriptor.clone(),
+            texture_view_descriptor: asset.texture_view_descriptor.clone(),
         })?;
         let result = encoder.compress(
             settings
