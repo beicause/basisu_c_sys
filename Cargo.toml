@@ -6,7 +6,7 @@ license = "MIT OR Apache-2.0"
 members = ["crates/*", "examples/*"]
 resolver = "3"
 
-[profile.dev]
+[profile.test]
 opt-level = 1
 
 [profile.web_release]

@@ -5,6 +5,8 @@ const FLAGS: &[&str] = &[
     "-Wno-unused-but-set-variable",
     "-Wno-unused-function",
     "-Wno-misleading-indentation",
+    "-Wno-stringop-overflow",
+    "-Wno-array-bounds",
     "-fno-exceptions",
     // Fix gcc optimization issue.
     // See vendor/basis_universal/transcoder/basisu.h
