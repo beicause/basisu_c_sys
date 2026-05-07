@@ -11,8 +11,8 @@ use wgpu_types::{
 pub struct SourceImage<'a> {
     /// The input data of image pixels.
     pub data: &'a [u8],
-    pub texture_descriptor: &'a TextureDescriptor<Option<&'static str>, &'static [TextureFormat]>,
-    pub texture_view_descriptor: &'a Option<TextureViewDescriptor<Option<&'static str>>>,
+    pub texture_descriptor: TextureDescriptor<Option<&'a str>, &'a [TextureFormat]>,
+    pub texture_view_descriptor: Option<TextureViewDescriptor<Option<&'a str>>>,
 }
 
 impl SourceImage<'_> {
@@ -60,6 +60,8 @@ impl Default for BasisuEncoder {
 pub enum BasisuEncodeError {
     #[error("Mip level count must be 1")]
     MipLevelCountNotOne,
+    #[error("Sample count must be 1")]
+    SampleCountNotOne,
     #[error("Unsupported texture format: {0:?}")]
     UnsupportedTextureFormat(TextureFormat),
     #[error("Unsupported texture dimension: {0:?}")]
@@ -68,6 +70,8 @@ pub enum BasisuEncodeError {
     UnsupportedTextureViewDimension(TextureViewDimension),
     #[error("`BasisuEncoder::set_image_slice` only accepts image with 1 layer or depth")]
     SetImageSliceOnlyAcceptsOneLayer,
+    #[error("Image data is invalid as it doesn't match the image size")]
+    InvalidImageData,
     #[error("bu_comp_params_set_image_* failed")]
     BuSetImageFailed,
     #[error("bu_compress_texture failed")]
@@ -170,6 +174,11 @@ impl BasisuEncoder {
         if image.texture_descriptor.mip_level_count != 1 {
             return Err(BasisuEncodeError::MipLevelCountNotOne);
         }
+
+        if image.texture_descriptor.sample_count != 1 {
+            return Err(BasisuEncodeError::SampleCountNotOne);
+        }
+
         match image.texture_descriptor.dimension {
             TextureDimension::D1 | TextureDimension::D3 => {
                 return Err(BasisuEncodeError::UnsupportedTextureDimension(
@@ -194,6 +203,14 @@ impl BasisuEncoder {
         match image.texture_descriptor.format {
             TextureFormat::Rgba8Unorm | TextureFormat::Rgba8UnormSrgb => unsafe {
                 let pixel_bytes = 4;
+                if data.len()
+                    != (image.width()
+                        * image.height()
+                        * image.texture_descriptor.array_layer_count()
+                        * pixel_bytes) as usize
+                {
+                    return Err(BasisuEncodeError::InvalidImageData);
+                }
                 let basisu_ptr = enc_sys::bu_alloc(data.len() as u64);
                 crate::copy_host_memory_to_basisu(data, basisu_ptr);
                 for i in 0..image.texture_descriptor.array_layer_count() {
@@ -215,6 +232,14 @@ impl BasisuEncoder {
             },
             TextureFormat::Rgba32Float => unsafe {
                 let pixel_bytes = 16;
+                if data.len()
+                    != (image.width()
+                        * image.height()
+                        * image.texture_descriptor.array_layer_count()
+                        * pixel_bytes) as usize
+                {
+                    return Err(BasisuEncodeError::InvalidImageData);
+                }
                 let basisu_ptr = enc_sys::bu_alloc(data.len() as u64);
                 crate::copy_host_memory_to_basisu(data, basisu_ptr);
                 for i in 0..image.texture_descriptor.array_layer_count() {
@@ -266,6 +291,9 @@ impl BasisuEncoder {
         if image.texture_descriptor.mip_level_count != 1 {
             return Err(BasisuEncodeError::MipLevelCountNotOne);
         }
+        if image.texture_descriptor.sample_count != 1 {
+            return Err(BasisuEncodeError::SampleCountNotOne);
+        }
         match image.texture_descriptor.dimension {
             TextureDimension::D1 | TextureDimension::D3 => {
                 return Err(BasisuEncodeError::UnsupportedTextureDimension(
@@ -293,6 +321,9 @@ impl BasisuEncoder {
         match image.texture_descriptor.format {
             TextureFormat::Rgba8Unorm | TextureFormat::Rgba8UnormSrgb => unsafe {
                 let pixel_bytes = 4;
+                if data.len() != (image.width() * image.height() * pixel_bytes) as usize {
+                    return Err(BasisuEncodeError::InvalidImageData);
+                }
                 let basisu_ptr = enc_sys::bu_alloc(data.len() as u64);
                 crate::copy_host_memory_to_basisu(data, basisu_ptr);
                 if enc_sys::bu_comp_params_set_image_rgba32(
@@ -312,6 +343,9 @@ impl BasisuEncoder {
             },
             TextureFormat::Rgba32Float => unsafe {
                 let pixel_bytes = 16;
+                if data.len() != (image.width() * image.height() * pixel_bytes) as usize {
+                    return Err(BasisuEncodeError::InvalidImageData);
+                }
                 let basisu_ptr = enc_sys::bu_alloc(data.len() as u64);
                 crate::copy_host_memory_to_basisu(data, basisu_ptr);
                 if enc_sys::bu_comp_params_set_image_float_rgba(
@@ -369,14 +403,68 @@ impl Drop for BasisuEncoder {
 
 #[cfg(test)]
 mod tests {
+    use wgpu_types::{Extent3d, TextureDescriptor, TextureDimension, TextureFormat, TextureUsages};
+
+    use crate::extra::{
+        BasisuEncodeError, BasisuEncoder, SourceImage, basisu_encoder_init,
+        encoder::BASISU_ENCODER_INITIALIZED,
+    };
 
     #[test]
     #[should_panic]
     fn encoder_create_before_init() {
-        if super::BASISU_ENCODER_INITIALIZED.is_initialized() {
+        if BASISU_ENCODER_INITIALIZED.is_initialized() {
             panic!("Basisu is already initialized, panic to skip this test");
         } else {
-            super::BasisuEncoder::new();
+            BasisuEncoder::new();
+        }
+    }
+
+    #[test]
+    fn invalid_image_data() {
+        block_on(basisu_encoder_init());
+        let mut encoder = BasisuEncoder::new();
+        assert!(matches!(
+            encoder.set_image(SourceImage {
+                data: &[],
+                texture_descriptor: TextureDescriptor {
+                    label: None,
+                    size: Extent3d {
+                        width: 1,
+                        height: 1,
+                        depth_or_array_layers: 1
+                    },
+                    mip_level_count: 1,
+                    sample_count: 1,
+                    dimension: TextureDimension::D2,
+                    format: TextureFormat::Rgba8Unorm,
+                    usage: TextureUsages::empty(),
+                    view_formats: &[],
+                },
+                texture_view_descriptor: None,
+            }),
+            Err(BasisuEncodeError::InvalidImageData)
+        ));
+    }
+
+    /// Blocks on the supplied `future`.
+    /// This implementation will busy-wait until it is completed.
+    /// Consider enabling the `async-io` or `futures-lite` features.
+    pub fn block_on<T>(future: impl Future<Output = T>) -> T {
+        use core::task::{Context, Poll};
+
+        // Pin the future on the stack.
+        let mut future = core::pin::pin!(future);
+
+        // We don't care about the waker as we're just going to poll as fast as possible.
+        let cx = &mut Context::from_waker(core::task::Waker::noop());
+
+        // Keep polling until the future is ready.
+        loop {
+            match future.as_mut().poll(cx) {
+                Poll::Ready(output) => return output,
+                Poll::Pending => core::hint::spin_loop(),
+            }
         }
     }
 }

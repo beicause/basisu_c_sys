@@ -54,9 +54,8 @@ syn = { version = "2.0.117", default-features = false, features = [
 prettyplease = "0.2.37"
 
 [dev-dependencies]
-bevy_image = { git = "https://github.com/bevyengine/bevy", rev = "28f99e9618398cc999e6f92d3d9373b82af146cf", default-features = false, features = [
-  "jpeg",
-] }
+bytemuck = { version = "1.25.0", default-features = false }
+image = { version = "0.25.10", default-features = false, features = ["jpeg","exr","webp"] }
 insta = "1.47.2"
 
 [[bin]]
