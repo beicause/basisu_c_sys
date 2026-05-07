@@ -18,3 +18,5 @@ pub fn block_on<T>(future: impl Future<Output = T>) -> T {
         }
     }
 }
+
+pub const SNAPSHOT_PATH: &str = "../../../basisu_c_sys_asset_files/tests/snapshots/";

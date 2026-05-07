@@ -13,6 +13,8 @@ use basisu_c_sys::{
 use image::{DynamicImage, ImageBuffer, ImageFormat};
 use wgpu_types::{TextureDataOrder, TextureFormat};
 
+use crate::common::SNAPSHOT_PATH;
+
 #[test]
 fn transcode_invalid_data_info_is_none() {
     block_on(basisu_transcoder_init());
@@ -54,7 +56,7 @@ fn transcode_invalid_data_output_panic() {
     assert!(res.is_err())
 }
 
-fn snapshot_test(
+fn snapshot(
     supported_format: SupportedTextureCompression,
     each_data_result: impl Fn(&str, TranscodedImage),
 ) -> Vec<(String, TranscodeInfo, TranscodedImage)> {
@@ -87,32 +89,36 @@ fn snapshot_test(
 
 #[test]
 fn transcode_assets_bcn() {
-    let results = snapshot_test(SupportedTextureCompression::BC, |file_name, image| {
-        // The bcn test failed on macos, disable it for now.
-        if !cfg!(target_os = "macos") {
-            insta::assert_binary_snapshot!(
-                &("bcn_".to_string() + &file_name.replace(".basisu.ktx2", ".bin")),
-                image.data
-            );
-        }
+    insta::with_settings!({ snapshot_path => SNAPSHOT_PATH }, {
+        let results = snapshot(SupportedTextureCompression::BC, |file_name, image| {
+            // The bcn test failed on macos, disable it for now.
+            if !cfg!(target_os = "macos") {
+                insta::assert_binary_snapshot!(
+                    &("bcn_".to_string() + &file_name.replace(".basisu.ktx2", ".bin")),
+                    image.data
+                );
+            }
+        });
+        insta::assert_debug_snapshot!(results);
     });
-    insta::assert_debug_snapshot!(results);
 }
 
 #[test]
 fn transcode_assets_astc() {
-    let results = snapshot_test(
-        SupportedTextureCompression::ASTC_LDR
+    insta::with_settings!({ snapshot_path => SNAPSHOT_PATH }, {
+        let results = snapshot(
+            SupportedTextureCompression::ASTC_LDR
             | SupportedTextureCompression::ASTC_HDR
             | SupportedTextureCompression::ETC2,
-        |file_name, image| {
-            insta::assert_binary_snapshot!(
-                &("astc_".to_string() + &file_name.replace(".basisu.ktx2", ".bin")),
-                image.data
-            );
-        },
-    );
-    insta::assert_debug_snapshot!(results);
+            |file_name, image| {
+                insta::assert_binary_snapshot!(
+                    &("astc_".to_string() + &file_name.replace(".basisu.ktx2", ".bin")),
+                    image.data
+                );
+            },
+        );
+        insta::assert_debug_snapshot!(results);
+    });
 }
 
 #[test]
@@ -189,6 +195,8 @@ fn transcode_assets_uncompressed() {
         }
     };
 
-    let results = snapshot_test(SupportedTextureCompression::empty(), each_result);
-    insta::assert_debug_snapshot!(results);
+    insta::with_settings!({ snapshot_path => SNAPSHOT_PATH }, {
+        let results = snapshot(SupportedTextureCompression::empty(), each_result);
+        insta::assert_debug_snapshot!(results);
+    });
 }
