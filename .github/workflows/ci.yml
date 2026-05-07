@@ -32,9 +32,13 @@ jobs:
             cargo-flags: ""
 
     steps:
+      - name: Configure git symlinks
+        run: git config --global core.symlinks true
+
       - uses: actions/checkout@v6
-        with:
-          submodules: "true"
+
+      - name: Clone `basisu_c_sys_asset_files`
+        run: git clone --depth 1 https://github.com/beicause/basisu_c_sys_asset_files
 
       - name: Install Linux dependencies
         if: ${{ matrix.os == 'ubuntu-latest' }}
