@@ -19,10 +19,10 @@ jobs:
     name: Prebuild basisu wasm
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+      - uses: actions/checkout@v6
 
       - name: Install Emscripten
-        uses: mymindstorm/setup-emsdk@v14
+        uses: mymindstorm/setup-emsdk@v16
         with:
           version: ${{ env.EM_VERSION }}
 
@@ -40,7 +40,7 @@ jobs:
           && popd
 
       - name: Upload artifact
-        uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6.0.0
+        uses: actions/upload-artifact@v6
         with:
           path: crates/basisu_c_sys/wasm/
 
