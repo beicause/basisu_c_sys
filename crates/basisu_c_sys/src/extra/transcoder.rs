@@ -342,9 +342,7 @@ impl BasisuTranscoder {
                 mip_level_count: info.levels,
                 label: None,
                 sample_count: 1,
-                usage: TextureUsages::TEXTURE_BINDING
-                    | TextureUsages::COPY_DST
-                    | TextureUsages::COPY_SRC,
+                usage: TextureUsages::empty(),
                 view_formats: &[],
             },
             texture_view_descriptor: Some(TextureViewDescriptor {

@@ -60,8 +60,8 @@ fn encode_cubemap(face_paths: &[String; 6], debug: bool) -> Vec<u8> {
                 i as u32,
                 bevy_basisu_saver::sys::extra::SourceImage {
                     data: image.data.as_deref().unwrap_or(&[]),
-                    texture_descriptor: &image.texture_descriptor,
-                    texture_view_descriptor: &image.texture_view_descriptor,
+                    texture_descriptor: image.texture_descriptor.clone(),
+                    texture_view_descriptor: image.texture_view_descriptor.clone(),
                 },
             )
             .unwrap();

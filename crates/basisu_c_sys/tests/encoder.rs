@@ -1,7 +1,12 @@
 mod common;
 use common::block_on;
+use image::{DynamicImage, ImageFormat, ImageReader};
 
-use std::path::Path;
+use std::{
+    fs::File,
+    io::BufReader,
+    path::{Path, PathBuf},
+};
 
 use basisu_c_sys::{
     BasisTextureFormat,
@@ -13,8 +18,10 @@ use basisu_c_sys::{
         basisu_encoder_init,
     },
 };
-use bevy_image::{CompressedImageFormats, Image};
-use wgpu_types::TextureViewDimension;
+use wgpu_types::{
+    Extent3d, TextureDescriptor, TextureDimension, TextureFormat, TextureUsages,
+    TextureViewDescriptor, TextureViewDimension,
+};
 
 const SKYBOX_PATHS: &[&str] = &[
     "../../original_assets/skybox/right.jpg",
@@ -25,12 +32,13 @@ const SKYBOX_PATHS: &[&str] = &[
     "../../original_assets/skybox/back.jpg",
 ];
 
-fn image_to_source_image(value: &'_ Image) -> SourceImage<'_> {
-    SourceImage {
-        data: value.data.as_deref().unwrap_or(&[]),
-        texture_descriptor: &value.texture_descriptor,
-        texture_view_descriptor: &value.texture_view_descriptor,
-    }
+fn read_image(path: &PathBuf) -> DynamicImage {
+    let file = BufReader::new(File::open(path).unwrap());
+    let mut reader = ImageReader::new(file);
+    reader.set_format(ImageFormat::Jpeg);
+    reader.no_limits();
+    let img = reader.decode().unwrap();
+    DynamicImage::ImageRgba8(img.into_rgba8())
 }
 
 fn encode_cubemap_xuastc_ldr_4x4_by_slice() {
@@ -39,20 +47,26 @@ fn encode_cubemap_xuastc_ldr_4x4_by_slice() {
     let dir = std::env!("CARGO_MANIFEST_DIR");
     let mut encoder = BasisuEncoder::new();
     for (i, path) in SKYBOX_PATHS.iter().enumerate() {
-        let image = Image::from_buffer(
-            &std::fs::read(Path::new(dir).join(path)).unwrap(),
-            bevy_image::ImageType::Extension(
-                Path::new(path).extension().unwrap().to_str().unwrap(),
-            ),
-            CompressedImageFormats::empty(),
-            true,
-            bevy_image::ImageSampler::Default,
-            Default::default(),
-        )
-        .unwrap();
-        encoder
-            .set_image_slice(i as u32, image_to_source_image(&image))
-            .unwrap();
+        let img = read_image(&Path::new(dir).join(path));
+        let source = SourceImage {
+            data: img.as_bytes(),
+            texture_descriptor: TextureDescriptor {
+                size: Extent3d {
+                    width: img.width(),
+                    height: img.height(),
+                    depth_or_array_layers: 1,
+                },
+                label: None,
+                mip_level_count: 1,
+                sample_count: 1,
+                dimension: TextureDimension::D2,
+                format: TextureFormat::Rgba8UnormSrgb,
+                usage: TextureUsages::empty(),
+                view_formats: &[],
+            },
+            texture_view_descriptor: None,
+        };
+        encoder.set_image_slice(i as u32, source).unwrap();
     }
     let params = BasisuEncoderParams::new_with_srgb_defaults(BasisTextureFormat::XuastcLdr4x4)
         .with_tex_type(TextureViewDimension::Cube);
@@ -72,43 +86,35 @@ fn encode_cubemap_astc_ldr_8x8_mips_by_image() {
     let mut images = Vec::new();
     let mut encoder = BasisuEncoder::new();
     for path in SKYBOX_PATHS {
-        let image = Image::from_buffer(
-            &std::fs::read(Path::new(dir).join(path)).unwrap(),
-            bevy_image::ImageType::Extension(
-                Path::new(path).extension().unwrap().to_str().unwrap(),
-            ),
-            CompressedImageFormats::empty(),
-            true,
-            bevy_image::ImageSampler::Default,
-            Default::default(),
-        )
-        .unwrap();
-        images.push(image);
+        let img = read_image(&Path::new(dir).join(path));
+        images.push(img);
     }
-    let cube_image = Image {
-        data: Some(
-            images
-                .iter_mut()
-                .flat_map(|img| img.data.take().unwrap())
-                .collect(),
-        ),
+    let cube_image = SourceImage {
+        data: &images
+            .iter()
+            .flat_map(|img| img.as_bytes())
+            .copied()
+            .collect::<Vec<u8>>(),
         texture_descriptor: wgpu_types::TextureDescriptor {
             size: wgpu_types::Extent3d {
                 width: images[0].width(),
                 height: images[0].height(),
                 depth_or_array_layers: images.len() as u32,
             },
-            ..images[0].texture_descriptor
+            label: None,
+            mip_level_count: 1,
+            sample_count: 1,
+            dimension: TextureDimension::D2,
+            format: TextureFormat::Rgba8UnormSrgb,
+            usage: TextureUsages::empty(),
+            view_formats: &[],
         },
-        texture_view_descriptor: Some(wgpu_types::TextureViewDescriptor {
+        texture_view_descriptor: Some(TextureViewDescriptor {
             dimension: Some(TextureViewDimension::Cube),
             ..Default::default()
         }),
-        ..Default::default()
     };
-    encoder
-        .set_image(image_to_source_image(&cube_image))
-        .unwrap();
+    encoder.set_image(cube_image).unwrap();
     #[cfg_attr(target_os = "macos", expect(unused_variables))]
     let res = encoder
         .compress(
