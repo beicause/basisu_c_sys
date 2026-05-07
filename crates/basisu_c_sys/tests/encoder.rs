@@ -14,14 +14,11 @@ use basisu_c_sys::{
         BU_COMP_FLAGS_DEBUG_OUTPUT, BU_COMP_FLAGS_GEN_MIPS_CLAMP, BU_COMP_FLAGS_VALIDATE_OUTPUT,
     },
     extra::{
-        BasisuEncoder, BasisuEncoderParams, SourceImage, basisu_encoder_enable_debug_printf,
-        basisu_encoder_init,
+        BasisuEncoder, BasisuEncoderParams, SourceImage, SourceImageData,
+        basisu_encoder_enable_debug_printf, basisu_encoder_init,
     },
 };
-use wgpu_types::{
-    Extent3d, TextureDescriptor, TextureDimension, TextureFormat, TextureUsages,
-    TextureViewDescriptor, TextureViewDimension,
-};
+use wgpu_types::{Extent3d, TextureViewDimension};
 
 const SKYBOX_PATHS: &[&str] = &[
     "../../original_assets/skybox/right.jpg",
@@ -49,22 +46,12 @@ fn encode_cubemap_xuastc_ldr_4x4_by_slice() {
     for (i, path) in SKYBOX_PATHS.iter().enumerate() {
         let img = read_image(&Path::new(dir).join(path));
         let source = SourceImage {
-            data: img.as_bytes(),
-            texture_descriptor: TextureDescriptor {
-                size: Extent3d {
-                    width: img.width(),
-                    height: img.height(),
-                    depth_or_array_layers: 1,
-                },
-                label: None,
-                mip_level_count: 1,
-                sample_count: 1,
-                dimension: TextureDimension::D2,
-                format: TextureFormat::Rgba8UnormSrgb,
-                usage: TextureUsages::empty(),
-                view_formats: &[],
+            data: SourceImageData::Rgba8(img.as_bytes()),
+            size: Extent3d {
+                width: img.width(),
+                height: img.height(),
+                depth_or_array_layers: 1,
             },
-            texture_view_descriptor: None,
         };
         encoder.set_image_slice(i as u32, source).unwrap();
     }
@@ -90,29 +77,18 @@ fn encode_cubemap_astc_ldr_8x8_mips_by_image() {
         images.push(img);
     }
     let cube_image = SourceImage {
-        data: &images
-            .iter()
-            .flat_map(|img| img.as_bytes())
-            .copied()
-            .collect::<Vec<u8>>(),
-        texture_descriptor: wgpu_types::TextureDescriptor {
-            size: wgpu_types::Extent3d {
-                width: images[0].width(),
-                height: images[0].height(),
-                depth_or_array_layers: images.len() as u32,
-            },
-            label: None,
-            mip_level_count: 1,
-            sample_count: 1,
-            dimension: TextureDimension::D2,
-            format: TextureFormat::Rgba8UnormSrgb,
-            usage: TextureUsages::empty(),
-            view_formats: &[],
+        data: SourceImageData::Rgba8(
+            &images
+                .iter()
+                .flat_map(|img| img.as_bytes())
+                .copied()
+                .collect::<Vec<u8>>(),
+        ),
+        size: wgpu_types::Extent3d {
+            width: images[0].width(),
+            height: images[0].height(),
+            depth_or_array_layers: images.len() as u32,
         },
-        texture_view_descriptor: Some(TextureViewDescriptor {
-            dimension: Some(TextureViewDimension::Cube),
-            ..Default::default()
-        }),
     };
     encoder.set_image(cube_image).unwrap();
     #[cfg_attr(target_os = "macos", expect(unused_variables))]

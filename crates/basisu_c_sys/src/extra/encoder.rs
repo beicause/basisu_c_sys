@@ -3,30 +3,36 @@ use crate::encoder as enc_sys;
 use crate::utils::BasisTextureFormat;
 use alloc::vec::Vec;
 use async_lock::OnceCell;
-use wgpu_types::{
-    TextureDescriptor, TextureDimension, TextureFormat, TextureViewDescriptor, TextureViewDimension,
-};
+use bytemuck::NoUninit;
+use bytemuck::PodCastError;
+use wgpu_types::{Extent3d, TextureViewDimension};
 
-#[derive(Debug, Clone, PartialEq)]
-pub struct SourceImage<'a> {
-    /// The input data of image pixels.
-    pub data: &'a [u8],
-    pub texture_descriptor: TextureDescriptor<Option<&'a str>, &'a [TextureFormat]>,
-    pub texture_view_descriptor: Option<TextureViewDescriptor<Option<&'a str>>>,
+#[derive(Debug, Clone)]
+pub enum SourceImageData<'a> {
+    /// A 32bpp RGBA data slice (4 bytes per pixel)
+    Rgba8(&'a [u8]),
+    /// A float RGBA data slice (16 bytes per pixel)
+    Rgba32Float(&'a [f32]),
 }
 
-impl SourceImage<'_> {
-    /// Returns the width of a 2D image.
-    #[inline]
-    pub fn width(&self) -> u32 {
-        self.texture_descriptor.size.width
+impl<'a> SourceImageData<'a> {
+    /// Cast the slice to [`SourceImageData::Rgba32Float`]. Return an error if the casting failed.
+    pub fn rgba32float<T: NoUninit>(data: &'a [T]) -> Result<SourceImageData<'a>, PodCastError> {
+        bytemuck::try_cast_slice(data).map(Self::Rgba32Float)
     }
 
-    /// Returns the height of a 2D image.
-    #[inline]
-    pub fn height(&self) -> u32 {
-        self.texture_descriptor.size.height
+    /// Cast the slice to [`SourceImageData::Rgba8`]. Return an error if the casting failed.
+    pub fn rgba8<T: NoUninit>(data: &'a [T]) -> Result<SourceImageData<'a>, PodCastError> {
+        bytemuck::try_cast_slice(data).map(Self::Rgba32Float)
     }
+}
+
+#[derive(Debug, Clone)]
+pub struct SourceImage<'a> {
+    /// The input data of image pixels.
+    pub data: SourceImageData<'a>,
+    /// The size of image.
+    pub size: Extent3d,
 }
 
 static BASISU_ENCODER_INITIALIZED: OnceCell<()> = OnceCell::new();
@@ -56,22 +62,19 @@ impl Default for BasisuEncoder {
     }
 }
 
-#[derive(Debug, thiserror::Error)]
+#[derive(Debug, thiserror::Error, PartialEq)]
+#[non_exhaustive]
 pub enum BasisuEncodeError {
-    #[error("Mip level count must be 1")]
-    MipLevelCountNotOne,
-    #[error("Sample count must be 1")]
-    SampleCountNotOne,
-    #[error("Unsupported texture format: {0:?}")]
-    UnsupportedTextureFormat(TextureFormat),
-    #[error("Unsupported texture dimension: {0:?}")]
-    UnsupportedTextureDimension(TextureDimension),
-    #[error("Unsupported texture view dimension: {0:?}")]
-    UnsupportedTextureViewDimension(TextureViewDimension),
-    #[error("`BasisuEncoder::set_image_slice` only accepts image with 1 layer or depth")]
+    #[error("`BasisuEncoder::set_image_slice` only accepts image with 1 layer")]
     SetImageSliceOnlyAcceptsOneLayer,
-    #[error("Image data is invalid as it doesn't match the image size")]
-    InvalidImageData,
+    #[error(
+        "Image data is invalid. Image {image_size:?} Expects data length {expected_len}, got {data_len}"
+    )]
+    InvalidImageData {
+        image_size: Extent3d,
+        expected_len: usize,
+        data_len: usize,
+    },
     #[error("bu_comp_params_set_image_* failed")]
     BuSetImageFailed,
     #[error("bu_compress_texture failed")]
@@ -161,66 +164,39 @@ impl BasisuEncoder {
 
     /// Set the input image of the encoder and clear other image set before.
     ///
-    /// This support setting image that has multiple layers at once to compress cubemap or texture array.
+    /// All the layers of the image will be set. To compress it as a cubemap or texture array,
+    /// you will need to add flag to [`BasisuEncoderParams::flags_and_quality`] by calling [`BasisuEncoderParams::with_tex_type`].
     ///
-    /// The input image must satisfy all of these conditions, otherwise an error will be returned:
-    /// - Mip level count is 1
-    /// - Dimension is D2
-    /// - Array layer count is 1
-    /// - Format is [`TextureFormat::Rgba8Unorm`], [`TextureFormat::Rgba8UnormSrgb`] or [`TextureFormat::Rgba32Float`]
+    /// If you already have continuous data for the cubemap or texture array, this should be faster than [`Self::set_image_slice`] .
     pub fn set_image(&mut self, image: SourceImage) -> Result<(), BasisuEncodeError> {
         self.clear_image();
 
-        if image.texture_descriptor.mip_level_count != 1 {
-            return Err(BasisuEncodeError::MipLevelCountNotOne);
-        }
-
-        if image.texture_descriptor.sample_count != 1 {
-            return Err(BasisuEncodeError::SampleCountNotOne);
-        }
-
-        match image.texture_descriptor.dimension {
-            TextureDimension::D1 | TextureDimension::D3 => {
-                return Err(BasisuEncodeError::UnsupportedTextureDimension(
-                    image.texture_descriptor.dimension,
-                ));
-            }
-            TextureDimension::D2 => {}
-        }
-        if let Some(view_desc) = &image.texture_view_descriptor
-            && let Some(dimension) = view_desc.dimension
-        {
-            match dimension {
-                TextureViewDimension::D1 | TextureViewDimension::D3 => {
-                    return Err(BasisuEncodeError::UnsupportedTextureViewDimension(
-                        dimension,
-                    ));
-                }
-                _ => {}
-            }
-        };
-        let data = image.data;
-        match image.texture_descriptor.format {
-            TextureFormat::Rgba8Unorm | TextureFormat::Rgba8UnormSrgb => unsafe {
+        match image.data {
+            SourceImageData::Rgba8(data) => unsafe {
                 let pixel_bytes = 4;
-                if data.len()
-                    != (image.width()
-                        * image.height()
-                        * image.texture_descriptor.array_layer_count()
-                        * pixel_bytes) as usize
-                {
-                    return Err(BasisuEncodeError::InvalidImageData);
+                let expected_len = (image.size.width
+                    * image.size.height
+                    * image.size.depth_or_array_layers
+                    * pixel_bytes) as usize;
+                if data.len() != expected_len {
+                    return Err(BasisuEncodeError::InvalidImageData {
+                        image_size: image.size,
+                        expected_len,
+                        data_len: data.len(),
+                    });
                 }
+
                 let basisu_ptr = enc_sys::bu_alloc(data.len() as u64);
                 crate::copy_host_memory_to_basisu(data, basisu_ptr);
-                for i in 0..image.texture_descriptor.array_layer_count() {
+                for i in 0..image.size.depth_or_array_layers {
                     if enc_sys::bu_comp_params_set_image_rgba32(
                         self.params,
                         i,
-                        basisu_ptr + (i * image.width() * image.height() * pixel_bytes) as u64,
-                        image.width(),
-                        image.height(),
-                        image.width() * pixel_bytes,
+                        basisu_ptr
+                            + (i * image.size.width * image.size.height * pixel_bytes) as u64,
+                        image.size.width,
+                        image.size.height,
+                        image.size.width * pixel_bytes,
                     )
                     .is_err()
                     {
@@ -230,26 +206,31 @@ impl BasisuEncoder {
                 }
                 enc_sys::bu_free(basisu_ptr);
             },
-            TextureFormat::Rgba32Float => unsafe {
+            SourceImageData::Rgba32Float(data) => unsafe {
                 let pixel_bytes = 16;
-                if data.len()
-                    != (image.width()
-                        * image.height()
-                        * image.texture_descriptor.array_layer_count()
-                        * pixel_bytes) as usize
-                {
-                    return Err(BasisuEncodeError::InvalidImageData);
+                let expected_len = (image.size.width
+                    * image.size.height
+                    * image.size.depth_or_array_layers
+                    * pixel_bytes) as usize;
+                if data.len() != expected_len {
+                    return Err(BasisuEncodeError::InvalidImageData {
+                        image_size: image.size,
+                        expected_len,
+                        data_len: data.len(),
+                    });
                 }
+
                 let basisu_ptr = enc_sys::bu_alloc(data.len() as u64);
-                crate::copy_host_memory_to_basisu(data, basisu_ptr);
-                for i in 0..image.texture_descriptor.array_layer_count() {
+                crate::copy_host_memory_to_basisu(bytemuck::cast_slice(data), basisu_ptr);
+                for i in 0..image.size.depth_or_array_layers {
                     if enc_sys::bu_comp_params_set_image_float_rgba(
                         self.params,
                         i,
-                        basisu_ptr + (i * image.width() * image.height() * pixel_bytes) as u64,
-                        image.width(),
-                        image.height(),
-                        image.width() * pixel_bytes,
+                        basisu_ptr
+                            + (i * image.size.width * image.size.height * pixel_bytes) as u64,
+                        image.size.width,
+                        image.size.height,
+                        image.size.width * pixel_bytes,
                     )
                     .is_err()
                     {
@@ -259,11 +240,6 @@ impl BasisuEncoder {
                 }
                 enc_sys::bu_free(basisu_ptr);
             },
-            _ => {
-                return Err(BasisuEncodeError::UnsupportedTextureFormat(
-                    image.texture_descriptor.format,
-                ));
-            }
         }
         Ok(())
     }
@@ -275,64 +251,45 @@ impl BasisuEncoder {
 
     /// Set a image slice at index. Other image set before is not cleared.
     ///
-    /// This is mainly used to compress cubemap or texture array from a list of 2D images.
-    /// If you already have a layered image, [`Self::set_image`] can be used instead.
+    /// After set all the layers of the image, to compress it as a cubemap or texture array,
+    /// you will need to add flag to [`BasisuEncoderParams::flags_and_quality`] by calling [`BasisuEncoderParams::with_tex_type`].
     ///
-    /// The input image must satisfy all of these conditions, otherwise an error will be returned:
-    /// - Mip level count is 1
-    /// - Dimension is D2
-    /// - Array layer count is 1
-    /// - Format is [`TextureFormat::Rgba8Unorm`], [`TextureFormat::Rgba8UnormSrgb`] or [`TextureFormat::Rgba32Float`]
+    /// The input image array layer count must be 1, otherwise an error will be returned.
+    ///
+    /// If you already have continuous data for the cubemap or texture array, [`Self::set_image`] should faster.
     pub fn set_image_slice(
         &mut self,
         index: u32,
         image: SourceImage,
     ) -> Result<(), BasisuEncodeError> {
-        if image.texture_descriptor.mip_level_count != 1 {
-            return Err(BasisuEncodeError::MipLevelCountNotOne);
-        }
-        if image.texture_descriptor.sample_count != 1 {
-            return Err(BasisuEncodeError::SampleCountNotOne);
-        }
-        match image.texture_descriptor.dimension {
-            TextureDimension::D1 | TextureDimension::D3 => {
-                return Err(BasisuEncodeError::UnsupportedTextureDimension(
-                    image.texture_descriptor.dimension,
-                ));
-            }
-            TextureDimension::D2 => {}
-        }
-        if image.texture_descriptor.array_layer_count() != 1 {
+        if image.size.depth_or_array_layers != 1 {
             return Err(BasisuEncodeError::SetImageSliceOnlyAcceptsOneLayer);
         }
-        if let Some(view_desc) = &image.texture_view_descriptor
-            && let Some(dimension) = view_desc.dimension
-        {
-            match dimension {
-                TextureViewDimension::D1 | TextureViewDimension::D3 => {
-                    return Err(BasisuEncodeError::UnsupportedTextureViewDimension(
-                        dimension,
-                    ));
-                }
-                _ => {}
-            }
-        };
-        let data = image.data;
-        match image.texture_descriptor.format {
-            TextureFormat::Rgba8Unorm | TextureFormat::Rgba8UnormSrgb => unsafe {
+
+        match image.data {
+            SourceImageData::Rgba8(data) => unsafe {
                 let pixel_bytes = 4;
-                if data.len() != (image.width() * image.height() * pixel_bytes) as usize {
-                    return Err(BasisuEncodeError::InvalidImageData);
+                let expected_len = (image.size.width
+                    * image.size.height
+                    * image.size.depth_or_array_layers
+                    * pixel_bytes) as usize;
+                if data.len() != expected_len {
+                    return Err(BasisuEncodeError::InvalidImageData {
+                        image_size: image.size,
+                        expected_len,
+                        data_len: data.len(),
+                    });
                 }
+
                 let basisu_ptr = enc_sys::bu_alloc(data.len() as u64);
                 crate::copy_host_memory_to_basisu(data, basisu_ptr);
                 if enc_sys::bu_comp_params_set_image_rgba32(
                     self.params,
                     index,
                     basisu_ptr,
-                    image.width(),
-                    image.height(),
-                    image.width() * pixel_bytes,
+                    image.size.width,
+                    image.size.height,
+                    image.size.width * pixel_bytes,
                 )
                 .is_err()
                 {
@@ -341,20 +298,29 @@ impl BasisuEncoder {
                 }
                 enc_sys::bu_free(basisu_ptr);
             },
-            TextureFormat::Rgba32Float => unsafe {
+            SourceImageData::Rgba32Float(data) => unsafe {
                 let pixel_bytes = 16;
-                if data.len() != (image.width() * image.height() * pixel_bytes) as usize {
-                    return Err(BasisuEncodeError::InvalidImageData);
+                let expected_len = (image.size.width
+                    * image.size.height
+                    * image.size.depth_or_array_layers
+                    * pixel_bytes) as usize;
+                if data.len() != expected_len {
+                    return Err(BasisuEncodeError::InvalidImageData {
+                        image_size: image.size,
+                        expected_len,
+                        data_len: data.len(),
+                    });
                 }
+
                 let basisu_ptr = enc_sys::bu_alloc(data.len() as u64);
-                crate::copy_host_memory_to_basisu(data, basisu_ptr);
+                crate::copy_host_memory_to_basisu(bytemuck::cast_slice(data), basisu_ptr);
                 if enc_sys::bu_comp_params_set_image_float_rgba(
                     self.params,
                     index,
                     basisu_ptr,
-                    image.width(),
-                    image.height(),
-                    image.width() * pixel_bytes,
+                    image.size.width,
+                    image.size.height,
+                    image.size.width * pixel_bytes,
                 )
                 .is_err()
                 {
@@ -363,11 +329,6 @@ impl BasisuEncoder {
                 }
                 enc_sys::bu_free(basisu_ptr);
             },
-            _ => {
-                return Err(BasisuEncodeError::UnsupportedTextureFormat(
-                    image.texture_descriptor.format,
-                ));
-            }
         }
         Ok(())
     }
@@ -403,10 +364,10 @@ impl Drop for BasisuEncoder {
 
 #[cfg(test)]
 mod tests {
-    use wgpu_types::{Extent3d, TextureDescriptor, TextureDimension, TextureFormat, TextureUsages};
+    use wgpu_types::Extent3d;
 
     use crate::extra::{
-        BasisuEncodeError, BasisuEncoder, SourceImage, basisu_encoder_init,
+        BasisuEncodeError, BasisuEncoder, SourceImage, SourceImageData, basisu_encoder_init,
         encoder::BASISU_ENCODER_INITIALIZED,
     };
 
@@ -424,27 +385,25 @@ mod tests {
     fn invalid_image_data() {
         block_on(basisu_encoder_init());
         let mut encoder = BasisuEncoder::new();
-        assert!(matches!(
+        assert_eq!(
             encoder.set_image(SourceImage {
-                data: &[],
-                texture_descriptor: TextureDescriptor {
-                    label: None,
-                    size: Extent3d {
-                        width: 1,
-                        height: 1,
-                        depth_or_array_layers: 1
-                    },
-                    mip_level_count: 1,
-                    sample_count: 1,
-                    dimension: TextureDimension::D2,
-                    format: TextureFormat::Rgba8Unorm,
-                    usage: TextureUsages::empty(),
-                    view_formats: &[],
+                data: SourceImageData::Rgba8(&[]),
+                size: Extent3d {
+                    width: 1,
+                    height: 1,
+                    depth_or_array_layers: 1
                 },
-                texture_view_descriptor: None,
             }),
-            Err(BasisuEncodeError::InvalidImageData)
-        ));
+            Err(BasisuEncodeError::InvalidImageData {
+                image_size: Extent3d {
+                    width: 1,
+                    height: 1,
+                    depth_or_array_layers: 1
+                },
+                expected_len: 4,
+                data_len: 0
+            })
+        );
     }
 
     /// Blocks on the supplied `future`.

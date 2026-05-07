@@ -18,37 +18,14 @@ expression: results
         TranscodedImage {
             data: [],
             data_order: MipMajor,
-            texture_descriptor: TextureDescriptor {
-                label: None,
-                size: (
-                    256,
-                    256,
-                    1,
-                ),
-                mip_level_count: 9,
-                sample_count: 1,
-                dimension: D2,
-                format: Rgba8UnormSrgb,
-                usage: TextureUsages(
-                    0x0,
-                ),
-                view_formats: [],
-            },
-            texture_view_descriptor: Some(
-                TextureViewDescriptor {
-                    label: None,
-                    format: None,
-                    dimension: Some(
-                        D2,
-                    ),
-                    usage: None,
-                    aspect: All,
-                    base_mip_level: 0,
-                    mip_level_count: None,
-                    base_array_layer: 0,
-                    array_layer_count: None,
-                },
+            size: (
+                256,
+                256,
+                1,
             ),
+            format: Rgba8UnormSrgb,
+            mip_level_count: 9,
+            view_dimension: D2,
         },
     ),
     (
@@ -66,37 +43,14 @@ expression: results
         TranscodedImage {
             data: [],
             data_order: MipMajor,
-            texture_descriptor: TextureDescriptor {
-                label: None,
-                size: (
-                    648,
-                    876,
-                    1,
-                ),
-                mip_level_count: 1,
-                sample_count: 1,
-                dimension: D2,
-                format: Rgba16Float,
-                usage: TextureUsages(
-                    0x0,
-                ),
-                view_formats: [],
-            },
-            texture_view_descriptor: Some(
-                TextureViewDescriptor {
-                    label: None,
-                    format: None,
-                    dimension: Some(
-                        D2,
-                    ),
-                    usage: None,
-                    aspect: All,
-                    base_mip_level: 0,
-                    mip_level_count: None,
-                    base_array_layer: 0,
-                    array_layer_count: None,
-                },
+            size: (
+                648,
+                876,
+                1,
             ),
+            format: Rgba16Float,
+            mip_level_count: 1,
+            view_dimension: D2,
         },
     ),
     (
@@ -114,37 +68,14 @@ expression: results
         TranscodedImage {
             data: [],
             data_order: MipMajor,
-            texture_descriptor: TextureDescriptor {
-                label: None,
-                size: (
-                    648,
-                    876,
-                    1,
-                ),
-                mip_level_count: 10,
-                sample_count: 1,
-                dimension: D2,
-                format: Rgba16Float,
-                usage: TextureUsages(
-                    0x0,
-                ),
-                view_formats: [],
-            },
-            texture_view_descriptor: Some(
-                TextureViewDescriptor {
-                    label: None,
-                    format: None,
-                    dimension: Some(
-                        D2,
-                    ),
-                    usage: None,
-                    aspect: All,
-                    base_mip_level: 0,
-                    mip_level_count: None,
-                    base_array_layer: 0,
-                    array_layer_count: None,
-                },
+            size: (
+                648,
+                876,
+                1,
             ),
+            format: Rgba16Float,
+            mip_level_count: 10,
+            view_dimension: D2,
         },
     ),
     (
@@ -162,37 +93,14 @@ expression: results
         TranscodedImage {
             data: [],
             data_order: MipMajor,
-            texture_descriptor: TextureDescriptor {
-                label: None,
-                size: (
-                    768,
-                    512,
-                    1,
-                ),
-                mip_level_count: 10,
-                sample_count: 1,
-                dimension: D2,
-                format: Rgba8UnormSrgb,
-                usage: TextureUsages(
-                    0x0,
-                ),
-                view_formats: [],
-            },
-            texture_view_descriptor: Some(
-                TextureViewDescriptor {
-                    label: None,
-                    format: None,
-                    dimension: Some(
-                        D2,
-                    ),
-                    usage: None,
-                    aspect: All,
-                    base_mip_level: 0,
-                    mip_level_count: None,
-                    base_array_layer: 0,
-                    array_layer_count: None,
-                },
+            size: (
+                768,
+                512,
+                1,
             ),
+            format: Rgba8UnormSrgb,
+            mip_level_count: 10,
+            view_dimension: D2,
         },
     ),
     (
@@ -210,37 +118,14 @@ expression: results
         TranscodedImage {
             data: [],
             data_order: MipMajor,
-            texture_descriptor: TextureDescriptor {
-                label: None,
-                size: (
-                    2048,
-                    2048,
-                    6,
-                ),
-                mip_level_count: 12,
-                sample_count: 1,
-                dimension: D2,
-                format: Rgba8UnormSrgb,
-                usage: TextureUsages(
-                    0x0,
-                ),
-                view_formats: [],
-            },
-            texture_view_descriptor: Some(
-                TextureViewDescriptor {
-                    label: None,
-                    format: None,
-                    dimension: Some(
-                        Cube,
-                    ),
-                    usage: None,
-                    aspect: All,
-                    base_mip_level: 0,
-                    mip_level_count: None,
-                    base_array_layer: 0,
-                    array_layer_count: None,
-                },
+            size: (
+                2048,
+                2048,
+                6,
             ),
+            format: Rgba8UnormSrgb,
+            mip_level_count: 12,
+            view_dimension: Cube,
         },
     ),
     (
@@ -258,37 +143,14 @@ expression: results
         TranscodedImage {
             data: [],
             data_order: MipMajor,
-            texture_descriptor: TextureDescriptor {
-                label: None,
-                size: (
-                    1120,
-                    1104,
-                    1,
-                ),
-                mip_level_count: 1,
-                sample_count: 1,
-                dimension: D2,
-                format: Rgba8UnormSrgb,
-                usage: TextureUsages(
-                    0x0,
-                ),
-                view_formats: [],
-            },
-            texture_view_descriptor: Some(
-                TextureViewDescriptor {
-                    label: None,
-                    format: None,
-                    dimension: Some(
-                        D2,
-                    ),
-                    usage: None,
-                    aspect: All,
-                    base_mip_level: 0,
-                    mip_level_count: None,
-                    base_array_layer: 0,
-                    array_layer_count: None,
-                },
+            size: (
+                1120,
+                1104,
+                1,
             ),
+            format: Rgba8UnormSrgb,
+            mip_level_count: 1,
+            view_dimension: D2,
         },
     ),
     (
@@ -306,37 +168,14 @@ expression: results
         TranscodedImage {
             data: [],
             data_order: MipMajor,
-            texture_descriptor: TextureDescriptor {
-                label: None,
-                size: (
-                    1848,
-                    888,
-                    1,
-                ),
-                mip_level_count: 11,
-                sample_count: 1,
-                dimension: D2,
-                format: Rgba8UnormSrgb,
-                usage: TextureUsages(
-                    0x0,
-                ),
-                view_formats: [],
-            },
-            texture_view_descriptor: Some(
-                TextureViewDescriptor {
-                    label: None,
-                    format: None,
-                    dimension: Some(
-                        D2,
-                    ),
-                    usage: None,
-                    aspect: All,
-                    base_mip_level: 0,
-                    mip_level_count: None,
-                    base_array_layer: 0,
-                    array_layer_count: None,
-                },
+            size: (
+                1848,
+                888,
+                1,
             ),
+            format: Rgba8UnormSrgb,
+            mip_level_count: 11,
+            view_dimension: D2,
         },
     ),
 ]

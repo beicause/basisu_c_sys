@@ -5,8 +5,7 @@ use crate::{
 use alloc::vec::Vec;
 use async_lock::OnceCell;
 use wgpu_types::{
-    AstcBlock, AstcChannel, Extent3d, TextureDataOrder, TextureDescriptor, TextureDimension,
-    TextureFormat, TextureUsages, TextureViewDescriptor, TextureViewDimension,
+    AstcBlock, AstcChannel, Extent3d, TextureDataOrder, TextureFormat, TextureViewDimension,
 };
 
 #[derive(Debug, Clone, PartialEq)]
@@ -15,22 +14,14 @@ pub struct TranscodedImage {
     pub data: Vec<u8>,
     /// The data order. Currently it's always [`TextureDataOrder::MipMajor`].
     pub data_order: TextureDataOrder,
-    pub texture_descriptor: TextureDescriptor<Option<&'static str>, &'static [TextureFormat]>,
-    pub texture_view_descriptor: Option<TextureViewDescriptor<Option<&'static str>>>,
-}
-
-impl TranscodedImage {
-    /// Returns the width of a 2D image.
-    #[inline]
-    pub fn width(&self) -> u32 {
-        self.texture_descriptor.size.width
-    }
-
-    /// Returns the height of a 2D image.
-    #[inline]
-    pub fn height(&self) -> u32 {
-        self.texture_descriptor.size.height
-    }
+    /// The size of transcoded image.
+    pub size: Extent3d,
+    /// The format of transcoded image.
+    pub format: TextureFormat,
+    /// The mip level count of transcoded image.
+    pub mip_level_count: u32,
+    /// The texture view dimension of transcoded image. It can be D2, D2Array, Cube or CubeArray.
+    pub view_dimension: TextureViewDimension,
 }
 
 static BASISU_TRANSCODER_INITIALIZED: OnceCell<()> = OnceCell::new();
@@ -51,9 +42,12 @@ pub fn basisu_transcoder_enable_debug_printf(enable: bool) {
 }
 
 #[derive(Debug, thiserror::Error)]
+#[non_exhaustive]
 pub enum BasisuTranscodeError {
     #[error("Failed to load ktx2 data, likely the input data isn't valid")]
     LoadKtx2DataFailed,
+    #[error("Invalid ktx2 face count. It must be 1 or 6, got {0}")]
+    InvalidFaceCount(u32),
     #[error("`BasisuTranscoder::prepare` isn't called before transcoding")]
     UnsupportedTranscodeTarget,
     #[error("`BasisuTranscoder::prepare` isn't called before transcoding")]
@@ -150,11 +144,14 @@ impl BasisuTranscoder {
             if trans_sys::bt_ktx2_start_transcoding(ktx2_handle).is_err() {
                 return Err(BasisuTranscodeError::BtStartTranscodingFailed);
             }
+            let faces = trans_sys::bt_ktx2_get_faces(ktx2_handle);
+            if faces != 1 && faces != 6 {
+                return Err(BasisuTranscodeError::InvalidFaceCount(faces));
+            }
             let width = trans_sys::bt_ktx2_get_width(ktx2_handle);
             let height = trans_sys::bt_ktx2_get_height(ktx2_handle);
             let layers = trans_sys::bt_ktx2_get_layers(ktx2_handle);
             let levels = trans_sys::bt_ktx2_get_levels(ktx2_handle);
-            let faces = trans_sys::bt_ktx2_get_faces(ktx2_handle);
             let is_srgb = trans_sys::bt_ktx2_is_srgb(ktx2_handle).is_ok();
             let basis_format =
                 BasisTextureFormat::try_from(trans_sys::bt_ktx2_get_basis_tex_format(ktx2_handle))
@@ -310,14 +307,14 @@ impl BasisuTranscoder {
             } else if info.faces == 6 {
                 TextureViewDimension::Cube
             } else {
-                unreachable!()
+                return Err(BasisuTranscodeError::InvalidFaceCount(info.faces));
             }
         } else if info.faces == 1 {
             TextureViewDimension::D2Array
         } else if info.faces == 6 {
             TextureViewDimension::CubeArray
         } else {
-            unreachable!()
+            return Err(BasisuTranscodeError::InvalidFaceCount(info.faces));
         };
         let extent = Extent3d {
             width: info.width,
@@ -332,23 +329,13 @@ impl BasisuTranscoder {
         Ok(TranscodedImage {
             data,
             data_order: TextureDataOrder::MipMajor,
-            texture_descriptor: TextureDescriptor {
-                // Note: we must give wgpu the logical texture dimensions, so it can correctly compute mip sizes.
-                // However this currently causes wgpu to panic if the dimensions aren't a multiple of blocksize.
-                // See https://github.com/gfx-rs/wgpu/issues/7677 for more context.
-                size: extent,
-                format: out_format,
-                dimension: TextureDimension::D2,
-                mip_level_count: info.levels,
-                label: None,
-                sample_count: 1,
-                usage: TextureUsages::empty(),
-                view_formats: &[],
-            },
-            texture_view_descriptor: Some(TextureViewDescriptor {
-                dimension: Some(view_dimension),
-                ..Default::default()
-            }),
+            // Note: we must give wgpu the logical texture dimensions, so it can correctly compute mip sizes.
+            // However this currently causes wgpu to panic if the dimensions aren't a multiple of blocksize.
+            // See https://github.com/gfx-rs/wgpu/issues/7677 for more context.
+            size: extent,
+            format: out_format,
+            mip_level_count: info.levels,
+            view_dimension,
         })
     }
 }
