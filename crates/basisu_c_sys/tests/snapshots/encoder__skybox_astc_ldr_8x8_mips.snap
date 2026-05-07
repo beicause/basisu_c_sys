@@ -1,6 +1,0 @@
----
-source: crates/basisu_c_sys/src/extra/encoder.rs
-expression: res
-extension: basisu.ktx2
-snapshot_kind: binary
----

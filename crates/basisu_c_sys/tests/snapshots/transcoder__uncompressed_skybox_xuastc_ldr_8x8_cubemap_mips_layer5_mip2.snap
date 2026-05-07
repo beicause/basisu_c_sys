@@ -1,6 +1,0 @@
----
-source: crates/basisu_c_sys/tests/transcoder.rs
-expression: output
-extension: webp
-snapshot_kind: binary
----
