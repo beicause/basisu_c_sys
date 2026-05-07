@@ -117,79 +117,78 @@ fn transcode_assets_astc() {
 
 #[test]
 fn transcode_assets_uncompressed() {
-    let results = snapshot_test(
-        SupportedTextureCompression::empty(),
-        |file_name, mut transcoded_image| {
-            assert!(
-                [
-                    TextureFormat::Rgba8Unorm,
-                    TextureFormat::Rgba8UnormSrgb,
-                    TextureFormat::Rgba16Float
-                ]
-                .contains(&transcoded_image.format)
-            );
-            assert_eq!(transcoded_image.data_order, TextureDataOrder::MipMajor);
-            let is_hdr = transcoded_image.format == TextureFormat::Rgba16Float;
-            let data = core::mem::take(&mut transcoded_image.data);
-            let pixel_size = if is_hdr { 8 } else { 4 };
-            let mut offset = 0usize;
-            for mip in 0..transcoded_image.mip_level_count {
-                for layer in 0..transcoded_image.size.depth_or_array_layers {
-                    let width = (transcoded_image.size.width >> mip).max(1);
-                    let height = (transcoded_image.size.height >> mip).max(1);
-                    let bytes = width * height * pixel_size;
-                    let dynamic_image = if is_hdr {
-                        DynamicImage::ImageRgba32F(
-                            ImageBuffer::from_raw(
-                                width,
-                                height,
-                                bytemuck::cast_slice::<u8, half::f16>(
-                                    &data[offset..(offset + bytes as usize)],
-                                )
-                                .iter()
-                                .map(|hf| hf.to_f32())
-                                .collect(),
+    let each_result = |file_name: &str, mut transcoded_image: TranscodedImage| {
+        assert!(
+            [
+                TextureFormat::Rgba8Unorm,
+                TextureFormat::Rgba8UnormSrgb,
+                TextureFormat::Rgba16Float
+            ]
+            .contains(&transcoded_image.format)
+        );
+        assert_eq!(transcoded_image.data_order, TextureDataOrder::MipMajor);
+        let is_hdr = transcoded_image.format == TextureFormat::Rgba16Float;
+        let data = core::mem::take(&mut transcoded_image.data);
+        let pixel_size = if is_hdr { 8 } else { 4 };
+        let mut offset = 0usize;
+        for mip in 0..transcoded_image.mip_level_count {
+            for layer in 0..transcoded_image.size.depth_or_array_layers {
+                let width = (transcoded_image.size.width >> mip).max(1);
+                let height = (transcoded_image.size.height >> mip).max(1);
+                let bytes = width * height * pixel_size;
+                let dynamic_image = if is_hdr {
+                    DynamicImage::ImageRgba32F(
+                        ImageBuffer::from_raw(
+                            width,
+                            height,
+                            bytemuck::cast_slice::<u8, half::f16>(
+                                &data[offset..(offset + bytes as usize)],
                             )
-                            .unwrap(),
+                            .iter()
+                            .map(|hf| hf.to_f32())
+                            .collect(),
                         )
-                    } else {
-                        DynamicImage::ImageRgba8(
-                            ImageBuffer::from_raw(
-                                width,
-                                height,
-                                data[offset..(offset + bytes as usize)].to_vec(),
+                        .unwrap(),
+                    )
+                } else {
+                    DynamicImage::ImageRgba8(
+                        ImageBuffer::from_raw(
+                            width,
+                            height,
+                            data[offset..(offset + bytes as usize)].to_vec(),
+                        )
+                        .unwrap(),
+                    )
+                };
+                offset += bytes as usize;
+                let mut output = Vec::new();
+                dynamic_image
+                    .write_to(
+                        Cursor::new(&mut output),
+                        if is_hdr {
+                            ImageFormat::OpenExr
+                        } else {
+                            ImageFormat::WebP
+                        },
+                    )
+                    .unwrap();
+                insta::assert_binary_snapshot!(
+                    &("uncompressed_".to_string()
+                        + &file_name.replace(
+                            ".basisu.ktx2",
+                            &format!(
+                                "_layer{}_mip{}{}",
+                                layer,
+                                mip,
+                                if is_hdr { ".exr" } else { ".webp" }
                             )
-                            .unwrap(),
-                        )
-                    };
-                    offset += bytes as usize;
-                    let mut output = Vec::new();
-                    dynamic_image
-                        .write_to(
-                            Cursor::new(&mut output),
-                            if is_hdr {
-                                ImageFormat::OpenExr
-                            } else {
-                                ImageFormat::WebP
-                            },
-                        )
-                        .unwrap();
-                    insta::assert_binary_snapshot!(
-                        &("uncompressed_".to_string()
-                            + &file_name.replace(
-                                ".basisu.ktx2",
-                                &format!(
-                                    "_layer{}_mip{}{}",
-                                    layer,
-                                    mip,
-                                    if is_hdr { ".exr" } else { ".webp" }
-                                )
-                            )),
-                        output
-                    );
-                }
+                        )),
+                    output
+                );
             }
-        },
-    );
+        }
+    };
+
+    let results = snapshot_test(SupportedTextureCompression::empty(), each_result);
     insta::assert_debug_snapshot!(results);
 }
