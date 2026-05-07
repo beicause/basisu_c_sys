@@ -53,13 +53,23 @@ syn = { version = "2.0.117", default-features = false, features = [
 ] }
 prettyplease = "0.2.37"
 
-[[bin]]
-name = "gen_make_wasm"
-path = "bin/gen_make_wasm.rs"
-required-features = ["__gen_make_wasm"]
-
 [dev-dependencies]
 bevy_image = { git = "https://github.com/bevyengine/bevy", rev = "28f99e9618398cc999e6f92d3d9373b82af146cf", default-features = false, features = [
   "jpeg",
 ] }
 insta = "1.47.2"
+
+[[bin]]
+name = "gen_make_wasm"
+path = "bin/gen_make_wasm.rs"
+required-features = ["__gen_make_wasm"]
+
+[[test]]
+name = "encoder"
+path = "tests/encoder.rs"
+required-features = ["extra", "encoder"]
+
+[[test]]
+name = "transcoder"
+path = "tests/transcoder.rs"
+required-features = ["extra"]
