@@ -45,7 +45,7 @@ pub unsafe fn copy_host_memory_to_basisu(data: &[u8], basisu_ptr: u64) {
 /// `basisu_ptr` must be valid pointer allocated by `bu_alloc` or `bt_alloc`
 /// and must be valid for reads of `count` bytes.
 pub unsafe fn copy_basisu_memory_to_host(basisu_ptr: u64, count: u64) -> alloc::vec::Vec<u8> {
-    let mut dst = alloc::vec![0u8;count as usize];
+    let mut dst = alloc::vec![0u8; count as usize];
     unsafe {
         core::ptr::copy_nonoverlapping(basisu_ptr as *mut u8, dst.as_mut_ptr(), count as usize)
     };

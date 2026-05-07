@@ -5,7 +5,10 @@ use basisu_c_sys::extra::{
 use bevy::asset::{AssetLoader, RenderAssetUsages};
 use bevy::image::ImageSampler;
 use bevy::prelude::*;
-use bevy::render::render_resource::WgpuFeatures as Features;
+use bevy::render::render_resource::{
+    TextureDescriptor, TextureDimension, TextureUsages, TextureViewDescriptor,
+    WgpuFeatures as Features,
+};
 use serde::{Deserialize, Serialize};
 use thiserror::Error;
 
@@ -107,26 +110,35 @@ impl AssetLoader for BasisuLoader {
             bevy::log::debug!(
                 "Transcoded a basisu texture {:?} -> {:?}, {:?}kb -> {:?}kb, preferred_target {:?}, extents {:?}, levels {:?}, view_dimension {:?}, in {:?}",
                 info.basis_format,
-                out_image.texture_descriptor.format,
+                out_image.format,
                 src_bytes as f32 / 1000.0,
                 out_image.data.len() as f32 / 1000.0,
                 info.preferred_target,
-                out_image.texture_descriptor.size,
+                out_image.size,
                 info.levels,
-                out_image
-                    .texture_view_descriptor
-                    .as_ref()
-                    .unwrap()
-                    .dimension
-                    .unwrap(),
+                out_image.view_dimension,
                 time.unwrap().elapsed(),
             );
         }
         Ok(Image {
             data: Some(out_image.data),
             data_order: out_image.data_order,
-            texture_descriptor: out_image.texture_descriptor,
-            texture_view_descriptor: out_image.texture_view_descriptor,
+            texture_descriptor: TextureDescriptor {
+                label: None,
+                size: out_image.size,
+                mip_level_count: out_image.mip_level_count,
+                sample_count: 1,
+                dimension: TextureDimension::D2,
+                format: out_image.format,
+                usage: TextureUsages::TEXTURE_BINDING
+                    | TextureUsages::COPY_DST
+                    | TextureUsages::COPY_DST,
+                view_formats: &[],
+            },
+            texture_view_descriptor: Some(TextureViewDescriptor {
+                dimension: Some(out_image.view_dimension),
+                ..Default::default()
+            }),
             copy_on_resize: false,
             sampler: settings.sampler.clone(),
             asset_usage: settings.asset_usage,

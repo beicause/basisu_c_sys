@@ -1,4 +1,4 @@
-use basisu_c_sys::extra::{BasisuEncodeError, BasisuEncoder, BasisuEncoderParams};
+use basisu_c_sys::extra::{BasisuEncodeError, BasisuEncoder, BasisuEncoderParams, SourceImageData};
 use bevy::{
     asset::{
         AsyncWriteExt, processor::LoadTransformAndSave, saver::AssetSaver,
@@ -6,6 +6,7 @@ use bevy::{
     },
     image::{Image, ImageLoader},
     reflect::TypePath,
+    render::render_resource::TextureFormat,
 };
 use bevy_basisu_loader::{BasisuLoader, BasisuLoaderSettings};
 use serde::{Deserialize, Serialize};
@@ -38,6 +39,12 @@ pub enum BasisuSaverError {
     /// An error occurred while trying to load the bytes.
     #[error(transparent)]
     Io(#[from] std::io::Error),
+    #[error("Image data is empty")]
+    EmptyData,
+    #[error("Image texture format is unsupported by the encoder")]
+    UnsupportedTextureFormat(TextureFormat),
+    #[error("Image data is not invalid rgba32float")]
+    InvalidData,
     /// An error occurred while trying to encode the image.
     #[error(transparent)]
     BasisuEncodeError(#[from] BasisuEncodeError),
@@ -65,9 +72,21 @@ impl AssetSaver for BasisuSaver {
 
         let mut encoder = BasisuEncoder::new();
         encoder.set_image(basisu_c_sys::extra::SourceImage {
-            data: asset.data.as_deref().unwrap_or(&[]),
-            texture_descriptor: asset.texture_descriptor.clone(),
-            texture_view_descriptor: asset.texture_view_descriptor.clone(),
+            data: match (&asset.data, asset.texture_descriptor.format) {
+                (None, _) => return Err(BasisuSaverError::EmptyData),
+                (Some(data), TextureFormat::Rgba8Unorm | TextureFormat::Rgba8UnormSrgb) => {
+                    SourceImageData::Rgba8(data)
+                }
+                (Some(data), TextureFormat::Rgba32Float) => {
+                    if let Ok(data) = SourceImageData::rgba32float(data) {
+                        data
+                    } else {
+                        return Err(BasisuSaverError::InvalidData);
+                    }
+                }
+                (_, format) => return Err(BasisuSaverError::UnsupportedTextureFormat(format)),
+            },
+            size: asset.texture_descriptor.size,
         })?;
         let result = encoder.compress(
             settings
