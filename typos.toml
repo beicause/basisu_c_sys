@@ -11,3 +11,6 @@ ignore-hidden = false
 
 [default]
 locale = "en-us"
+
+[default.extend-words]
+ba = "ba"

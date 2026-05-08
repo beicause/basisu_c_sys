@@ -240,8 +240,8 @@ impl BasisuTranscoder {
                 }
             }
 
-            let ba_box = BaHeap::new_uninit(NonZero::new(total_bytes.into()).unwrap());
-            let basisu_ptr = u64::from(ba_box.ptr());
+            let ba_heap = BaHeap::new_uninit(NonZero::new(total_bytes.into()).unwrap());
+            let basisu_ptr = u64::from(ba_heap.ptr());
             let mut offset = 0u64;
             for level_index in 0..info.levels {
                 for layer_index in 0..total_layers {
@@ -291,7 +291,7 @@ impl BasisuTranscoder {
                     }
                 }
             }
-            ba_box.try_read(..).unwrap()
+            ba_heap.try_read(..).unwrap()
         };
 
         let view_dimension = if info.layers == 0 {

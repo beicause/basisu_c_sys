@@ -188,10 +188,10 @@ impl BasisuEncoder {
                     });
                 }
 
-                let Some(ba_box) = BaHeap::new(data) else {
+                let Some(ba_heap) = BaHeap::new(data) else {
                     return Err(BasisuEncodeError::EmptyImageData);
                 };
-                let ptr = u64::from(ba_box.ptr());
+                let ptr = u64::from(ba_heap.ptr());
                 for i in 0..image.size.depth_or_array_layers {
                     if enc_sys::bu_comp_params_set_image_rgba32(
                         self.params,
@@ -221,10 +221,10 @@ impl BasisuEncoder {
                     });
                 }
 
-                let Some(ba_box) = BaHeap::new(bytemuck::cast_slice(data)) else {
+                let Some(ba_heap) = BaHeap::new(bytemuck::cast_slice(data)) else {
                     return Err(BasisuEncodeError::EmptyImageData);
                 };
-                let ptr = u64::from(ba_box.ptr());
+                let ptr = u64::from(ba_heap.ptr());
                 for i in 0..image.size.depth_or_array_layers {
                     if enc_sys::bu_comp_params_set_image_float_rgba(
                         self.params,
@@ -281,10 +281,10 @@ impl BasisuEncoder {
                     });
                 }
 
-                let Some(ba_box) = BaHeap::new(data) else {
+                let Some(ba_heap) = BaHeap::new(data) else {
                     return Err(BasisuEncodeError::EmptyImageData);
                 };
-                let ptr = u64::from(ba_box.ptr());
+                let ptr = u64::from(ba_heap.ptr());
                 if enc_sys::bu_comp_params_set_image_rgba32(
                     self.params,
                     index,
@@ -312,10 +312,10 @@ impl BasisuEncoder {
                     });
                 }
 
-                let Some(ba_box) = BaHeap::new(bytemuck::cast_slice(data)) else {
+                let Some(ba_heap) = BaHeap::new(bytemuck::cast_slice(data)) else {
                     return Err(BasisuEncodeError::EmptyImageData);
                 };
-                let ptr = u64::from(ba_box.ptr());
+                let ptr = u64::from(ba_heap.ptr());
                 if enc_sys::bu_comp_params_set_image_float_rgba(
                     self.params,
                     index,
