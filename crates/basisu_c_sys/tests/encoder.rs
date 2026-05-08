@@ -20,6 +20,8 @@ use basisu_c_sys::{
 };
 use wgpu_types::{Extent3d, TextureViewDimension};
 
+use crate::common::SNAPSHOT_PATH;
+
 const SKYBOX_PATHS: &[&str] = &[
     "../../original_assets/skybox/right.jpg",
     "../../original_assets/skybox/left.jpg",
@@ -110,7 +112,9 @@ fn encode_cubemap_astc_ldr_8x8_mips_by_image() {
 
 #[test]
 fn encode_cubemap() {
-    basisu_encoder_enable_debug_printf(true);
-    encode_cubemap_xuastc_ldr_4x4_by_slice();
-    encode_cubemap_astc_ldr_8x8_mips_by_image();
+    insta::with_settings!({snapshot_path=>SNAPSHOT_PATH},{
+        basisu_encoder_enable_debug_printf(true);
+        encode_cubemap_xuastc_ldr_4x4_by_slice();
+        encode_cubemap_astc_ldr_8x8_mips_by_image();
+    });
 }

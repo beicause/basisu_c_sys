@@ -32,7 +32,10 @@ jobs:
             cargo-flags: ""
 
     steps:
-      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+      - uses: actions/checkout@v6
+
+      - name: Clone `basisu_c_sys_asset_files`
+        run: git clone --depth 1 https://github.com/beicause/basisu_c_sys_asset_files
 
       - name: Install Linux dependencies
         if: ${{ matrix.os == 'ubuntu-latest' }}
@@ -60,7 +63,7 @@ jobs:
     name: Build wasm
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+      - uses: actions/checkout@v6
 
       - name: Install rust toolchain
         run: |
@@ -74,7 +77,7 @@ jobs:
     name: Build android
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+      - uses: actions/checkout@v6
 
       - name: Install rust toolchain
         run: |
