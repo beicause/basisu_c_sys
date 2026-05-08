@@ -1,6 +1,6 @@
 use crate::common;
 use crate::encoder as enc_sys;
-use crate::extra::BaHeap;
+use crate::extra::BuHeap;
 use crate::utils::BasisTextureFormat;
 use alloc::vec::Vec;
 use async_lock::OnceCell;
@@ -12,7 +12,7 @@ use wgpu_types::{Extent3d, TextureViewDimension};
 pub enum SourceImageData<'a> {
     /// A 32bpp RGBA data slice (4 bytes per pixel)
     Rgba8(&'a [u8]),
-    /// A float RGBA data slice (16 bytes per pixel)
+    /// A 64bpp float RGBA data slice (16 bytes per pixel)
     Rgba32Float(&'a [f32]),
 }
 
@@ -188,10 +188,10 @@ impl BasisuEncoder {
                     });
                 }
 
-                let Some(ba_heap) = BaHeap::new(data) else {
+                let Some(bu_heap) = BuHeap::new(data) else {
                     return Err(BasisuEncodeError::EmptyImageData);
                 };
-                let ptr = u64::from(ba_heap.ptr());
+                let ptr = u64::from(bu_heap.ptr());
                 for i in 0..image.size.depth_or_array_layers {
                     if enc_sys::bu_comp_params_set_image_rgba32(
                         self.params,
@@ -221,10 +221,10 @@ impl BasisuEncoder {
                     });
                 }
 
-                let Some(ba_heap) = BaHeap::new(bytemuck::cast_slice(data)) else {
+                let Some(bu_heap) = BuHeap::new(data) else {
                     return Err(BasisuEncodeError::EmptyImageData);
                 };
-                let ptr = u64::from(ba_heap.ptr());
+                let ptr = u64::from(bu_heap.ptr());
                 for i in 0..image.size.depth_or_array_layers {
                     if enc_sys::bu_comp_params_set_image_float_rgba(
                         self.params,
@@ -281,10 +281,10 @@ impl BasisuEncoder {
                     });
                 }
 
-                let Some(ba_heap) = BaHeap::new(data) else {
+                let Some(bu_heap) = BuHeap::new(data) else {
                     return Err(BasisuEncodeError::EmptyImageData);
                 };
-                let ptr = u64::from(ba_heap.ptr());
+                let ptr = u64::from(bu_heap.ptr());
                 if enc_sys::bu_comp_params_set_image_rgba32(
                     self.params,
                     index,
@@ -312,10 +312,10 @@ impl BasisuEncoder {
                     });
                 }
 
-                let Some(ba_heap) = BaHeap::new(bytemuck::cast_slice(data)) else {
+                let Some(bu_heap) = BuHeap::new(data) else {
                     return Err(BasisuEncodeError::EmptyImageData);
                 };
-                let ptr = u64::from(ba_heap.ptr());
+                let ptr = u64::from(bu_heap.ptr());
                 if enc_sys::bu_comp_params_set_image_float_rgba(
                     self.params,
                     index,

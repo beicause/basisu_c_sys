@@ -1,5 +1,5 @@
 use crate::{
-    extra::BaHeap,
+    extra::BuHeap,
     transcoder as trans_sys,
     utils::{BasisTextureFormat, TranscodeTargetFormat},
 };
@@ -82,12 +82,12 @@ struct Ktx2Data {
         unused,
         reason = "This is kept to remain memory, which is referenced by ktx2 handle"
     )]
-    data: BaHeap,
+    data: BuHeap,
     ktx2_handle: NonZero<u64>,
 }
 
 impl Ktx2Data {
-    fn new(data: BaHeap) -> Option<Self> {
+    fn new(data: BuHeap) -> Option<Self> {
         NonZero::try_from(unsafe {
             trans_sys::bt_ktx2_open(
                 data.ptr().into(),
@@ -134,7 +134,7 @@ impl BasisuTranscoder {
             panic!("`basisu_transcoder_init` must be called before create transcoder");
         }
         unsafe {
-            let Some(input_data) = BaHeap::new(input) else {
+            let Some(input_data) = BuHeap::new(input) else {
                 return Err(BasisuTranscodeError::EmptyInputData);
             };
             let Some(ktx2_data) = Ktx2Data::new(input_data) else {
@@ -240,8 +240,8 @@ impl BasisuTranscoder {
                 }
             }
 
-            let ba_heap = BaHeap::new_uninit(NonZero::new(total_bytes.into()).unwrap());
-            let basisu_ptr = u64::from(ba_heap.ptr());
+            let basisu_heap = BuHeap::new_uninit(NonZero::new(total_bytes.into()).unwrap());
+            let basisu_ptr = u64::from(basisu_heap.ptr());
             let mut offset = 0u64;
             for level_index in 0..info.levels {
                 for layer_index in 0..total_layers {
@@ -291,7 +291,7 @@ impl BasisuTranscoder {
                     }
                 }
             }
-            ba_heap.try_read(..).unwrap()
+            basisu_heap.try_read(..).unwrap()
         };
 
         let view_dimension = if info.layers == 0 {

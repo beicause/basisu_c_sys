@@ -43,8 +43,8 @@ pub enum BasisuSaverError {
     EmptyData,
     #[error("Image texture format is unsupported by the encoder")]
     UnsupportedTextureFormat(TextureFormat),
-    #[error("Image data is not invalid rgba32float")]
-    InvalidData,
+    #[error("Image format is Rgba32Float, but the data is not a multiplier of 16")]
+    UnalignedRgba32Float,
     /// An error occurred while trying to encode the image.
     #[error(transparent)]
     BasisuEncodeError(#[from] BasisuEncodeError),
@@ -81,7 +81,7 @@ impl AssetSaver for BasisuSaver {
                     if let Ok(data) = SourceImageData::rgba32float(data) {
                         data
                     } else {
-                        return Err(BasisuSaverError::InvalidData);
+                        return Err(BasisuSaverError::UnalignedRgba32Float);
                     }
                 }
                 (_, format) => return Err(BasisuSaverError::UnsupportedTextureFormat(format)),
