@@ -61,9 +61,16 @@ fn snapshot(
     each_data_result: impl Fn(&str, TranscodedImage),
 ) -> Vec<(String, TranscodeInfo, TranscodedImage)> {
     block_on(basisu_transcoder_init());
+
     let mut path = std::path::PathBuf::new();
     path.push(std::env!("CARGO_MANIFEST_DIR"));
-    path.push("../../basisu_c_sys_asset_files/assets");
+    path.push("../../assets");
+
+    // Read the real path, otherwise `std::fs::read_dir` panics on windows.
+    let link_path = std::fs::read_link(&path).unwrap();
+    path.pop();
+    path.push(link_path);
+
     let mut results = Vec::new();
     let mut transcoder = BasisuTranscoder::new();
     for file in std::fs::read_dir(path).unwrap() {
