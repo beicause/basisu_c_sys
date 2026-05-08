@@ -97,12 +97,12 @@ impl AssetLoader for BasisuLoader {
         } else {
             None
         };
-        let mut transcoder = BasisuTranscoder::new();
-        let info = transcoder.prepare(
+        let transcoder = BasisuTranscoder::new(
             &data,
             self.supported_compressed_formats,
             settings.channel_type_hint,
         )?;
+        let info = transcoder.get_info();
 
         let out_image = transcoder.transcode(settings.force_transcode_target, settings.is_srgb)?;
 

@@ -22,6 +22,6 @@ emmake make -j$(nproc)
 ```
 
 Feature flags:
-- `encoder`: Enable basisu encoder. By default only transcoder is enabled.
-- `serde`: Enable serde on structs.
-- `extra`: Enable extra high level API that is easier to use with `wgpu-types`.
+- `encoder`: Enable basisu encoder, which will significantly increase the binary size. By default only transcoder is enabled.
+- `serde`: Enable `serde` on some structs.
+- `extra`: Enable extra high level encoder and transcoder API that is easier to use with `wgpu-types`.

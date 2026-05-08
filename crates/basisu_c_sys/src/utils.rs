@@ -110,3 +110,37 @@ impl TryFrom<u32> for TranscodeTargetFormat {
         }
     }
 }
+
+#[cfg(all(
+    target_arch = "wasm32",
+    target_vendor = "unknown",
+    target_os = "unknown",
+))]
+use crate::web as impls;
+
+#[cfg(not(all(
+    target_arch = "wasm32",
+    target_vendor = "unknown",
+    target_os = "unknown",
+)))]
+use crate::native as impls;
+
+/// Use this to copy memory between host and basisu.
+/// This is required on web where memory isn't shared.
+/// # Safety
+/// `basisu_ptr` must be valid pointer allocated by `bu_alloc` or `bt_alloc`
+/// and must be valid for writes of `data.len()` bytes.
+// Note: This is used for both transcoder and encoder and assumes their `alloc` and `free` are the same. If not (though it's unlikely), this should be changed.
+pub unsafe fn copy_host_memory_to_basisu(data: &[u8], basisu_ptr: u64) {
+    unsafe { impls::copy_host_memory_to_basisu_impl(data, basisu_ptr) };
+}
+
+/// Use this to copy memory between host and basisu.
+/// This is required on web where memory isn't shared.
+/// # Safety
+/// `basisu_ptr` must be valid pointer allocated by `bu_alloc` or `bt_alloc`
+/// and must be valid for reads of `count` bytes.
+// Note: This is used for both transcoder and encoder and assumes their `alloc` and `free` are the same. If not (though it's unlikely), this should be changed.
+pub unsafe fn copy_basisu_memory_to_host(basisu_ptr: u64, count: u64) -> alloc::vec::Vec<u8> {
+    unsafe { impls::copy_basisu_memory_to_host_impl(basisu_ptr, count) }
+}

@@ -1,9 +1,11 @@
 use crate::{
+    extra::BaHeap,
     transcoder as trans_sys,
     utils::{BasisTextureFormat, TranscodeTargetFormat},
 };
 use alloc::vec::Vec;
 use async_lock::OnceCell;
+use core::num::NonZero;
 use wgpu_types::{
     AstcBlock, AstcChannel, Extent3d, TextureDataOrder, TextureFormat, TextureViewDimension,
 };
@@ -41,17 +43,17 @@ pub fn basisu_transcoder_enable_debug_printf(enable: bool) {
     unsafe { trans_sys::bt_enable_debug_printf(enable as u32) };
 }
 
-#[derive(Debug, thiserror::Error)]
+#[derive(Debug, thiserror::Error, PartialEq)]
 #[non_exhaustive]
 pub enum BasisuTranscodeError {
+    #[error("Input data is empty")]
+    EmptyInputData,
     #[error("Failed to load ktx2 data, likely the input data isn't valid")]
     LoadKtx2DataFailed,
     #[error("Invalid ktx2 face count. It must be 1 or 6, got {0}")]
     InvalidFaceCount(u32),
     #[error("`BasisuTranscoder::prepare` isn't called before transcoding")]
     UnsupportedTranscodeTarget,
-    #[error("`BasisuTranscoder::prepare` isn't called before transcoding")]
-    TranscodingBeforePrepared,
     #[error("`bt_ktx2_start_transcoding` failed")]
     BtStartTranscodingFailed,
     #[error("`bt_ktx2_transcode_image_level` failed")]
@@ -71,41 +73,46 @@ pub struct TranscodeInfo {
 }
 
 pub struct BasisuTranscoder {
-    data_ptr: u64,
-    ktx2_handle: u64,
-    info: Option<TranscodeInfo>,
+    ktx2_data: Ktx2Data,
+    info: TranscodeInfo,
 }
 
-impl Drop for BasisuTranscoder {
-    fn drop(&mut self) {
-        if self.ktx2_handle != 0 {
-            unsafe { trans_sys::bt_ktx2_close(self.ktx2_handle) };
-        }
-        if self.data_ptr != 0 {
-            unsafe { trans_sys::bt_free(self.data_ptr) };
-        }
+struct Ktx2Data {
+    #[expect(
+        unused,
+        reason = "This is kept to remain memory, which is referenced by ktx2 handle"
+    )]
+    data: BaHeap,
+    ktx2_handle: NonZero<u64>,
+}
+
+impl Ktx2Data {
+    fn new(data: BaHeap) -> Option<Self> {
+        NonZero::try_from(unsafe {
+            trans_sys::bt_ktx2_open(
+                data.ptr().into(),
+                u32::try_from(u64::from(data.capacity())).unwrap(),
+            )
+        })
+        .ok()
+        .map(|ktx2_handle| Self { data, ktx2_handle })
+    }
+    #[inline]
+    fn ktx2_handle(&self) -> NonZero<u64> {
+        self.ktx2_handle
     }
 }
-impl Default for BasisuTranscoder {
-    fn default() -> Self {
-        Self::new()
+
+impl Drop for Ktx2Data {
+    fn drop(&mut self) {
+        unsafe { trans_sys::bt_ktx2_close(self.ktx2_handle().into()) };
     }
 }
 
 impl BasisuTranscoder {
-    /// Create a transcoder. Panic if [`basisu_transcoder_init`] hasn't been called.
-    pub fn new() -> Self {
-        if !BASISU_TRANSCODER_INITIALIZED.is_initialized() {
-            panic!("`basisu_transcoder_init` must be called before create transcoder");
-        }
-        Self {
-            data_ptr: 0,
-            ktx2_handle: 0,
-            info: None,
-        }
-    }
-
-    /// Set the input data of ktx2 basisu file in bytes and return the info.
+    /// Create a transcoder and set the input data of ktx2 basisu file in bytes.
+    ///
+    /// Panic if [`basisu_transcoder_init`] hasn't been called.
     ///
     /// `supported_compressed_formats` and `channel_type_hint` affect the preferred transcode target.
     ///
@@ -118,47 +125,41 @@ impl BasisuTranscoder {
     /// | ETC1S                          | Bc7Rgba/Bc5Rg/Bc4R > Etc2Rgba8/Etc2Rgb8/EacRg11/EacR11 > Rgba8 |
     /// | UASTC_LDR, ASTC_LDR, XUASTC_LDR| Astc > Bc7Rgba > Etc2Rgba8/Etc2Rgb8/EacRg11/EacR11 > Rgba8     |
     /// | UASTC_HDR, ASTC_HDR            | Astc > Bc6hRgbUfloat > Rgba16Float                             |
-    pub fn prepare(
-        &mut self,
+    pub fn new(
         input: &[u8],
         supported_compressed_formats: SupportedTextureCompression,
         channel_type_hint: ChannelType,
-    ) -> Result<TranscodeInfo, BasisuTranscodeError> {
+    ) -> Result<Self, BasisuTranscodeError> {
+        if !BASISU_TRANSCODER_INITIALIZED.is_initialized() {
+            panic!("`basisu_transcoder_init` must be called before create transcoder");
+        }
         unsafe {
-            if self.data_ptr != 0 {
-                trans_sys::bt_free(self.data_ptr);
-                self.data_ptr = 0;
-            }
-            if self.ktx2_handle != 0 {
-                trans_sys::bt_ktx2_close(self.ktx2_handle);
-                self.ktx2_handle = 0;
-            }
-
-            self.data_ptr = trans_sys::bt_alloc(input.len() as u64);
-            crate::copy_host_memory_to_basisu(input, self.data_ptr);
-            self.ktx2_handle = trans_sys::bt_ktx2_open(self.data_ptr, input.len() as u32);
-            let ktx2_handle = self.ktx2_handle;
-            if ktx2_handle == 0 {
+            let Some(input_data) = BaHeap::new(input) else {
+                return Err(BasisuTranscodeError::EmptyInputData);
+            };
+            let Some(ktx2_data) = Ktx2Data::new(input_data) else {
                 return Err(BasisuTranscodeError::LoadKtx2DataFailed);
-            }
-            if trans_sys::bt_ktx2_start_transcoding(ktx2_handle).is_err() {
+            };
+            let ktx2_handle_ptr = u64::from(ktx2_data.ktx2_handle());
+            if trans_sys::bt_ktx2_start_transcoding(ktx2_handle_ptr).is_err() {
                 return Err(BasisuTranscodeError::BtStartTranscodingFailed);
             }
-            let faces = trans_sys::bt_ktx2_get_faces(ktx2_handle);
+            let faces = trans_sys::bt_ktx2_get_faces(ktx2_handle_ptr);
             if faces != 1 && faces != 6 {
                 return Err(BasisuTranscodeError::InvalidFaceCount(faces));
             }
-            let width = trans_sys::bt_ktx2_get_width(ktx2_handle);
-            let height = trans_sys::bt_ktx2_get_height(ktx2_handle);
-            let layers = trans_sys::bt_ktx2_get_layers(ktx2_handle);
-            let levels = trans_sys::bt_ktx2_get_levels(ktx2_handle);
-            let is_srgb = trans_sys::bt_ktx2_is_srgb(ktx2_handle).is_ok();
-            let basis_format =
-                BasisTextureFormat::try_from(trans_sys::bt_ktx2_get_basis_tex_format(ktx2_handle))
-                    .unwrap();
-            let channel_id0 = trans_sys::bt_ktx2_get_dfd_channel_id0(ktx2_handle);
-            let channel_id1 = trans_sys::bt_ktx2_get_dfd_channel_id1(ktx2_handle);
-            let is_uastc = trans_sys::bt_ktx2_is_uastc_ldr_4x4(ktx2_handle).is_ok();
+            let width = trans_sys::bt_ktx2_get_width(ktx2_handle_ptr);
+            let height = trans_sys::bt_ktx2_get_height(ktx2_handle_ptr);
+            let layers = trans_sys::bt_ktx2_get_layers(ktx2_handle_ptr);
+            let levels = trans_sys::bt_ktx2_get_levels(ktx2_handle_ptr);
+            let is_srgb = trans_sys::bt_ktx2_is_srgb(ktx2_handle_ptr).is_ok();
+            let basis_format = BasisTextureFormat::try_from(
+                trans_sys::bt_ktx2_get_basis_tex_format(ktx2_handle_ptr),
+            )
+            .unwrap();
+            let channel_id0 = trans_sys::bt_ktx2_get_dfd_channel_id0(ktx2_handle_ptr);
+            let channel_id1 = trans_sys::bt_ktx2_get_dfd_channel_id1(ktx2_handle_ptr);
+            let is_uastc = trans_sys::bt_ktx2_is_uastc_ldr_4x4(ktx2_handle_ptr).is_ok();
             let channel_type = if channel_type_hint != ChannelType::Auto {
                 channel_type_hint
             } else {
@@ -180,14 +181,12 @@ impl BasisuTranscoder {
                 basis_format,
                 preferred_target,
             };
-
-            self.info = Some(info);
-            Ok(info)
+            Ok(Self { ktx2_data, info })
         }
     }
 
-    /// Get the prepared info, return None if [`Self::prepare`] has not been called.
-    pub fn get_prepared_info(&self) -> Option<TranscodeInfo> {
+    /// Get the input info [`TranscodeInfo`].
+    pub fn get_info(&self) -> TranscodeInfo {
         self.info
     }
 
@@ -199,12 +198,7 @@ impl BasisuTranscoder {
         transcode_target: Option<TranscodeTargetFormat>,
         is_srgb: Option<bool>,
     ) -> Result<TranscodedImage, BasisuTranscodeError> {
-        if self.data_ptr == 0 || self.ktx2_handle == 0 {
-            return Err(BasisuTranscodeError::TranscodingBeforePrepared);
-        }
-        let info = self
-            .info
-            .ok_or(BasisuTranscodeError::TranscodingBeforePrepared)?;
+        let info = self.info;
         let transcode_target = transcode_target.unwrap_or(info.preferred_target);
         if unsafe {
             trans_sys::bt_basis_is_format_supported(
@@ -219,18 +213,19 @@ impl BasisuTranscoder {
             .ok_or(BasisuTranscodeError::UnsupportedTranscodeTarget)?;
         let total_layers = info.layers.max(1);
         let mut total_bytes = 0;
+        let ktx2_handle_ptr = u64::from(self.ktx2_data.ktx2_handle());
         let data = unsafe {
             for level_index in 0..info.levels {
                 for layer_index in 0..total_layers {
                     for face_index in 0..info.faces {
                         let orig_width = trans_sys::bt_ktx2_get_level_orig_width(
-                            self.ktx2_handle,
+                            ktx2_handle_ptr,
                             level_index,
                             layer_index,
                             face_index,
                         );
                         let orig_height = trans_sys::bt_ktx2_get_level_orig_height(
-                            self.ktx2_handle,
+                            ktx2_handle_ptr,
                             level_index,
                             layer_index,
                             face_index,
@@ -245,7 +240,8 @@ impl BasisuTranscoder {
                 }
             }
 
-            let basisu_ptr = trans_sys::bt_alloc(total_bytes.into());
+            let ba_box = BaHeap::new_uninit(NonZero::new(total_bytes.into()).unwrap());
+            let basisu_ptr = u64::from(ba_box.ptr());
             let mut offset = 0u64;
             for level_index in 0..info.levels {
                 for layer_index in 0..total_layers {
@@ -255,13 +251,13 @@ impl BasisuTranscoder {
                                 transcode_target as u32,
                             );
                         let orig_width = trans_sys::bt_ktx2_get_level_orig_width(
-                            self.ktx2_handle,
+                            ktx2_handle_ptr,
                             level_index,
                             layer_index,
                             face_index,
                         );
                         let orig_height = trans_sys::bt_ktx2_get_level_orig_height(
-                            self.ktx2_handle,
+                            ktx2_handle_ptr,
                             level_index,
                             layer_index,
                             face_index,
@@ -273,7 +269,7 @@ impl BasisuTranscoder {
                         );
                         let blocks = bytes / bytes_per_block_or_pixel;
                         if trans_sys::bt_ktx2_transcode_image_level(
-                            self.ktx2_handle,
+                            ktx2_handle_ptr,
                             level_index,
                             layer_index,
                             face_index,
@@ -289,16 +285,13 @@ impl BasisuTranscoder {
                         )
                         .is_err()
                         {
-                            trans_sys::bt_free(basisu_ptr);
                             return Err(BasisuTranscodeError::BtTranscodeImageLevelFailed);
                         }
                         offset += bytes as u64;
                     }
                 }
             }
-            let data = crate::copy_basisu_memory_to_host(basisu_ptr, total_bytes.into());
-            trans_sys::bt_free(basisu_ptr);
-            data
+            ba_box.try_read(..).unwrap()
         };
 
         let view_dimension = if info.layers == 0 {
@@ -606,7 +599,11 @@ mod tests {
         if super::BASISU_TRANSCODER_INITIALIZED.is_initialized() {
             panic!("Basisu is already initialized, panic to skip this test");
         } else {
-            super::BasisuTranscoder::new();
+            let _ = super::BasisuTranscoder::new(
+                &[],
+                super::SupportedTextureCompression::empty(),
+                super::ChannelType::Auto,
+            );
         }
     }
 }
