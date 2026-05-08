@@ -1,10 +1,10 @@
 [package]
 name = "basisu_c_sys"
-version = "0.7.0"
+version = "0.7.1"
 edition = "2024"
 repository.workspace = true
 license.workspace = true
-description = "Raw Rust binding for the Basis Universal pure C API"
+description = "Rust binding and wrappers for the Basis Universal pure C API"
 keywords = ["basis-universal", "ffi", "wasm-bindgen"]
 include = [
   "vendor/basis_universal",
