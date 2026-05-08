@@ -10,10 +10,10 @@ exclude: |
     crates/basisu_c_sys/build_args/.*|
   )$
 repos:
-  - repo: https://github.com/codespell-project/codespell
-    rev: v2.4.2
+  - repo: https://github.com/crate-ci/typos
+    rev: v1.46.0
     hooks:
-      - id: codespell
+      - id: typos
   - repo: https://github.com/pre-commit/pre-commit-hooks
     rev: v6.0.0
     hooks:

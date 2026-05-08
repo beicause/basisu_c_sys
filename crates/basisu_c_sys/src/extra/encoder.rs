@@ -1,5 +1,6 @@
 use crate::common;
 use crate::encoder as enc_sys;
+use crate::extra::BuHeap;
 use crate::utils::BasisTextureFormat;
 use alloc::vec::Vec;
 use async_lock::OnceCell;
@@ -11,7 +12,7 @@ use wgpu_types::{Extent3d, TextureViewDimension};
 pub enum SourceImageData<'a> {
     /// A 32bpp RGBA data slice (4 bytes per pixel)
     Rgba8(&'a [u8]),
-    /// A float RGBA data slice (16 bytes per pixel)
+    /// A 64bpp float RGBA data slice (16 bytes per pixel)
     Rgba32Float(&'a [f32]),
 }
 
@@ -52,6 +53,7 @@ pub fn basisu_encoder_enable_debug_printf(enable: bool) {
     unsafe { enc_sys::bu_enable_debug_printf(enable as u32) };
 }
 
+/// Encoder that used to compress [`SourceImage`] to basis universal ktx2 file.
 pub struct BasisuEncoder {
     params: u64,
 }
@@ -67,10 +69,10 @@ impl Default for BasisuEncoder {
 pub enum BasisuEncodeError {
     #[error("`BasisuEncoder::set_image_slice` only accepts image with 1 layer")]
     SetImageSliceOnlyAcceptsOneLayer,
-    #[error(
-        "Image data is invalid. Image {image_size:?} Expects data length {expected_len}, got {data_len}"
-    )]
-    InvalidImageData {
+    #[error("Image data is empty")]
+    EmptyImageData,
+    #[error("Image {image_size:?} Expects data length {expected_len}, got {data_len}")]
+    ImageUnmatchedDataAndSize {
         image_size: Extent3d,
         expected_len: usize,
         data_len: usize,
@@ -179,32 +181,31 @@ impl BasisuEncoder {
                     * image.size.depth_or_array_layers
                     * pixel_bytes) as usize;
                 if data.len() != expected_len {
-                    return Err(BasisuEncodeError::InvalidImageData {
+                    return Err(BasisuEncodeError::ImageUnmatchedDataAndSize {
                         image_size: image.size,
                         expected_len,
                         data_len: data.len(),
                     });
                 }
 
-                let basisu_ptr = enc_sys::bu_alloc(data.len() as u64);
-                crate::copy_host_memory_to_basisu(data, basisu_ptr);
+                let Some(bu_heap) = BuHeap::new(data) else {
+                    return Err(BasisuEncodeError::EmptyImageData);
+                };
+                let ptr = u64::from(bu_heap.ptr());
                 for i in 0..image.size.depth_or_array_layers {
                     if enc_sys::bu_comp_params_set_image_rgba32(
                         self.params,
                         i,
-                        basisu_ptr
-                            + (i * image.size.width * image.size.height * pixel_bytes) as u64,
+                        ptr + (i * image.size.width * image.size.height * pixel_bytes) as u64,
                         image.size.width,
                         image.size.height,
                         image.size.width * pixel_bytes,
                     )
                     .is_err()
                     {
-                        enc_sys::bu_free(basisu_ptr);
                         return Err(BasisuEncodeError::BuSetImageFailed);
                     }
                 }
-                enc_sys::bu_free(basisu_ptr);
             },
             SourceImageData::Rgba32Float(data) => unsafe {
                 let pixel_bytes = 16;
@@ -213,32 +214,31 @@ impl BasisuEncoder {
                     * image.size.depth_or_array_layers
                     * pixel_bytes) as usize;
                 if data.len() != expected_len {
-                    return Err(BasisuEncodeError::InvalidImageData {
+                    return Err(BasisuEncodeError::ImageUnmatchedDataAndSize {
                         image_size: image.size,
                         expected_len,
                         data_len: data.len(),
                     });
                 }
 
-                let basisu_ptr = enc_sys::bu_alloc(data.len() as u64);
-                crate::copy_host_memory_to_basisu(bytemuck::cast_slice(data), basisu_ptr);
+                let Some(bu_heap) = BuHeap::new(data) else {
+                    return Err(BasisuEncodeError::EmptyImageData);
+                };
+                let ptr = u64::from(bu_heap.ptr());
                 for i in 0..image.size.depth_or_array_layers {
                     if enc_sys::bu_comp_params_set_image_float_rgba(
                         self.params,
                         i,
-                        basisu_ptr
-                            + (i * image.size.width * image.size.height * pixel_bytes) as u64,
+                        ptr + (i * image.size.width * image.size.height * pixel_bytes) as u64,
                         image.size.width,
                         image.size.height,
                         image.size.width * pixel_bytes,
                     )
                     .is_err()
                     {
-                        enc_sys::bu_free(basisu_ptr);
                         return Err(BasisuEncodeError::BuSetImageFailed);
                     }
                 }
-                enc_sys::bu_free(basisu_ptr);
             },
         }
         Ok(())
@@ -274,29 +274,29 @@ impl BasisuEncoder {
                     * image.size.depth_or_array_layers
                     * pixel_bytes) as usize;
                 if data.len() != expected_len {
-                    return Err(BasisuEncodeError::InvalidImageData {
+                    return Err(BasisuEncodeError::ImageUnmatchedDataAndSize {
                         image_size: image.size,
                         expected_len,
                         data_len: data.len(),
                     });
                 }
 
-                let basisu_ptr = enc_sys::bu_alloc(data.len() as u64);
-                crate::copy_host_memory_to_basisu(data, basisu_ptr);
+                let Some(bu_heap) = BuHeap::new(data) else {
+                    return Err(BasisuEncodeError::EmptyImageData);
+                };
+                let ptr = u64::from(bu_heap.ptr());
                 if enc_sys::bu_comp_params_set_image_rgba32(
                     self.params,
                     index,
-                    basisu_ptr,
+                    ptr,
                     image.size.width,
                     image.size.height,
                     image.size.width * pixel_bytes,
                 )
                 .is_err()
                 {
-                    enc_sys::bu_free(basisu_ptr);
                     return Err(BasisuEncodeError::BuSetImageFailed);
                 }
-                enc_sys::bu_free(basisu_ptr);
             },
             SourceImageData::Rgba32Float(data) => unsafe {
                 let pixel_bytes = 16;
@@ -305,29 +305,29 @@ impl BasisuEncoder {
                     * image.size.depth_or_array_layers
                     * pixel_bytes) as usize;
                 if data.len() != expected_len {
-                    return Err(BasisuEncodeError::InvalidImageData {
+                    return Err(BasisuEncodeError::ImageUnmatchedDataAndSize {
                         image_size: image.size,
                         expected_len,
                         data_len: data.len(),
                     });
                 }
 
-                let basisu_ptr = enc_sys::bu_alloc(data.len() as u64);
-                crate::copy_host_memory_to_basisu(bytemuck::cast_slice(data), basisu_ptr);
+                let Some(bu_heap) = BuHeap::new(data) else {
+                    return Err(BasisuEncodeError::EmptyImageData);
+                };
+                let ptr = u64::from(bu_heap.ptr());
                 if enc_sys::bu_comp_params_set_image_float_rgba(
                     self.params,
                     index,
-                    basisu_ptr,
+                    ptr,
                     image.size.width,
                     image.size.height,
                     image.size.width * pixel_bytes,
                 )
                 .is_err()
                 {
-                    enc_sys::bu_free(basisu_ptr);
                     return Err(BasisuEncodeError::BuSetImageFailed);
                 }
-                enc_sys::bu_free(basisu_ptr);
             },
         }
         Ok(())
@@ -394,7 +394,7 @@ mod tests {
                     depth_or_array_layers: 1
                 },
             }),
-            Err(BasisuEncodeError::InvalidImageData {
+            Err(BasisuEncodeError::ImageUnmatchedDataAndSize {
                 image_size: Extent3d {
                     width: 1,
                     height: 1,

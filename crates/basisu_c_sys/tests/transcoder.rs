@@ -3,12 +3,9 @@ use std::io::Cursor;
 
 use common::block_on;
 
-use basisu_c_sys::{
-    TranscodeTargetFormat,
-    extra::{
-        BasisuTranscoder, ChannelType, SupportedTextureCompression, TranscodeInfo, TranscodedImage,
-        basisu_transcoder_init,
-    },
+use basisu_c_sys::extra::{
+    BasisuTranscodeError, BasisuTranscoder, ChannelType, SupportedTextureCompression,
+    TranscodeInfo, TranscodedImage, basisu_transcoder_init,
 };
 use image::{DynamicImage, ImageBuffer, ImageFormat};
 use wgpu_types::{TextureDataOrder, TextureFormat};
@@ -16,12 +13,13 @@ use wgpu_types::{TextureDataOrder, TextureFormat};
 use crate::common::SNAPSHOT_PATH;
 
 #[test]
-fn transcode_invalid_data_info_is_none() {
+fn transcode_invalid_data() {
     block_on(basisu_transcoder_init());
-    let mut transcoder = BasisuTranscoder::new();
-    let info = transcoder.prepare(&[], SupportedTextureCompression::empty(), ChannelType::Auto);
-    assert!(info.is_err());
-    let info = transcoder.prepare(
+    let transcoder =
+        BasisuTranscoder::new(&[], SupportedTextureCompression::empty(), ChannelType::Auto);
+    assert_eq!(transcoder.err(), Some(BasisuTranscodeError::EmptyInputData));
+
+    let transcoder = BasisuTranscoder::new(
         &[1, 2, 1],
         SupportedTextureCompression::BC
             | SupportedTextureCompression::ASTC_LDR
@@ -29,31 +27,10 @@ fn transcode_invalid_data_info_is_none() {
             | SupportedTextureCompression::ETC2,
         ChannelType::Auto,
     );
-    assert!(info.is_err());
-}
-
-#[test]
-fn transcode_before_prepare_panic() {
-    block_on(basisu_transcoder_init());
-    let transcoder = BasisuTranscoder::new();
-    assert!(
-        transcoder
-            .transcode(Some(TranscodeTargetFormat::RGBA32), None)
-            .is_err(),
+    assert_eq!(
+        transcoder.err(),
+        Some(BasisuTranscodeError::LoadKtx2DataFailed)
     );
-}
-
-#[test]
-fn transcode_invalid_data_output_panic() {
-    block_on(basisu_transcoder_init());
-    let mut transcoder = BasisuTranscoder::new();
-    let _info = transcoder.prepare(
-        &[1, 2, 1],
-        SupportedTextureCompression::empty(),
-        ChannelType::Auto,
-    );
-    let res = transcoder.transcode(Some(TranscodeTargetFormat::RGBA32), None);
-    assert!(res.is_err())
 }
 
 fn snapshot(
@@ -72,7 +49,6 @@ fn snapshot(
     path.push(link_path);
 
     let mut results = Vec::new();
-    let mut transcoder = BasisuTranscoder::new();
     for file in std::fs::read_dir(path).unwrap() {
         let file = file.unwrap();
         let file_name = file.file_name().into_string().unwrap();
@@ -80,9 +56,8 @@ fn snapshot(
             continue;
         }
         let data = std::fs::read(file.path()).unwrap();
-        let info = transcoder
-            .prepare(&data, supported_format, ChannelType::Auto)
-            .unwrap();
+        let transcoder = BasisuTranscoder::new(&data, supported_format, ChannelType::Auto).unwrap();
+        let info = transcoder.get_info();
         let mut image = transcoder.transcode(None, None).unwrap();
         let image_data = std::mem::take(&mut image.data);
         let mut cloned = image.clone();

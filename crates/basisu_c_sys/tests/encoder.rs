@@ -14,8 +14,7 @@ use basisu_c_sys::{
         BU_COMP_FLAGS_DEBUG_OUTPUT, BU_COMP_FLAGS_GEN_MIPS_CLAMP, BU_COMP_FLAGS_VALIDATE_OUTPUT,
     },
     extra::{
-        BasisuEncoder, BasisuEncoderParams, SourceImage, SourceImageData,
-        basisu_encoder_enable_debug_printf, basisu_encoder_init,
+        BasisuEncoder, BasisuEncoderParams, SourceImage, SourceImageData, basisu_encoder_init,
     },
 };
 use wgpu_types::{Extent3d, TextureViewDimension};
@@ -40,13 +39,18 @@ fn read_image(path: &PathBuf) -> DynamicImage {
     DynamicImage::ImageRgba8(img.into_rgba8())
 }
 
-fn encode_cubemap_xuastc_ldr_4x4_by_slice() {
+fn skybox_images_iter() -> impl Iterator<Item = DynamicImage> {
+    let dir = std::env!("CARGO_MANIFEST_DIR");
+    SKYBOX_PATHS
+        .iter()
+        .map(|path| read_image(&Path::new(dir).join(path)))
+}
+
+fn encode_cubemap_xuastc_ldr_4x4_by_slice() -> Vec<u8> {
     block_on(basisu_encoder_init());
 
-    let dir = std::env!("CARGO_MANIFEST_DIR");
     let mut encoder = BasisuEncoder::new();
-    for (i, path) in SKYBOX_PATHS.iter().enumerate() {
-        let img = read_image(&Path::new(dir).join(path));
+    for (i, img) in skybox_images_iter().enumerate() {
         let source = SourceImage {
             data: SourceImageData::Rgba8(img.as_bytes()),
             size: Extent3d {
@@ -59,23 +63,17 @@ fn encode_cubemap_xuastc_ldr_4x4_by_slice() {
     }
     let params = BasisuEncoderParams::new_with_srgb_defaults(BasisTextureFormat::XuastcLdr4x4)
         .with_tex_type(TextureViewDimension::Cube);
-    #[cfg_attr(target_os = "macos", expect(unused_variables))]
-    let res = encoder
+    encoder
         .compress(params.with_flags(BU_COMP_FLAGS_DEBUG_OUTPUT | BU_COMP_FLAGS_VALIDATE_OUTPUT))
-        .unwrap();
-    // The test failed on macos, disable it for now.
-    #[cfg(not(target_os = "macos"))]
-    insta::assert_binary_snapshot!("skybox_astc_ldr_8x8.basisu.ktx2", res);
+        .unwrap()
 }
 
-fn encode_cubemap_astc_ldr_8x8_mips_by_image() {
+fn encode_cubemap_astc_ldr_8x8_mips_by_image() -> Vec<u8> {
     block_on(basisu_encoder_init());
 
-    let dir = std::env!("CARGO_MANIFEST_DIR");
     let mut images = Vec::new();
     let mut encoder = BasisuEncoder::new();
-    for path in SKYBOX_PATHS {
-        let img = read_image(&Path::new(dir).join(path));
+    for img in skybox_images_iter() {
         images.push(img);
     }
     let cube_image = SourceImage {
@@ -93,8 +91,7 @@ fn encode_cubemap_astc_ldr_8x8_mips_by_image() {
         },
     };
     encoder.set_image(cube_image).unwrap();
-    #[cfg_attr(target_os = "macos", expect(unused_variables))]
-    let res = encoder
+    encoder
         .compress(
             BasisuEncoderParams::new_with_srgb_defaults(BasisTextureFormat::AstcLdr8x8)
                 .with_tex_type(TextureViewDimension::Cube)
@@ -104,17 +101,29 @@ fn encode_cubemap_astc_ldr_8x8_mips_by_image() {
                         | BU_COMP_FLAGS_GEN_MIPS_CLAMP,
                 ),
         )
-        .unwrap();
-    // The test failed on macos, disable it for now.
-    #[cfg(not(target_os = "macos"))]
-    insta::assert_binary_snapshot!("skybox_astc_ldr_8x8_mips.basisu.ktx2", res);
+        .unwrap()
 }
 
 #[test]
-fn encode_cubemap() {
-    insta::with_settings!({snapshot_path=>SNAPSHOT_PATH},{
-        basisu_encoder_enable_debug_printf(true);
-        encode_cubemap_xuastc_ldr_4x4_by_slice();
-        encode_cubemap_astc_ldr_8x8_mips_by_image();
+fn encode_cubemap_by_slice() {
+    insta::with_settings!({ snapshot_path => SNAPSHOT_PATH },{
+        // basisu_c_sys::extra::basisu_encoder_enable_debug_printf(true);
+
+        let _res = encode_cubemap_xuastc_ldr_4x4_by_slice();
+        // The test failed on macos, disable it for now.
+        #[cfg(not(target_os = "macos"))]
+        insta::assert_binary_snapshot!("skybox_xuastc_ldr_4x4.basisu.ktx2", _res);
+    });
+}
+
+#[test]
+fn encode_cubemap_by_image() {
+    insta::with_settings!({ snapshot_path => SNAPSHOT_PATH },{
+        // basisu_c_sys::extra::basisu_encoder_enable_debug_printf(true);
+
+        let _res = encode_cubemap_astc_ldr_8x8_mips_by_image();
+        // The test failed on macos, disable it for now.
+        #[cfg(not(target_os = "macos"))]
+        insta::assert_binary_snapshot!("skybox_astc_ldr_8x8_mips.basisu.ktx2", _res);
     });
 }
