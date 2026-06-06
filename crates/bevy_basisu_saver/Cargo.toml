@@ -7,15 +7,35 @@ license.workspace = true
 description = "A bevy asset processor to transform images to basisu ktx2 textures"
 keywords = ["basis-universal", "bevy", "asset", "encoder"]
 
+[features]
+default = [
+  "transcode_etc1s_bc4_5",
+  "transcode_etc1s_bc7",
+  "transcode_etc1s_etc2",
+  "transcode_uastc",
+  "transcode_uastc_hdr",
+  "transcode_xuastc",
+  "transcode_astc",
+]
+transcode_etc1s_bc3 = ["basisu_c_sys/transcode_etc1s_bc3"]
+transcode_etc1s_bc1 = ["basisu_c_sys/transcode_etc1s_bc1"]
+transcode_etc1s_bc4_5 = ["basisu_c_sys/transcode_etc1s_bc4_5"]
+transcode_etc1s_bc7 = ["basisu_c_sys/transcode_etc1s_bc7"]
+transcode_etc1s_etc2 = ["basisu_c_sys/transcode_etc1s_etc2"]
+transcode_uastc = ["basisu_c_sys/transcode_uastc"]
+transcode_uastc_hdr = ["basisu_c_sys/transcode_uastc_hdr"]
+transcode_xuastc = ["basisu_c_sys/transcode_xuastc"]
+transcode_astc = ["basisu_c_sys/transcode_astc"]
+
 [dependencies]
-basisu_c_sys = { version = "0.7", path = "../basisu_c_sys", features = [
+basisu_c_sys = { version = "0.7", path = "../basisu_c_sys", default-features = false, features = [
   "encoder",
   "serde",
   "extra",
 ] }
-bevy_basisu_loader = { version = "0.6", path = "../bevy_basisu_loader" }
+bevy_basisu_loader = { version = "0.6", default-features = false, path = "../bevy_basisu_loader" }
 
-bevy = { git = "https://github.com/bevyengine/bevy", rev = "28f99e9618398cc999e6f92d3d9373b82af146cf", default-features = false, features = [
+bevy = { version = "0.19.0-rc.2", default-features = false, features = [
   "bevy_asset",
   "bevy_image",
   "bevy_render",
@@ -28,6 +48,6 @@ log = { version = "0.4", default-features = false }
 
 [dev-dependencies]
 insta = "1.47.2"
-bevy = { git = "https://github.com/bevyengine/bevy", rev = "28f99e9618398cc999e6f92d3d9373b82af146cf", default-features = false, features = [
+bevy = { version = "0.19.0-rc.2", default-features = false, features = [
   "jpeg",
 ] }

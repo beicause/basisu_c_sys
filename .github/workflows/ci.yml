@@ -67,8 +67,14 @@ jobs:
 
       - name: Install rust toolchain
         run: |
-          rustup toolchain install stable --profile=minimal
+          rustup toolchain install stable --profile=minimal --component clippy
           rustup target add wasm32-unknown-unknown
+
+      - name: Clippy
+        run: cargo clippy -p --target wasm32-unknown-unknown -- -Dwarnings
+
+      - name: Clippy all features
+        run: cargo clippy -p --target wasm32-unknown-unknown --all-features -- -Dwarnings
 
       - name: Build wasm
         run: RUSTFLAGS="-Ctarget-feature=+simd128" cargo build --workspace --target wasm32-unknown-unknown

@@ -1,7 +1,3 @@
-/// Instantiate the embedded basisu wasm, required on web before calling other functions.
-/// This is no-op on native platforms.
-pub async fn instantiate_embedded_basisu_wasm() {}
-
 #[cfg(feature = "encoder")]
 #[cfg_attr(docsrs, doc(cfg(feature = "encoder")))]
 pub mod encoder {

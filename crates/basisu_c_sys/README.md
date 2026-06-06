@@ -9,19 +9,23 @@ Rust binding and wrappers for the basisu pure C API, through FFI on native and w
 
 This crate also contains optional high level API that is easier to use with `wgpu-types`. Enabling the `extra` cargo feature to use the high level `BasisuEncoder` and `BasisuTranscoder`.
 
-Note that BC1, PVRTC1, ATC, FXT1, PVRTC2 are not compiled to reduce binary size, as they are not transcode targets by default.
+Note that PVRTC1, ATC, FXT1, PVRTC2 are not compiled to reduce binary size.
 
-This supports `wasm32-unknown-unknown` by embedding prebuilt basisu wasm binary and `wasm-bindgen`. You need to call `instantiate_embedded_basisu_wasm` function before calling other functions if running on the web.
-
-By default, the prebuilt basisu wasm is from [Github artifact in CI](https://github.com/beicause/bevy_basisu_loader/actions/workflows/prebuild.yml). It is built with:
-```sh
-cargo r -p basisu_c_sys --bin gen_make_wasm --features __gen_make_wasm -- --emcc-flags="-Os -msimd128 -flto=full -sEVAL_CTORS"
-mkdir build && cd build
-emcmake cmake ..
-emmake make -j$(nproc)
-```
+This supports `wasm32-unknown-unknown` by bundling basisu wasm binary and `wasm-bindgen`. You need to have `emscripten` and `cmake` installed to build this crate.
+`instantiate_basisu_wasm`(or `instantiate_custom_basisu_wasm`) function must be called before calling other functions.
 
 Feature flags:
 - `encoder`: Enable basisu encoder, which will significantly increase the binary size. By default only transcoder is enabled.
 - `serde`: Enable `serde` on some structs.
 - `extra`: Enable extra high level encoder and transcoder API that is easier to use with `wgpu-types`.
+
+Feature flags to enable specific transcode target:
+- `transcode_etc1s_bc3`
+- `transcode_etc1s_bc1` 
+- `transcode_etc1s_bc4_5` 
+- `transcode_etc1s_bc7` 
+- `transcode_etc1s_etc2` 
+- `transcode_uastc` 
+- `transcode_uastc_hdr` 
+- `transcode_xuastc` 
+- `transcode_astc`

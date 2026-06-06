@@ -57,7 +57,7 @@ fn setup(
         Tonemapping::None,
         Transform::from_xyz(0.0, 0.0, 3.0).looking_at(Vec3::ZERO, Vec3::Y),
         Skybox {
-            image: skybox_handle.clone(),
+            image: Some(skybox_handle.clone()),
             brightness: 1000.0,
             ..default()
         },
@@ -85,40 +85,49 @@ fn setup(
 
     commands.spawn((
         Mesh3d(meshes.add(Rectangle::new(0.644 * 3.0, 0.874 * 3.0).mesh().build())),
-        MeshMaterial3d(materials.add(StandardMaterial {
-            uv_transform: Affine2::from_scale(Vec2::new(2., 2.)),
-            base_color_texture: Some(asset_server.load_with_settings(
-                IMAGE_PATH_DESK2,
-                |s: &mut BasisuLoaderSettings| {
-                    s.force_transcode_target =
-                        Some(bevy_basisu_loader::sys::TranscodeTargetFormat::Rgb9e5);
-                    s.sampler =
-                        bevy::image::ImageSampler::Descriptor(bevy::image::ImageSamplerDescriptor {
-                            address_mode_u: bevy::image::ImageAddressMode::Repeat,
-                            address_mode_v: bevy::image::ImageAddressMode::Repeat,
-                            ..Default::default()
+        MeshMaterial3d(
+            materials.add(StandardMaterial {
+                uv_transform: Affine2::from_scale(Vec2::new(2., 2.)),
+                base_color_texture: Some(
+                    asset_server
+                        .load_builder()
+                        .with_settings(|s: &mut BasisuLoaderSettings| {
+                            s.force_transcode_target =
+                                Some(bevy_basisu_loader::sys::TranscodeTargetFormat::Rgb9e5);
+                            s.sampler = bevy::image::ImageSampler::Descriptor(
+                                bevy::image::ImageSamplerDescriptor {
+                                    address_mode_u: bevy::image::ImageAddressMode::Repeat,
+                                    address_mode_v: bevy::image::ImageAddressMode::Repeat,
+                                    ..Default::default()
+                                },
+                            )
                         })
-                },
-            )),
-            unlit: true,
-            ..Default::default()
-        })),
+                        .load(IMAGE_PATH_DESK2),
+                ),
+                unlit: true,
+                ..Default::default()
+            }),
+        ),
         Transform::from_xyz(3.0, 1.0, -5.0).with_rotation(Quat::from_rotation_y(-0.5)),
     ));
 
     commands.spawn((
         Mesh3d(meshes.add(Rectangle::new(1.0, 1.0).mesh().build())),
-        MeshMaterial3d(materials.add(StandardMaterial {
-            base_color_texture: Some(asset_server.load_with_settings(
-                IMAGE_PATH_ALPHA0,
-                |s: &mut BasisuLoaderSettings| {
-                    s.channel_type_hint = bevy_basisu_loader::sys::extra::ChannelType::Rg;
-                },
-            )),
-            alpha_mode: AlphaMode::Blend,
-            unlit: true,
-            ..Default::default()
-        })),
+        MeshMaterial3d(
+            materials.add(StandardMaterial {
+                base_color_texture: Some(
+                    asset_server
+                        .load_builder()
+                        .with_settings(|s: &mut BasisuLoaderSettings| {
+                            s.channel_type_hint = bevy_basisu_loader::sys::extra::ChannelType::Rg;
+                        })
+                        .load(IMAGE_PATH_ALPHA0),
+                ),
+                alpha_mode: AlphaMode::Blend,
+                unlit: true,
+                ..Default::default()
+            }),
+        ),
         Transform::from_xyz(-2.0, 1.0, -2.0).with_rotation(Quat::from_rotation_y(0.5)),
     ));
 

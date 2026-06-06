@@ -1,17 +1,19 @@
 cmake_minimum_required(VERSION 3.10)
 project(basisu_c_sys_wasm)
 
+set(BUILD_ARGS_DIR "${CMAKE_CURRENT_SOURCE_DIR}/build_args" CACHE STRING "build args dir")
+
 if (EMSCRIPTEN)
 
   set(CMAKE_CXX_STANDARD 17)
 
-  file(STRINGS "${CMAKE_CURRENT_SOURCE_DIR}/build_args/encoder_srcs.txt" ENCODER_SRCS)
-  file(STRINGS "${CMAKE_CURRENT_SOURCE_DIR}/build_args/encoder_compile_flags.txt" ENCODER_COMPILE_FLAGS)
-  file(STRINGS "${CMAKE_CURRENT_SOURCE_DIR}/build_args/encoder_link_flags.txt" ENCODER_LINK_FLAGS)
+  file(STRINGS "${BUILD_ARGS_DIR}/encoder_srcs.txt" ENCODER_SRCS)
+  file(STRINGS "${BUILD_ARGS_DIR}/encoder_compile_flags.txt" ENCODER_COMPILE_FLAGS)
+  file(STRINGS "${BUILD_ARGS_DIR}/encoder_link_flags.txt" ENCODER_LINK_FLAGS)
 
-  file(STRINGS "${CMAKE_CURRENT_SOURCE_DIR}/build_args/transcoder_srcs.txt" TRANSCODER_SRCS)
-  file(STRINGS "${CMAKE_CURRENT_SOURCE_DIR}/build_args/transcoder_compile_flags.txt" TRANSCODER_COMPILE_FLAGS)
-  file(STRINGS "${CMAKE_CURRENT_SOURCE_DIR}/build_args/transcoder_link_flags.txt" TRANSCODER_LINK_FLAGS)
+  file(STRINGS "${BUILD_ARGS_DIR}/transcoder_srcs.txt" TRANSCODER_SRCS)
+  file(STRINGS "${BUILD_ARGS_DIR}/transcoder_compile_flags.txt" TRANSCODER_COMPILE_FLAGS)
+  file(STRINGS "${BUILD_ARGS_DIR}/transcoder_link_flags.txt" TRANSCODER_LINK_FLAGS)
 
   add_executable(encoder ${ENCODER_SRCS})
   add_executable(transcoder ${TRANSCODER_SRCS})

@@ -27,12 +27,13 @@ mod binding {
 use binding::Basisu;
 
 #[cfg(feature = "encoder")]
-const BASISU_WASM: &[u8] = include_bytes!("../wasm/basisu_encoder.wasm");
+const BASISU_WASM: &[u8] = include_bytes!(concat!(env!("OUT_DIR"), "/build/basisu_encoder.wasm"));
 #[cfg(not(feature = "encoder"))]
-const BASISU_WASM: &[u8] = include_bytes!("../wasm/basisu_transcoder.wasm");
+const BASISU_WASM: &[u8] =
+    include_bytes!(concat!(env!("OUT_DIR"), "/build/basisu_transcoder.wasm"));
 
 thread_local! {
-    static BASISU_INSTANCE: OnceCell<Basisu> = OnceCell::new();
+    static BASISU_INSTANCE: OnceCell<Basisu> = const { OnceCell::new() };
 }
 
 static BASISU_INITIALIZED: AsyncOnceCell<()> = AsyncOnceCell::new();
@@ -44,45 +45,53 @@ mod instance {
     use crate::web::binding::Basisu;
 
     #[cfg(feature = "encoder")]
-    #[wasm_bindgen(module = "/wasm/basisu_encoder.js")]
-    extern "C" {
-        #[wasm_bindgen(js_name = "default")]
-        pub async fn new_instance(args: &Object) -> Basisu;
-    }
+    include!(concat!(env!("OUT_DIR"), "/wasm_encoder_inline_js.rs"));
 
     #[cfg(not(feature = "encoder"))]
-    #[wasm_bindgen(module = "/wasm/basisu_transcoder.js")]
-    extern "C" {
-        #[wasm_bindgen(js_name = "default")]
-        pub async fn new_instance(args: &Object) -> Basisu;
-    }
+    include!(concat!(env!("OUT_DIR"), "/wasm_transcoder_inline_js.rs"));
 }
 
-/// Instantiate the embedded basisu wasm, required on web before calling other functions.
-/// This is no-op on native platforms.
-pub async fn instantiate_embedded_basisu_wasm() {
+/// Instantiate the basisu wasm, required on web before calling other functions.
+///
+/// Once [`instantiate_basisu_wasm`]/[`instantiate_custom_basisu_wasm`] is called, the wasm can't be changed.
+pub async fn instantiate_basisu_wasm() {
+    instantiate_custom_basisu_wasm(BASISU_WASM).await;
+}
+
+/// Instantiate the you custom basisu wasm, required on web before calling other functions. The wasm must be compatible with basisu C API.
+///
+/// Once [`instantiate_basisu_wasm`]/[`instantiate_custom_basisu_wasm`] is called, the wasm can't be changed.
+pub async fn instantiate_custom_basisu_wasm(wasm_data: &[u8]) {
     BASISU_INITIALIZED
         .get_or_init(async || {
-            let binary = Uint8Array::new_from_slice(BASISU_WASM);
+            let binary = Uint8Array::new_from_slice(wasm_data);
             let args = Object::new();
             Reflect::set(&args, &"wasmBinary".into(), &binary).unwrap();
             let instance = instance::new_instance(&args).await;
             BASISU_INSTANCE.with(|cell| {
                 cell.set(instance).unwrap();
             });
-            ()
         })
         .await;
 }
 
 #[cfg(feature = "encoder")]
 #[cfg_attr(docsrs, doc(cfg(feature = "encoder")))]
+#[expect(
+    clippy::missing_safety_doc,
+    reason = "Generated basisu C API binding doesn't have safety doc"
+)]
 pub mod encoder {
     use super::BASISU_INSTANCE;
     use super::Bool32;
     include!(concat!(env!("OUT_DIR"), "/wasm_encoder_pub_funcs.rs"));
 }
 
+#[expect(
+    clippy::missing_safety_doc,
+    clippy::too_many_arguments,
+    reason = "The binding is generated"
+)]
 pub mod transcoder {
     use super::BASISU_INSTANCE;
     use super::Bool32;
