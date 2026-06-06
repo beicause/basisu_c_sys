@@ -22,6 +22,7 @@ concurrency:
 
 env:
   CARGO_TERM_COLOR: always
+  EM_VERSION: 5.0.5
 
 jobs:
   # Single deploy job since we're just deploying
@@ -35,6 +36,11 @@ jobs:
 
       - name: Clone `basisu_c_sys_asset_files`
         run: git clone --depth 1 https://github.com/beicause/basisu_c_sys_asset_files
+
+      - name: Install Emscripten
+        uses: mymindstorm/setup-emsdk@v16
+        with:
+          version: ${{ env.EM_VERSION }}
 
       - name: Install wasm-opt
         run: wget https://github.com/WebAssembly/binaryen/releases/download/version_125/binaryen-version_125-x86_64-linux.tar.gz && tar -xvf binaryen-version_125-x86_64-linux.tar.gz && sudo cp binaryen-version_125/bin/wasm-opt /usr/local/bin/ && rm -r binaryen-version_125 && rm binaryen-version_125-x86_64-linux.tar.gz

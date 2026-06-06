@@ -14,6 +14,7 @@ concurrency:
 env:
   CARGO_TERM_COLOR: always
   ANDROID_NDK_VERSION: 28.1.13356709
+  EM_VERSION: 5.0.5
 
 jobs:
   build-lib:
@@ -65,10 +66,21 @@ jobs:
     steps:
       - uses: actions/checkout@v6
 
+      - name: Install Emscripten
+        uses: mymindstorm/setup-emsdk@v16
+        with:
+          version: ${{ env.EM_VERSION }}
+
       - name: Install rust toolchain
         run: |
-          rustup toolchain install stable --profile=minimal
+          rustup toolchain install stable --profile=minimal --component clippy
           rustup target add wasm32-unknown-unknown
+
+      - name: Clippy
+        run: cargo clippy -p basisu_c_sys --target wasm32-unknown-unknown -- -Dwarnings
+
+      - name: Clippy all features
+        run: cargo clippy -p basisu_c_sys --target wasm32-unknown-unknown --all-features -- -Dwarnings
 
       - name: Build wasm
         run: RUSTFLAGS="-Ctarget-feature=+simd128" cargo build --workspace --target wasm32-unknown-unknown

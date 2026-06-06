@@ -7,6 +7,7 @@ const FLAGS: &[&str] = &[
     "-Wno-misleading-indentation",
     "-Wno-stringop-overflow",
     "-Wno-array-bounds",
+    "-Wno-unused-parameter",
     "-fno-exceptions",
     // Fix gcc optimization issue.
     // See vendor/basis_universal/transcoder/basisu.h
@@ -17,23 +18,31 @@ const FLAGS: &[&str] = &[
 // Disable PVRTC1/2, ATC, FXT1 as wgpu does not support them.
 const DEFINES: &[(&str, &str)] = &[
     // ("BASISU_FORCE_DEVEL_MESSAGES", "1"), // Enable debug message.
-    // ("BASISD_SUPPORT_KTX2", "1"),
-    // ("BASISD_SUPPORT_KTX2_ZSTD", "1"),
-    // ("BASISD_SUPPORT_UASTC", "1"),
+    // ("BASISD_SUPPORT_KTX2", "0"),
+    // ("BASISD_SUPPORT_KTX2_ZSTD", "0"),
+    #[cfg(not(feature = "transcode_uastc"))]
+    ("BASISD_SUPPORT_UASTC", "0"),
+    #[cfg(not(feature = "transcode_etc1s_bc1"))]
     ("BASISD_SUPPORT_DXT1", "0"), //(BC1)
-    // ("BASISD_SUPPORT_DXT5A", "1"), //(BC3 / 4 / 5)
-    // ("BASISD_SUPPORT_BC7", "1"),
-    // ("BASISD_SUPPORT_BC7_MODE5", "1"),
+    #[cfg(not(feature = "transcode_etc1s_bc4_5"))]
+    ("BASISD_SUPPORT_DXT5A", "0"), //(BC3 / 4 / 5)
+    #[cfg(not(feature = "transcode_etc1s_bc7"))]
+    ("BASISD_SUPPORT_BC7", "0"),
     ("BASISD_SUPPORT_PVRTC1", "0"),
-    // ("BASISD_SUPPORT_ETC2_EAC_A8", "1"),
-    // ("BASISD_SUPPORT_ASTC", "1"),
-    // ("BASISD_SUPPORT_XUASTC", "1"),
+    #[cfg(not(feature = "transcode_etc1s_etc2"))]
+    ("BASISD_SUPPORT_ETC2_EAC_A8", "0"),
+    #[cfg(not(feature = "transcode_astc"))]
+    ("BASISD_SUPPORT_ASTC", "0"),
+    #[cfg(not(feature = "transcode_xuastc"))]
+    ("BASISD_SUPPORT_XUASTC", "0"),
     ("BASISD_SUPPORT_ATC", "0"),
-    // ("BASISD_SUPPORT_ETC2_EAC_RG11", "1"),
-    // ("BASISD_SUPPORT_ASTC_HIGHER_OPAQUE_QUALITY", "1"),
+    #[cfg(not(feature = "transcode_etc1s_etc2"))]
+    ("BASISD_SUPPORT_ETC2_EAC_RG11", "0"),
+    // ("BASISD_SUPPORT_ASTC_HIGHER_OPAQUE_QUALITY", "0"),
     ("BASISD_SUPPORT_FXT1", "0"),
     ("BASISD_SUPPORT_PVRTC2", "0"),
-    // ("BASISD_SUPPORT_UASTC_HDR", "1"),
+    #[cfg(not(feature = "transcode_uastc_hdr"))]
+    ("BASISD_SUPPORT_UASTC_HDR", "0"),
 ];
 
 const ENCODER_SRCS: &[&str] = &[
@@ -73,15 +82,73 @@ const TRANSCODER_SRCS: &[&str] = &[
     "vendor/basis_universal/zstd/zstddeclib.c",
 ];
 
+include!(concat!(env!("CARGO_MANIFEST_DIR"), "/write_cmake_args.rs"));
+
 fn main() {
     bindgen();
-    wasm_bindgen();
-    #[cfg(feature = "__gen_make_wasm")]
-    make_wasm_build_cmd();
+
     let target = std::env::var("TARGET").unwrap();
+
+    if target == "wasm32-unknown-unknown" {
+        wasm_bindgen();
+        let (mut default_encoder_emcc_args, mut default_transcoder_emcc_args) =
+            (Vec::<String>::new(), Vec::<String>::new());
+        get_wasm_build_args(
+            &mut default_encoder_emcc_args,
+            &mut default_transcoder_emcc_args,
+        );
+        let target_feature = std::env::var("CARGO_CFG_TARGET_FEATURE").unwrap();
+        let out_dir = std::env::var("OUT_DIR").unwrap();
+        let args_dir = std::path::PathBuf::from_iter([&out_dir, "build_args"]);
+        let _ = std::fs::create_dir(&args_dir);
+        write_cmake_args(
+            &default_encoder_emcc_args,
+            &default_transcoder_emcc_args,
+            ENCODER_SRCS,
+            TRANSCODER_SRCS,
+            target_feature.contains("simd128").then_some("-msimd128"),
+            &args_dir,
+        );
+        let mut cmake = cmake::Config::new(".");
+        cmake
+            .profile("")
+            .target("wasm32-unknown-emscripten")
+            .define("BUILD_ARGS_DIR", &args_dir)
+            .build_target("transcoder");
+        if std::env::var("PROFILE").unwrap() != "debug" {
+            cmake.cflag("-flto=full").cxxflag("-flto=full");
+        }
+        let opt_flag = "-O".to_string() + &std::env::var("OPT_LEVEL").unwrap();
+        cmake.cflag(&opt_flag).cxxflag(&opt_flag);
+        #[cfg(feature = "encoder")]
+        cmake.build_target("all");
+        let dst = cmake.build();
+        for name in ["encoder", "transcoder"] {
+            #[cfg(not(feature = "encoder"))]
+            if name == "encoder" {
+                continue;
+            }
+            let path = dst.join(format!("build/basisu_{name}.js"));
+            std::fs::write(
+                std::path::PathBuf::from_iter([&out_dir, &format!("wasm_{name}_inline_js.rs")]),
+                format!(
+                    r##"#[wasm_bindgen(inline_js = r#"{}"#)]
+                        extern "C" {{
+                            #[wasm_bindgen(js_name = "default")]
+                            pub async fn new_instance(args: &Object) -> Basisu;
+                            }}"##,
+                    std::fs::read_to_string(path).unwrap()
+                ),
+            )
+            .unwrap();
+            println!("cargo::rerun-if-changed=CMakeLists.txt");
+        }
+    }
+
     if std::env::var("DOCS_RS").is_err() && target != "wasm32-unknown-unknown" {
         compile_basisu_static();
     }
+
     println!("cargo::rerun-if-changed=vendor/");
 }
 
@@ -120,7 +187,7 @@ impl bindgen::callbacks::ParseCallbacks for WasmBoolRenameCallbacks {
 
 fn bindgen() {
     let binding_file =
-        std::path::Path::new(&std::env::var("OUT_DIR").unwrap()).join("basisu_api_common.rs");
+        std::path::PathBuf::from_iter([&std::env::var("OUT_DIR").unwrap(), "basisu_api_common.rs"]);
     bindgen::Builder::default()
         .clang_args(&["-fvisibility=default"])
         .header("vendor/basis_universal/encoder/basisu_wasm_api_common.h")
@@ -139,7 +206,7 @@ fn bindgen() {
         .expect("Couldn't write bindings!");
 
     let binding_file =
-        std::path::Path::new(&std::env::var("OUT_DIR").unwrap()).join("basisu_c_api.rs");
+        std::path::PathBuf::from_iter([&std::env::var("OUT_DIR").unwrap(), "basisu_c_api.rs"]);
     bindgen::Builder::default()
         .clang_args(&["-fvisibility=default"])
         .header("vendor/basis_universal/encoder/basisu_wasm_api.h")
@@ -154,8 +221,10 @@ fn bindgen() {
         .write_to_file(binding_file)
         .expect("Couldn't write bindings!");
 
-    let binding_file =
-        std::path::Path::new(&std::env::var("OUT_DIR").unwrap()).join("basisu_c_transcoder_api.rs");
+    let binding_file = std::path::PathBuf::from_iter([
+        &std::env::var("OUT_DIR").unwrap(),
+        "basisu_c_transcoder_api.rs",
+    ]);
     bindgen::Builder::default()
         .clang_args(&["-fvisibility=default"])
         .header("vendor/basis_universal/encoder/basisu_wasm_transcoder_api.h")
@@ -173,9 +242,11 @@ fn bindgen() {
 
 fn wasm_bindgen() {
     let encoder_api_file =
-        std::path::Path::new(&std::env::var("OUT_DIR").unwrap()).join("basisu_c_api.rs");
-    let transcoder_api_file =
-        std::path::Path::new(&std::env::var("OUT_DIR").unwrap()).join("basisu_c_transcoder_api.rs");
+        std::path::PathBuf::from_iter([&std::env::var("OUT_DIR").unwrap(), "basisu_c_api.rs"]);
+    let transcoder_api_file = std::path::PathBuf::from_iter([
+        &std::env::var("OUT_DIR").unwrap(),
+        "basisu_c_transcoder_api.rs",
+    ]);
     let encoder_api_file = std::fs::read_to_string(encoder_api_file).unwrap();
     let transcoder_api_file = std::fs::read_to_string(transcoder_api_file).unwrap();
 
@@ -278,7 +349,10 @@ fn wasm_bindgen() {
     let transcoder_binding_apis = gen_binding_funcs(&transcoder_ast);
 
     std::fs::write(
-        std::path::Path::new(&std::env::var("OUT_DIR").unwrap()).join("wasm_encoder_binding.rs"),
+        std::path::PathBuf::from_iter([
+            &std::env::var("OUT_DIR").unwrap(),
+            "wasm_encoder_binding.rs",
+        ]),
         prettyplease::unparse(&syn::parse_quote!(
             #[wasm_bindgen]
             extern "C" {
@@ -296,7 +370,10 @@ fn wasm_bindgen() {
     .unwrap();
 
     std::fs::write(
-        std::path::Path::new(&std::env::var("OUT_DIR").unwrap()).join("wasm_transcoder_binding.rs"),
+        std::path::PathBuf::from_iter([
+            &std::env::var("OUT_DIR").unwrap(),
+            "wasm_transcoder_binding.rs",
+        ]),
         prettyplease::unparse(&syn::parse_quote!(
             #[wasm_bindgen]
             extern "C" {
@@ -316,7 +393,10 @@ fn wasm_bindgen() {
     let transcoder_pub_funcs = gen_public_funcs(&transcoder_ast);
 
     std::fs::write(
-        std::path::Path::new(&std::env::var("OUT_DIR").unwrap()).join("wasm_encoder_pub_funcs.rs"),
+        std::path::PathBuf::from_iter([
+            &std::env::var("OUT_DIR").unwrap(),
+            "wasm_encoder_pub_funcs.rs",
+        ]),
         prettyplease::unparse(&syn::parse_quote!(
             #(#encoder_pub_funcs)*
         )),
@@ -324,8 +404,10 @@ fn wasm_bindgen() {
     .unwrap();
 
     std::fs::write(
-        std::path::Path::new(&std::env::var("OUT_DIR").unwrap())
-            .join("wasm_transcoder_pub_funcs.rs"),
+        std::path::PathBuf::from_iter([
+            &std::env::var("OUT_DIR").unwrap(),
+            "wasm_transcoder_pub_funcs.rs",
+        ]),
         prettyplease::unparse(&syn::parse_quote!(
             #(#transcoder_pub_funcs)*
         )),
@@ -367,12 +449,16 @@ fn compile_basisu_static() {
     }
 }
 
-#[cfg(feature = "__gen_make_wasm")]
-fn make_wasm_build_cmd() {
+fn get_wasm_build_args(
+    default_encoder_emcc_args: &mut Vec<String>,
+    default_transcoder_emcc_args: &mut Vec<String>,
+) {
     let encoder_api_file =
-        std::path::Path::new(&std::env::var("OUT_DIR").unwrap()).join("basisu_c_api.rs");
-    let transcoder_api_file =
-        std::path::Path::new(&std::env::var("OUT_DIR").unwrap()).join("basisu_c_transcoder_api.rs");
+        std::path::PathBuf::from_iter([&std::env::var("OUT_DIR").unwrap(), "basisu_c_api.rs"]);
+    let transcoder_api_file = std::path::PathBuf::from_iter([
+        &std::env::var("OUT_DIR").unwrap(),
+        "basisu_c_transcoder_api.rs",
+    ]);
     let mut encoder_apis = Vec::new();
     let mut transcoder_apis = Vec::new();
 
@@ -398,9 +484,9 @@ fn make_wasm_build_cmd() {
         }
     }
     encoder_apis.extend(transcoder_apis.iter().cloned());
-    for (name, apis, srcs) in [
-        ("encoder", encoder_apis, ENCODER_SRCS),
-        ("transcoder", transcoder_apis, TRANSCODER_SRCS),
+    for (default_emcc_args, apis) in [
+        (default_encoder_emcc_args, encoder_apis),
+        (default_transcoder_emcc_args, transcoder_apis),
     ] {
         let emcc_args = [
             "-sSTRICT".to_string(),
@@ -410,7 +496,7 @@ fn make_wasm_build_cmd() {
             "-sEXPORTED_RUNTIME_METHODS=HEAPU8".to_string(),
             "-sEXPORTED_FUNCTIONS=".to_string() + &apis.join(","),
         ];
-        let mut default_emcc_args = Vec::new();
+
         default_emcc_args.extend(
             FLAGS
                 .iter()
@@ -423,27 +509,5 @@ fn make_wasm_build_cmd() {
                 .map(|(define, value)| format!("-D{define}={value}")),
         );
         default_emcc_args.extend(emcc_args);
-
-        std::fs::write(
-            std::path::Path::new(&std::env::var("OUT_DIR").unwrap())
-                .join(format!("build_{name}_emcc_args.rs")),
-            format!(
-                "const DEFAULT_{}_EMCC_ARGS: &[&str] = &{:?};",
-                name.to_uppercase(),
-                default_emcc_args
-            ),
-        )
-        .unwrap();
-
-        std::fs::write(
-            std::path::Path::new(&std::env::var("OUT_DIR").unwrap())
-                .join(format!("build_{name}_sources.rs")),
-            format!(
-                "const {}_SOURCES: &[&str] = &{:?};",
-                name.to_uppercase(),
-                srcs
-            ),
-        )
-        .unwrap();
     }
 }

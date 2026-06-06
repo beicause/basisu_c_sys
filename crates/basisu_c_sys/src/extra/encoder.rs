@@ -42,7 +42,12 @@ static BASISU_ENCODER_INITIALIZED: OnceCell<()> = OnceCell::new();
 pub async fn basisu_encoder_init() {
     BASISU_ENCODER_INITIALIZED
         .get_or_init(async || {
-            crate::instantiate_embedded_basisu_wasm().await;
+            #[cfg(all(
+                target_arch = "wasm32",
+                target_vendor = "unknown",
+                target_os = "unknown",
+            ))]
+            crate::instantiate_basisu_wasm().await;
             unsafe { enc_sys::bu_init() };
         })
         .await;

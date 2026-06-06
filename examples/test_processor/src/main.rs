@@ -47,7 +47,7 @@ fn setup(mut commands: Commands, asset_server: Res<AssetServer>) {
         Camera3d::default(),
         Tonemapping::None,
         Skybox {
-            image: asset_server.load("skybox.pack.ron"),
+            image: Some(asset_server.load("skybox.pack.ron")),
             brightness: 1000.0,
             ..Default::default()
         },
