@@ -111,12 +111,15 @@ fn main() {
         );
         let mut cmake = cmake::Config::new(".");
         cmake
+            .profile("")
             .target("wasm32-unknown-emscripten")
             .define("BUILD_ARGS_DIR", &args_dir)
             .build_target("transcoder");
         if std::env::var("PROFILE").unwrap() != "debug" {
             cmake.cflag("-flto=full").cxxflag("-flto=full");
         }
+        let opt_flag = "-O".to_string() + &std::env::var("OPT_LEVEL").unwrap();
+        cmake.cflag(&opt_flag).cxxflag(&opt_flag);
         #[cfg(feature = "encoder")]
         cmake.build_target("all");
         let dst = cmake.build();
