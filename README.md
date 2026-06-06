@@ -2,7 +2,7 @@
 
 | crate | description |
 | --- | ------------- |
-| [basisu_c_sys](./crates/basisu_c_sys)| Raw Rust binding for the basisu pure C API, through FFI on native and wasm-bindgen on web|
+| [basisu_c_sys](./crates/basisu_c_sys)| Rust binding and wrappers for Basis Universal C API, through FFI on native and `emscripten`+`wasm-bindgen` binding on `wasm32-unknown-unknown`|
 | [bevy_basisu_loader](./crates/bevy_basisu_loader)| Basisu texture loader for bevy |
 | [bevy_basisu_saver](./crates/bevy_basisu_saver/)| Basisu saver and asset processor for bevy |
 

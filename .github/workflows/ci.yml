@@ -14,6 +14,7 @@ concurrency:
 env:
   CARGO_TERM_COLOR: always
   ANDROID_NDK_VERSION: 28.1.13356709
+  EM_VERSION: 5.0.5
 
 jobs:
   build-lib:
@@ -64,6 +65,11 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v6
+
+      - name: Install Emscripten
+        uses: mymindstorm/setup-emsdk@v16
+        with:
+          version: ${{ env.EM_VERSION }}
 
       - name: Install rust toolchain
         run: |

@@ -4,7 +4,7 @@ version = "0.7.1"
 edition = "2024"
 repository.workspace = true
 license.workspace = true
-description = "Rust binding and wrappers for the Basis Universal pure C API"
+description = "Rust binding and wrappers for Basis Universal C API"
 keywords = ["basis-universal", "ffi", "wasm-bindgen"]
 include = [
   "vendor/basis_universal",
