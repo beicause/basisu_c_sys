@@ -9,8 +9,6 @@ Rust binding and wrappers for the basisu pure C API, through FFI on native and w
 
 This crate also contains optional high level API that is easier to use with `wgpu-types`. Enabling the `extra` cargo feature to use the high level `BasisuEncoder` and `BasisuTranscoder`.
 
-Note that PVRTC1, ATC, FXT1, PVRTC2 are always disabled and not compiled to reduce binary size since they are rarely used.
-
 This supports `wasm32-unknown-unknown` by bundling basisu wasm binary and `wasm-bindgen`. You need to have `emscripten` and `cmake` installed to build this crate.
 `instantiate_basisu_wasm`(or `instantiate_custom_basisu_wasm`) function must be called before calling other functions.
 
@@ -31,3 +29,5 @@ Feature flags to enable specific transcode target:
 - `transcode_astc`
 
 It's recommended to disable unused targets (especially for ETC1S) to reduce binary size.
+
+PVRTC1, ATC, FXT1, PVRTC2 are always disabled since they are rarely used. Note: Some combinations may fail to compile due to upstream bugs.
