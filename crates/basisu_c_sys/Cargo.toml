@@ -7,13 +7,14 @@ repository.workspace = true
 license.workspace = true
 keywords = ["basis-universal", "ffi", "wasm-bindgen"]
 include = [
+  "CHANGELOG.md",
   "CMakeLists.txt",
   "README.md",
   "build.rs",
   "src/*.rs",
   "src/extra/*.rs",
   "vendor/basis_universal",
-  "write_cmake_args.rs",
+  "write_cmake_args.rs"
 ]
 
 [package.metadata.docs.rs]
