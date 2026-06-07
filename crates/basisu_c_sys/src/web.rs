@@ -51,6 +51,11 @@ mod instance {
     include!(concat!(env!("OUT_DIR"), "/wasm_transcoder_inline_js.rs"));
 }
 
+#[cfg_attr(docsrs, doc(cfg(all(
+    target_arch = "wasm32",
+    target_vendor = "unknown",
+    target_os = "unknown",
+))))]
 /// Instantiate the basisu wasm, required on web before calling other functions.
 ///
 /// Once [`instantiate_basisu_wasm`]/[`instantiate_custom_basisu_wasm`] is called, the wasm can't be changed.
@@ -58,6 +63,11 @@ pub async fn instantiate_basisu_wasm() {
     instantiate_custom_basisu_wasm(BASISU_WASM).await;
 }
 
+#[cfg_attr(docsrs, doc(cfg(all(
+    target_arch = "wasm32",
+    target_vendor = "unknown",
+    target_os = "unknown",
+))))]
 /// Instantiate the you custom basisu wasm, required on web before calling other functions. The wasm must be compatible with basisu C API.
 ///
 /// Once [`instantiate_basisu_wasm`]/[`instantiate_custom_basisu_wasm`] is called, the wasm can't be changed.
