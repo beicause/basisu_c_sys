@@ -1,10 +1,10 @@
+[workspace]
+resolver = "3"
+members = ["crates/*", "examples/*"]
+
 [workspace.package]
 repository = "https://github.com/beicause/bevy_basisu_loader"
 license = "MIT OR Apache-2.0"
-
-[workspace]
-members = ["crates/*", "examples/*"]
-resolver = "3"
 
 [profile.test]
 opt-level = 1
@@ -13,5 +13,5 @@ opt-level = 1
 inherits = "release"
 opt-level = "s"
 lto = "thin"
-codegen-units = 1
 panic = "abort"
+codegen-units = 1
