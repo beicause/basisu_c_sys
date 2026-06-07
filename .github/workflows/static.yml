@@ -23,6 +23,7 @@ concurrency:
 env:
   CARGO_TERM_COLOR: always
   EM_VERSION: 5.0.5
+  CACHE_SUFFIX: e # cache busting
 
 jobs:
   # Single deploy job since we're just deploying
@@ -58,6 +59,7 @@ jobs:
           key: deploy-${{ matrix.os }}-${{ env.CACHE_SUFFIX }}
           env-vars: ImageVersion
           cache-bin: false
+          save-if: ${{ github.ref == 'refs/heads/master' }}
 
       - name: Install cargo-binstall
         uses: cargo-bins/cargo-binstall@v1.16.6
