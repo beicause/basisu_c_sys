@@ -1,4 +1,4 @@
-name: Deploy docs and web demo to Pages
+name: Deploy Pages
 
 on:
   workflow_dispatch:
