@@ -8,70 +8,72 @@ publish = false
 bevy_basisu_loader = { path = "../../crates/bevy_basisu_loader" }
 bevy_basisu_saver = { path = "../../crates/bevy_basisu_saver" }
 
-bevy = { version = "0.19.0-rc.2", default-features = false, features = [
-  # collection: dev
-  # "debug",
-  # "bevy_dev_tools",
-  # "file_watcher",
+bevy = {
+  version = "0.19.0-rc.2",
+  default-features = false,
+  features = [
+    # collection: dev
+    # "debug",
+    # "bevy_dev_tools",
+    # "file_watcher",
+    "asset_processor",
 
-  "asset_processor",
+    # collection: audio
+    # "bevy_audio",
+    # "vorbis",
 
-  # collection: audio
-  # "bevy_audio",
-  # "vorbis",
+    # collection: scene
+    # "bevy_scene",
 
-  # collection: scene
-  # "bevy_scene",
+    # collection: picking
+    # "bevy_picking",
+    # "mesh_picking",
+    # "sprite_picking",
+    # "ui_picking",
 
-  # collection: picking
-  # "bevy_picking",
-  # "mesh_picking",
-  # "sprite_picking",
-  # "ui_picking",
+    # collection: default_app
+    "async_executor",
+    "bevy_asset",
+    "bevy_input_focus",
+    "bevy_log",
+    "bevy_state",
+    "bevy_window",
+    "custom_cursor",
+    "reflect_auto_register",
 
-  # collection: default_app
-  "async_executor",
-  "bevy_asset",
-  "bevy_input_focus",
-  "bevy_log",
-  "bevy_state",
-  "bevy_window",
-  "custom_cursor",
-  "reflect_auto_register",
+    # collection: default_platform
+    "default_font",
+    "android-game-activity",
+    "bevy_winit",
+    "multi_threaded",
+    "std",
+    "sysinfo_plugin",
+    "wayland",
+    "x11",
+    # "webgl2",
+    # "bevy_gilrs",
 
-  # collection: default_platform
-  "std",
-  "android-game-activity",
-  # "android_shared_stdcxx",
-  # "bevy_gilrs",
-  "bevy_winit",
-  "default_font",
-  "multi_threaded",
-  # "webgl2",
-  "x11",
-  "wayland",
-  "sysinfo_plugin",
+    # collection: common_api
+    "bevy_camera",
+    "bevy_color",
+    "bevy_image",
+    "bevy_mesh",
+    "bevy_shader",
+    "bevy_text",
+    "exr",
+    "jpeg",
+    "png",
+    # "bevy_animation",
+    # "bevy_gizmos",
+    # "hdr",
 
-  # collection: common_api
-  # "bevy_animation",
-  "bevy_camera",
-  "bevy_color",
-  # "bevy_gizmos",
-  "bevy_image",
-  "bevy_mesh",
-  "bevy_shader",
-  "bevy_text",
-  # "hdr",
-  "exr",
-  "png",
-  "jpeg",
-
-  "bevy_render",
-  "bevy_core_pipeline",
-  # "bevy_post_process",
-  # "bevy_sprite_render",
-  # "bevy_gizmos_render",
-  "bevy_pbr",
-  "bevy_ui_render",
-] }
+    "bevy_core_pipeline",
+    "bevy_pbr",
+    "bevy_render",
+    "bevy_ui_render",
+    # "bevy_post_process",
+    # "bevy_sprite_render",
+    # "bevy_gizmos_render",
+  ]
+}
 ron = "0.12.1"

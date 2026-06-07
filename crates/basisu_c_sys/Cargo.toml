@@ -2,90 +2,24 @@
 name = "basisu_c_sys"
 version = "0.7.1"
 edition = "2024"
+description = "Rust binding and wrappers for Basis Universal C API"
 repository.workspace = true
 license.workspace = true
-description = "Rust binding and wrappers for Basis Universal C API"
 keywords = ["basis-universal", "ffi", "wasm-bindgen"]
 include = [
-  "vendor/basis_universal",
-  "build.rs",
-  "write_cmake_args.rs",
+  "CHANGELOG.md",
   "CMakeLists.txt",
   "README.md",
+  "build.rs",
   "src/*.rs",
   "src/extra/*.rs",
+  "vendor/basis_universal",
+  "write_cmake_args.rs"
 ]
 
 [package.metadata.docs.rs]
 targets = ["x86_64-unknown-linux-gnu", "wasm32-unknown-unknown"]
 features = ["encoder", "serde", "extra"]
-
-[features]
-default = [
-  "transcode_etc1s_bc4_5",
-  "transcode_etc1s_bc7",
-  "transcode_etc1s_etc2",
-  "transcode_uastc",
-  "transcode_uastc_hdr",
-  "transcode_xuastc",
-  "transcode_astc",
-]
-transcode_etc1s_bc3 = ["transcode_etc1s_bc1", "transcode_etc1s_bc4_5"]
-transcode_etc1s_bc1 = []
-transcode_etc1s_bc4_5 = []
-transcode_etc1s_bc7 = []
-transcode_etc1s_etc2 = []
-transcode_uastc = []
-transcode_uastc_hdr = []
-transcode_xuastc = []
-transcode_astc = []
-encoder = []
-extra = [
-  "dep:wgpu-types",
-  "dep:bytemuck",
-  "dep:async-lock",
-  "dep:thiserror",
-  "dep:bitflags",
-]
-serde = ["dep:serde"]
-
-[dependencies]
-async-lock = { version = "3.4.2", default-features = false, optional = true }
-bitflags = { version = "2.11.0", optional = true }
-serde = { version = "1.0.228", optional = true, default-features = false, features = [
-  "derive",
-] }
-thiserror = { version = "2.0.18", optional = true, default-features = false }
-wgpu-types = { version = "29.0", optional = true, default-features = false }
-bytemuck = { version = "1.25.0", optional = true, default-features = false, features = [
-  "must_cast",
-] }
-
-[target.wasm32-unknown-unknown.dependencies]
-wasm-bindgen = "0.2"
-js-sys = "0.3"
-wasm-bindgen-futures = "0.4"
-async-lock = { version = "3.4.2", default-features = false }
-
-[build-dependencies]
-bindgen = "0.72"
-cmake = "0.1.58"
-syn = { version = "2.0.117", default-features = false, features = [
-  "full",
-  "parsing",
-  "printing",
-] }
-prettyplease = "0.2.37"
-cc = { version = "1.2", features = ["parallel"] }
-
-[dev-dependencies]
-half = { version = "2.7.1", default-features = false, features = ["bytemuck"] }
-image = { version = "0.25.10", default-features = false, features = [
-  "jpeg",
-  "exr",
-  "webp",
-] }
-insta = "1.47.2"
 
 [[test]]
 name = "transcoder"
@@ -95,4 +29,89 @@ required-features = ["extra"]
 [[test]]
 name = "encoder"
 path = "tests/encoder.rs"
-required-features = ["extra", "encoder"]
+required-features = ["encoder", "extra"]
+
+[dependencies]
+async-lock = { version = "3.4.2", default-features = false, optional = true }
+bitflags = { version = "2.11.0", optional = true }
+bytemuck = {
+  version = "1.25.0",
+  default-features = false,
+  features = [
+    "must_cast",
+  ],
+  optional = true
+}
+serde = {
+  version = "1.0.228",
+  default-features = false,
+  features = [
+    "derive",
+  ],
+  optional = true
+}
+thiserror = { version = "2.0.18", default-features = false, optional = true }
+wgpu-types = { version = "29.0", default-features = false, optional = true }
+
+[dev-dependencies]
+half = { version = "2.7.1", default-features = false, features = ["bytemuck"] }
+image = {
+  version = "0.25.10",
+  default-features = false,
+  features = [
+    "exr",
+    "jpeg",
+    "webp",
+  ]
+}
+insta = "1.47.2"
+
+[build-dependencies]
+bindgen = "0.72"
+cc = { version = "1.2", features = ["parallel"] }
+cmake = "0.1.58"
+prettyplease = "0.2.37"
+syn = {
+  version = "2.0.117",
+  default-features = false,
+  features = [
+    "full",
+    "parsing",
+    "printing",
+  ]
+}
+
+[target.wasm32-unknown-unknown.dependencies]
+async-lock = { version = "3.4.2", default-features = false }
+js-sys = "0.3"
+wasm-bindgen = "0.2"
+wasm-bindgen-futures = "0.4"
+
+[features]
+default = [
+  "transcode_astc",
+  "transcode_etc1s_bc4_5",
+  "transcode_etc1s_bc7",
+  "transcode_etc1s_etc2",
+  "transcode_uastc",
+  "transcode_uastc_hdr",
+  "transcode_xuastc",
+]
+encoder = []
+extra = [
+  "dep:async-lock",
+  "dep:bitflags",
+  "dep:bytemuck",
+  "dep:thiserror",
+  "dep:wgpu-types",
+]
+serde = ["dep:serde"]
+transcode_astc = []
+transcode_etc1s_bc1 = []
+transcode_etc1s_bc3 = ["transcode_etc1s_bc1", "transcode_etc1s_bc4_5"]
+transcode_etc1s_bc4_5 = []
+transcode_etc1s_bc7 = []
+transcode_etc1s_etc2 = []
+transcode_uastc = []
+transcode_uastc_hdr = []
+transcode_xuastc = []
