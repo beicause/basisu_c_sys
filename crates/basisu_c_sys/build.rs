@@ -95,7 +95,10 @@ fn main() {
         let out_dir = std::env::var("OUT_DIR").unwrap();
         let target_feature = std::env::var("CARGO_CFG_TARGET_FEATURE").unwrap();
         let args_dir = std::path::PathBuf::from_iter([&out_dir, "build_args"]);
-        let _ = std::fs::create_dir(&args_dir);
+        match std::fs::create_dir(&args_dir) {
+            Ok(_) => {}
+            Err(err) => assert_eq!(err.kind(), std::io::ErrorKind::AlreadyExists),
+        }
 
         let dst = if !is_docs_rs {
             let (mut default_encoder_emcc_args, mut default_transcoder_emcc_args) =
@@ -128,6 +131,11 @@ fn main() {
             cmake.build()
         } else {
             // Write empty js and wasm files to work around cargo docs-rs.
+            match std::fs::create_dir(std::path::PathBuf::from_iter([&out_dir, &format!("build")]))
+            {
+                Ok(_) => {}
+                Err(err) => assert_eq!(err.kind(), std::io::ErrorKind::AlreadyExists),
+            }
             for name in ["encoder", "transcoder"] {
                 let path =
                     std::path::PathBuf::from_iter([&out_dir, &format!("build/basisu_{name}.js")]);
