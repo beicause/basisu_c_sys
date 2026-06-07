@@ -87,42 +87,58 @@ include!(concat!(env!("CARGO_MANIFEST_DIR"), "/write_cmake_args.rs"));
 fn main() {
     bindgen();
 
+    let is_docs_rs = std::env::var("DOCS_RS").is_ok();
     let target = std::env::var("TARGET").unwrap();
 
     if target == "wasm32-unknown-unknown" {
         wasm_bindgen();
-        let (mut default_encoder_emcc_args, mut default_transcoder_emcc_args) =
-            (Vec::<String>::new(), Vec::<String>::new());
-        get_wasm_build_args(
-            &mut default_encoder_emcc_args,
-            &mut default_transcoder_emcc_args,
-        );
-        let target_feature = std::env::var("CARGO_CFG_TARGET_FEATURE").unwrap();
         let out_dir = std::env::var("OUT_DIR").unwrap();
+        let target_feature = std::env::var("CARGO_CFG_TARGET_FEATURE").unwrap();
         let args_dir = std::path::PathBuf::from_iter([&out_dir, "build_args"]);
         let _ = std::fs::create_dir(&args_dir);
-        write_cmake_args(
-            &default_encoder_emcc_args,
-            &default_transcoder_emcc_args,
-            ENCODER_SRCS,
-            TRANSCODER_SRCS,
-            target_feature.contains("simd128").then_some("-msimd128"),
-            &args_dir,
-        );
-        let mut cmake = cmake::Config::new(".");
-        cmake
-            .profile("")
-            .target("wasm32-unknown-emscripten")
-            .define("BUILD_ARGS_DIR", &args_dir)
-            .build_target("transcoder");
-        if std::env::var("PROFILE").unwrap() != "debug" {
-            cmake.cflag("-flto=full").cxxflag("-flto=full");
-        }
-        let opt_flag = "-O".to_string() + &std::env::var("OPT_LEVEL").unwrap();
-        cmake.cflag(&opt_flag).cxxflag(&opt_flag);
-        #[cfg(feature = "encoder")]
-        cmake.build_target("all");
-        let dst = cmake.build();
+
+        let dst = if !is_docs_rs {
+            let (mut default_encoder_emcc_args, mut default_transcoder_emcc_args) =
+                (Vec::<String>::new(), Vec::<String>::new());
+            get_wasm_build_args(
+                &mut default_encoder_emcc_args,
+                &mut default_transcoder_emcc_args,
+            );
+            write_cmake_args(
+                &default_encoder_emcc_args,
+                &default_transcoder_emcc_args,
+                ENCODER_SRCS,
+                TRANSCODER_SRCS,
+                target_feature.contains("simd128").then_some("-msimd128"),
+                &args_dir,
+            );
+            let mut cmake = cmake::Config::new(".");
+            cmake
+                .profile("")
+                .target("wasm32-unknown-emscripten")
+                .define("BUILD_ARGS_DIR", &args_dir)
+                .build_target("transcoder");
+            if std::env::var("PROFILE").unwrap() != "debug" {
+                cmake.cflag("-flto=full").cxxflag("-flto=full");
+            }
+            let opt_flag = "-O".to_string() + &std::env::var("OPT_LEVEL").unwrap();
+            cmake.cflag(&opt_flag).cxxflag(&opt_flag);
+            #[cfg(feature = "encoder")]
+            cmake.build_target("all");
+            cmake.build()
+        } else {
+            // Write empty js and wasm files to work around cargo docs-rs.
+            for name in ["encoder", "transcoder"] {
+                let path =
+                    std::path::PathBuf::from_iter([&out_dir, &format!("build/basisu_{name}.js")]);
+                std::fs::write(path, []).unwrap();
+                let path =
+                    std::path::PathBuf::from_iter([&out_dir, &format!("build/basisu_{name}.wasm")]);
+                std::fs::write(path, []).unwrap();
+            }
+            (&out_dir).into()
+        };
+
         for name in ["encoder", "transcoder"] {
             #[cfg(not(feature = "encoder"))]
             if name == "encoder" {
@@ -145,7 +161,7 @@ fn main() {
         }
     }
 
-    if std::env::var("DOCS_RS").is_err() && target != "wasm32-unknown-unknown" {
+    if !is_docs_rs && target != "wasm32-unknown-unknown" {
         compile_basisu_static();
     }
 

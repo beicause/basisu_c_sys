@@ -19,7 +19,13 @@ include = [
 
 [package.metadata.docs.rs]
 targets = ["x86_64-unknown-linux-gnu", "wasm32-unknown-unknown"]
-features = ["encoder", "serde", "extra"]
+no-default-features = true
+features = [
+  "encoder",
+  "serde",
+  "extra",
+]
+rustdoc-args = ["--cfg", "docsrs"]
 
 [[test]]
 name = "transcoder"

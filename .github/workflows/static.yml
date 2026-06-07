@@ -1,23 +1,20 @@
-# Simple workflow for deploying static content to GitHub Pages
-name: Deploy static content to Pages
+name: Deploy docs and web demo to Pages
 
 on:
-  # Runs on pushes targeting the default branch
-  # push:
-  # branches: ["master"]
-
-  # Allows you to run this workflow manually from the Actions tab
   workflow_dispatch:
+  push:
+    branches: ["master"]
+  pull_request:
+    branches: ["master"]
+  merge_group:
 
-# Sets permissions of the GITHUB_TOKEN to allow deployment to GitHub Pages
 permissions:
   contents: read
   pages: write
   id-token: write
 
-# Allow only one concurrent deployment, skipping runs queued between the run in-progress and latest queued.
 concurrency:
-  group: "pages"
+  group: ${{github.workflow}}-${{github.ref}}
   cancel-in-progress: true
 
 env:
@@ -26,7 +23,6 @@ env:
   CACHE_SUFFIX: e # cache busting
 
 jobs:
-  # Single deploy job since we're just deploying
   deploy:
     environment:
       name: github-pages
@@ -51,6 +47,7 @@ jobs:
       - name: Install rust toolchain
         run: |
           rustup toolchain install stable --profile=minimal
+          rustup toolchain install nightly --profile=minimal
           rustup target add wasm32-unknown-unknown
 
       - name: Caching
@@ -67,6 +64,15 @@ jobs:
       - name: Install wasm-bindgen
         run: cargo binstall --version ^0.2 --force wasm-bindgen-cli
 
+      - name: Install cargo-docs-rs
+        run: cargo binstall cargo-docs-rs
+
+      - name: Build docs
+        run: |
+          cargo +nightly docs-rs -p basisu_c_sys
+          && cp -r target/wasm32-unknown-unknown/doc pages/docs/wasm32-unknown-unknown
+          && cp -r target/x86_64-unknown-linux-gnu/doc pages/docs/x86_64-unknown-linux-gnu
+
       - name: Build webgpu
         run: RUSTFLAGS="-Ctarget-feature=+simd128" cargo b -p test_scene --features bevy/webgpu --target wasm32-unknown-unknown --profile web_release
 
@@ -82,7 +88,7 @@ jobs:
       - name: Upload artifact
         uses: actions/upload-pages-artifact@v5
         with:
-          path: web/
+          path: pages/
 
       - name: Deploy to GitHub Pages
         id: deployment
