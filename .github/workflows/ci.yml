@@ -35,7 +35,7 @@ jobs:
   build:
     needs: lint
     name: Build ${{matrix.os}}
-    # runtime is normally 10 minutes 
+    # runtime is normally 10 minutes
     timeout-minutes: 30
     runs-on: ${{matrix.os}}
     strategy:
@@ -60,16 +60,15 @@ jobs:
             debug = false
           EOF
 
+      - name: Install rust toolchain
+        run: |
+          rustup toolchain install stable --profile=minimal --component clippy
+
       - name: Caching
         uses: Swatinem/rust-cache@v2
         with:
           key: build-${{ matrix.os }}-${{ env.CACHE_SUFFIX }}
           env-vars: ImageVersion
-          save-if: ${{ github.ref == 'refs/heads/master' }}
-
-      - name: Install rust toolchain
-        run: |
-          rustup toolchain install stable --profile=minimal --component clippy
 
       - name: Clippy default features
         run: cargo clippy --workspace --all-targets -- -Dwarnings
@@ -88,7 +87,7 @@ jobs:
   test:
     needs: lint
     name: Test ${{matrix.os}}
-    # runtime is normally 25 minutes 
+    # runtime is normally 25 minutes
     timeout-minutes: 60
     runs-on: ${{matrix.os}}
     strategy:
@@ -116,16 +115,15 @@ jobs:
             debug = false
           EOF
 
+      - name: Install rust toolchain
+        run: |
+          rustup toolchain install stable --profile=minimal --component clippy
+
       - name: Caching
         uses: Swatinem/rust-cache@v2
         with:
           key: test-${{ matrix.os }}-${{ env.CACHE_SUFFIX }}
           env-vars: ImageVersion
-          save-if: ${{ github.ref == 'refs/heads/master' }}
-
-      - name: Install rust toolchain
-        run: |
-          rustup toolchain install stable --profile=minimal --component clippy
 
       - name: Test ${{matrix.os}}
         run: cargo test --workspace --all-targets --release
@@ -133,7 +131,7 @@ jobs:
   build-wasm:
     needs: lint
     name: Build wasm
-    # runtime is normally 5 minutes 
+    # runtime is normally 5 minutes
     timeout-minutes: 15
     runs-on: ubuntu-latest
     steps:
@@ -154,17 +152,16 @@ jobs:
             debug = false
           EOF
 
+      - name: Install rust toolchain
+        run: |
+          rustup toolchain install stable --profile=minimal --component clippy
+          rustup target add wasm32-unknown-unknown
+
       - name: Caching
         uses: Swatinem/rust-cache@v2
         with:
           key: build-wasm-${{ matrix.os }}-${{ env.CACHE_SUFFIX }}
           env-vars: ImageVersion
-          save-if: ${{ github.ref == 'refs/heads/master' }}
-
-      - name: Install rust toolchain
-        run: |
-          rustup toolchain install stable --profile=minimal --component clippy
-          rustup target add wasm32-unknown-unknown
 
       - name: Clippy default features
         run: cargo clippy --workspace --target wasm32-unknown-unknown --all-targets -- -Dwarnings
@@ -178,7 +175,7 @@ jobs:
   build-android:
     needs: lint
     name: Build android
-    # runtime is normally 5 minutes 
+    # runtime is normally 5 minutes
     timeout-minutes: 15
     runs-on: ubuntu-latest
     steps:
@@ -194,17 +191,16 @@ jobs:
             debug = false
           EOF
 
+      - name: Install rust toolchain
+        run: |
+          rustup toolchain install stable --profile=minimal
+          rustup target add aarch64-linux-android
+
       - name: Caching
         uses: Swatinem/rust-cache@v2
         with:
           key: build-android-${{ matrix.os }}-${{ env.CACHE_SUFFIX }}
           env-vars: ImageVersion
-          save-if: ${{ github.ref == 'refs/heads/master' }}
-
-      - name: Install rust toolchain
-        run: |
-          rustup toolchain install stable --profile=minimal
-          rustup target add aarch64-linux-android
 
       - name: Install cargo-binstall
         uses: cargo-bins/cargo-binstall@v1.16.6

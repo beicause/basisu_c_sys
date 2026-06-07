@@ -31,7 +31,7 @@ jobs:
       name: github-pages
       url: ${{ steps.deployment.outputs.page_url }}
     runs-on: ubuntu-latest
-    # runtime is normally 10-15 minutes 
+    # runtime is normally 10-15 minutes
     timeout-minutes: 30
     steps:
       - uses: actions/checkout@v6
@@ -47,13 +47,19 @@ jobs:
       - name: Install wasm-opt
         run: wget https://github.com/WebAssembly/binaryen/releases/download/version_125/binaryen-version_125-x86_64-linux.tar.gz && tar -xvf binaryen-version_125-x86_64-linux.tar.gz && sudo cp binaryen-version_125/bin/wasm-opt /usr/local/bin/ && rm -r binaryen-version_125 && rm binaryen-version_125-x86_64-linux.tar.gz
 
-      - name: Install cargo-binstall
-        uses: cargo-bins/cargo-binstall@v1.16.6
-
       - name: Install rust toolchain
         run: |
           rustup toolchain install stable --profile=minimal
           rustup target add wasm32-unknown-unknown
+
+      - name: Caching
+        uses: Swatinem/rust-cache@v2
+        with:
+          key: build-android-${{ matrix.os }}-${{ env.CACHE_SUFFIX }}
+          env-vars: ImageVersion
+
+      - name: Install cargo-binstall
+        uses: cargo-bins/cargo-binstall@v1.16.6
 
       - name: Install wasm-bindgen
         run: cargo binstall --version ^0.2 --force wasm-bindgen-cli
