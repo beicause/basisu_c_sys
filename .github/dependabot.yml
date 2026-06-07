@@ -8,6 +8,14 @@ updates:
       - "C-Dependencies"
     cooldown:
       default-days: 7
+    groups:
+      minor-and-patch:
+        applies-to: version-updates
+        patterns:
+          - "*"
+        update-types:
+          - "minor"
+          - "patch"
   - package-ecosystem: github-actions
     directory: /
     schedule:
@@ -16,3 +24,11 @@ updates:
       - "C-Dependencies"
     cooldown:
       default-days: 7
+    groups:
+      minor-and-patch:
+        applies-to: version-updates
+        patterns:
+          - "*"
+        update-types:
+          - "minor"
+          - "patch"
