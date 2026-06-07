@@ -60,7 +60,7 @@ jobs:
           key: deploy-${{ matrix.os }}-${{ env.CACHE_SUFFIX }}
           env-vars: ImageVersion
           cache-bin: false
-          save-if: ${{ github.ref == 'refs/heads/master' }}
+          save-if: true
 
       - name: Install cargo-binstall
         uses: cargo-bins/cargo-binstall@v1.19.1
