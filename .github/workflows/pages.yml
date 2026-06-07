@@ -81,10 +81,12 @@ jobs:
         run: RUSTFLAGS="-Ctarget-feature=+simd128" cargo b -p test_scene --features bevy/webgpu --target wasm32-unknown-unknown --profile web_release
 
       - name: Wasm bindgen webgpu
-        run: wasm-bindgen --out-name test_scene --out-dir web/target/webgpu/ --target web target/wasm32-unknown-unknown/web_release/test_scene.wasm
+        run: wasm-bindgen --out-name test_scene --out-dir pages/web/target/webgpu/ --target web target/wasm32-unknown-unknown/web_release/test_scene.wasm
 
       - name: Optimize wasm webgpu
-        run: wasm-opt --enable-simd --enable-bulk-memory-opt --enable-nontrapping-float-to-int -Os ./web/target/webgpu/test_scene_bg.wasm -o ./web/target/webgpu/test_scene_bg.wasm
+        run: >
+          wasm-opt --enable-simd --enable-bulk-memory-opt --enable-nontrapping-float-to-int -Os
+          pages/web/target/webgpu/test_scene_bg.wasm -o pages/web/target/webgpu/test_scene_bg.wasm
 
       - name: Setup Pages
         uses: actions/configure-pages@v6
