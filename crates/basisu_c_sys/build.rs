@@ -131,8 +131,7 @@ fn main() {
             cmake.build()
         } else {
             // Write empty js and wasm files to work around cargo docs-rs.
-            match std::fs::create_dir(std::path::PathBuf::from_iter([&out_dir, &format!("build")]))
-            {
+            match std::fs::create_dir(std::path::PathBuf::from_iter([&out_dir, "build"])) {
                 Ok(_) => {}
                 Err(err) => assert_eq!(err.kind(), std::io::ErrorKind::AlreadyExists),
             }
