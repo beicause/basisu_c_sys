@@ -62,7 +62,7 @@ jobs:
           save-if: ${{ github.ref == 'refs/heads/master' }}
 
       - name: Install cargo-binstall
-        uses: cargo-bins/cargo-binstall@v1.16.6
+        uses: cargo-bins/cargo-binstall@v1.19.1
 
       - name: Install wasm-bindgen
         run: cargo binstall --version ^0.2 --force wasm-bindgen-cli
