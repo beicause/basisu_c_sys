@@ -7,7 +7,6 @@
         <title>WebGPU Example - bevy_basisu_loader</title>
         <style>
             :root {
-                --header-height: 36px;
                 --header-bg: #f5f5f7;
                 --border: #e5e5e5;
                 --link: #2563eb;
@@ -37,7 +36,6 @@
             }
 
             .demo-header {
-                height: var(--header-height);
                 width: 100%;
                 background: var(--header-bg);
                 border-bottom: 1px solid var(--border);
@@ -56,14 +54,14 @@
 
             .demo-links {
                 display: flex;
-                gap: 1.5rem;
+                gap: 1rem;
             }
 
             .demo-links a {
                 color: var(--link);
                 text-decoration: none;
+                line-height: 2;
                 font-size: 0.9rem;
-                line-height: var(--header-height);
             }
 
             .demo-links a:hover {
@@ -73,7 +71,7 @@
 
             .game-container {
                 flex: 1;
-                width: calc(100% - 64px);
+                width: 90%;
                 overflow: hidden;
                 position: relative;
                 display: flex;
@@ -129,7 +127,9 @@
                 >🖥️ WebGPU Example - bevy_basisu_loader</span
             >
             <nav class="demo-links">
-                <a href="../index.html">← Projects</a>
+                <a href="../index.html" style="white-space: nowrap"
+                    >← Projects</a
+                >
                 <a
                     href="https://github.com/beicause/bevy_basisu_loader"
                     target="_blank"
