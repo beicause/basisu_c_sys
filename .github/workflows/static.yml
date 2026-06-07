@@ -40,12 +40,17 @@ jobs:
           version: ${{ env.EM_VERSION }}
 
       - name: Install wasm-opt
-        run: wget https://github.com/WebAssembly/binaryen/releases/download/version_125/binaryen-version_125-x86_64-linux.tar.gz && tar -xvf binaryen-version_125-x86_64-linux.tar.gz && sudo cp binaryen-version_125/bin/wasm-opt /usr/local/bin/ && rm -r binaryen-version_125 && rm binaryen-version_125-x86_64-linux.tar.gz
+        run: >
+          wget https://github.com/WebAssembly/binaryen/releases/download/version_125/binaryen-version_125-x86_64-linux.tar.gz
+          && tar -xvf binaryen-version_125-x86_64-linux.tar.gz
+          && sudo cp binaryen-version_125/bin/wasm-opt /usr/local/bin/
+          && rm -r binaryen-version_125
+          && rm binaryen-version_125-x86_64-linux.tar.gz
 
       - name: Install rust toolchain
         run: |
           rustup toolchain install stable --profile=minimal
-          rustup toolchain install nightly --profile=minimal
+          rustup toolchain install nightly --profile=minimal --component rustfmt
           rustup target add wasm32-unknown-unknown
           rustup target add --toolchain nightly wasm32-unknown-unknown
 
@@ -67,7 +72,7 @@ jobs:
         run: cargo binstall cargo-docs-rs
 
       - name: Build docs
-        run: |
+        run: >
           cargo +nightly docs-rs -p basisu_c_sys
           && cp -r target/wasm32-unknown-unknown/doc pages/docs/wasm32-unknown-unknown
           && cp -r target/x86_64-unknown-linux-gnu/doc pages/docs/x86_64-unknown-linux-gnu
