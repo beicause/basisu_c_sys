@@ -47,6 +47,7 @@ jobs:
           rustup toolchain install stable --profile=minimal
           rustup toolchain install nightly --profile=minimal
           rustup target add wasm32-unknown-unknown
+          rustup target add --toolchain nightly wasm32-unknown-unknown
 
       - name: Caching
         uses: Swatinem/rust-cache@v2
