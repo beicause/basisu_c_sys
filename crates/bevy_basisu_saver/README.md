@@ -9,6 +9,8 @@ Basis universal texture encoder and bevy asset processor to transform images to 
 
 This is based on [basisu_c_sys](../basisu_c_sys/) and [bevy_basisu_loader](../bevy_basisu_loader/). `wasm32-unknown-unknown` should be supported but is less tested.
 
+Note: `bevy_basisu_loader` and `bevy_basisu_saver` are currently considered experimental, with some limitations due to Bevy's asset system, such as the loader currently being unable to be used with `GltfLoader`, and the asset processor and saver not being mature enough.
+
 ## Usage
 
 1. Add the Cargo dependency:

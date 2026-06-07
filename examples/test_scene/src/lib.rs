@@ -25,9 +25,9 @@ pub fn main() {
                         // Bind to canvas included in `index.html`
                         canvas: Some("#bevy".to_owned()),
                         fit_canvas_to_parent: true,
-                        ..default()
+                        ..Default::default()
                     }),
-                    ..default()
+                    ..Default::default()
                 })
                 .set(AssetPlugin {
                     meta_check: AssetMetaCheck::Never,
@@ -59,7 +59,7 @@ fn setup(
         Skybox {
             image: Some(skybox_handle.clone()),
             brightness: 1000.0,
-            ..default()
+            ..Default::default()
         },
     ));
 
@@ -157,7 +157,7 @@ fn setup(
             position_type: PositionType::Absolute,
             top: px(12),
             left: px(12),
-            ..default()
+            ..Default::default()
         },
     ));
 }

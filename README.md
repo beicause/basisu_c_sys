@@ -6,7 +6,11 @@
 | [bevy_basisu_loader](./crates/bevy_basisu_loader)| Basisu texture loader for bevy |
 | [bevy_basisu_saver](./crates/bevy_basisu_saver/)| Basisu saver and asset processor for bevy |
 
-## For developers
+Documents and live WebGPU example: <https://beicause.github.io/bevy_basisu_loader>
+
+Note: `bevy_basisu_loader` and `bevy_basisu_saver` are currently considered experimental, with some limitations due to Bevy's asset system, such as the loader currently being unable to be used with `GltfLoader`, and the asset processor and saver not being mature enough.
+
+## For contributor
 
 To run the examples and tests in this repository, please make sure git `core.symlinks` is enabled,
 and clone https://github.com/beicause/basisu_c_sys_asset_files to the project root directory.
