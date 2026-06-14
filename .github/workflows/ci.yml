@@ -24,13 +24,13 @@ jobs:
     # runtime is normally 10 seconds
     timeout-minutes: 2
     steps:
-      - uses: actions/checkout@v6.0.2
+      - uses: actions/checkout@v6.0.3
 
       - name: Check for typos
-        uses: crate-ci/typos@v1.47.0
+        uses: crate-ci/typos@v1.47.2
 
       - name: Check for tombi
-        uses: tombi-toml/setup-tombi@v1.1.1
+        uses: tombi-toml/setup-tombi@v1.1.2
 
   build:
     needs: lint
@@ -44,7 +44,7 @@ jobs:
         os: [ubuntu-latest, macos-latest, windows-latest]
 
     steps:
-      - uses: actions/checkout@v6.0.2
+      - uses: actions/checkout@v6.0.3
 
       - name: Install Linux dependencies
         if: ${{ matrix.os == 'ubuntu-latest' }}
@@ -98,7 +98,7 @@ jobs:
         os: [ubuntu-latest, macos-latest, windows-latest]
 
     steps:
-      - uses: actions/checkout@v6.0.2
+      - uses: actions/checkout@v6.0.3
 
       - name: Clone `basisu_c_sys_asset_files`
         run: git clone --depth 1 https://github.com/beicause/basisu_c_sys_asset_files
@@ -139,7 +139,7 @@ jobs:
     timeout-minutes: 15
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v6.0.2
+      - uses: actions/checkout@v6.0.3
 
       - name: Install Emscripten
         uses: mymindstorm/setup-emsdk@v16
@@ -185,7 +185,7 @@ jobs:
     timeout-minutes: 15
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v6.0.2
+      - uses: actions/checkout@v6.0.3
 
       - name: Disable debug symbols
         shell: bash
