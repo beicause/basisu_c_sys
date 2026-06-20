@@ -14,8 +14,8 @@ concurrency:
 
 env:
   CARGO_TERM_COLOR: always
-  ANDROID_NDK_VERSION: 28.1.13356709
-  EM_VERSION: 5.0.5
+  ANDROID_NDK_VERSION: 29.0.14206865
+  EM_VERSION: 6.0.0
   CACHE_SUFFIX: e # cache busting
 
 jobs:
