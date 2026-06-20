@@ -9,8 +9,7 @@ Rust binding and wrappers for the basisu pure C API, through FFI on native and w
 
 This crate also contains optional high level API that is easier to use with `wgpu-types`. Enabling the `extra` cargo feature to use the high level `BasisuEncoder` and `BasisuTranscoder`.
 
-This supports `wasm32-unknown-unknown` by bundling basisu wasm binary and `wasm-bindgen`. You need to have `emscripten` and `cmake` installed to build this crate.
-`instantiate_basisu_wasm`(or `instantiate_custom_basisu_wasm`) function must be called before calling other functions.
+This supports `wasm32-unknown-unknown` by bundling basisu wasm binary and `wasm-bindgen`. You need to install [Emscripten SDK](https://emscripten.org/) and [CMake](https://cmake.org/) to compile it. And in your application, call `instantiate_basisu_wasm`(or `instantiate_custom_basisu_wasm`) function before calling other functions.
 
 Feature flags:
 - `encoder`: Enable basisu encoder, which will significantly increase the binary size. By default only transcoder is enabled.
