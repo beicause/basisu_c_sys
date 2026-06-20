@@ -6,6 +6,9 @@ members = ["crates/*", "examples/*"]
 repository = "https://github.com/beicause/bevy_basisu_loader"
 license = "MIT OR Apache-2.0"
 
+[workspace.dependencies]
+bevy = { version = "0.19", default-features = false }
+
 [profile.test]
 opt-level = 1
 

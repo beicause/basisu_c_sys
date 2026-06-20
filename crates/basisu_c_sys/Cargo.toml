@@ -1,6 +1,6 @@
 [package]
 name = "basisu_c_sys"
-version = "0.7.1"
+version = "0.8.0"
 edition = "2024"
 description = "Rust binding and wrappers for Basis Universal C API"
 repository.workspace = true

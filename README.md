@@ -8,6 +8,8 @@
 
 Documents and live WebGPU example: <https://beicause.github.io/bevy_basisu_loader>
 
+To compile for `wasm32-unknown-unknown`, you need to [install Emscripten SDK](https://emscripten.org/docs/getting_started/downloads.html)
+
 Note: `bevy_basisu_loader` and `bevy_basisu_saver` are currently considered experimental, with some limitations due to Bevy's asset system, such as the loader currently being unable to be used with `GltfLoader`, and the asset processor and saver not being mature enough.
 
 ## For contributor

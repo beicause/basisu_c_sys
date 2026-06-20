@@ -43,8 +43,10 @@ pub enum BasisuSaverError {
     EmptyData,
     #[error("Image texture format is unsupported by the encoder")]
     UnsupportedTextureFormat(TextureFormat),
-    #[error("Image format is Rgba32Float, but the data is not a multiplier of 16")]
+    #[error("Image format is Rgba32Float, but the data bytes is not a multiple of 16")]
     UnalignedRgba32Float,
+    #[error("Image with mipmaps ({0}) is unsupported")]
+    Mipmaps(u32),
     /// An error occurred while trying to encode the image.
     #[error(transparent)]
     BasisuEncodeError(#[from] BasisuEncodeError),
@@ -63,6 +65,12 @@ impl AssetSaver for BasisuSaver {
         settings: &Self::Settings,
         asset_path: bevy::asset::AssetPath<'_>,
     ) -> Result<<Self::OutputLoader as bevy::asset::AssetLoader>::Settings, Self::Error> {
+        if asset.texture_descriptor.mip_level_count != 1 {
+            return Err(BasisuSaverError::Mipmaps(
+                asset.texture_descriptor.mip_level_count,
+            ));
+        }
+
         let _span = bevy::log::info_span!("Encoding basisu texture").entered();
         let time = if log::STATIC_MAX_LEVEL >= log::LevelFilter::Debug {
             Some(bevy::platform::time::Instant::now())
