@@ -63,7 +63,7 @@ jobs:
           save-if: true
 
       - name: Install cargo-binstall
-        uses: cargo-bins/cargo-binstall@v1.19.1
+        uses: cargo-bins/cargo-binstall@v1.20.0
 
       - name: Install wasm-bindgen
         run: cargo binstall --version ^0.2 --force wasm-bindgen-cli
