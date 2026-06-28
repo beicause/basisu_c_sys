@@ -30,7 +30,7 @@ jobs:
         uses: crate-ci/typos@v1.47.2
 
       - name: Check for tombi
-        uses: tombi-toml/setup-tombi@v1.1.3
+        uses: tombi-toml/setup-tombi@v1.1.4
 
   build:
     needs: lint
@@ -211,7 +211,7 @@ jobs:
           save-if: ${{ github.ref == 'refs/heads/master' }}
 
       - name: Install cargo-binstall
-        uses: cargo-bins/cargo-binstall@v1.20.0
+        uses: cargo-bins/cargo-binstall@v1.20.1
 
       - name: Install Android NDK
         run: ${ANDROID_HOME}/cmdline-tools/latest/bin/sdkmanager 'ndk;${{env.ANDROID_NDK_VERSION}}'
