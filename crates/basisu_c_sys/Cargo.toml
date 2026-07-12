@@ -57,7 +57,7 @@ serde = {
   optional = true
 }
 thiserror = { version = "2.0.18", default-features = false, optional = true }
-wgpu-types = { version = "29.0", default-features = false, optional = true }
+wgpu-types = { version = "30.0", default-features = false, optional = true }
 
 [dev-dependencies]
 half = { version = "2.7.1", default-features = false, features = ["bytemuck"] }
