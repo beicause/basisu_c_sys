@@ -3,11 +3,13 @@ updates:
   - package-ecosystem: cargo
     directory: /
     schedule:
-      interval: weekly
+      interval: monthly
     labels:
       - "C-Dependencies"
     cooldown:
       default-days: 7
+    ignore:
+      - dependency-name: "wgpu*"
     groups:
       minor-and-patch:
         applies-to: version-updates
@@ -19,7 +21,7 @@ updates:
   - package-ecosystem: github-actions
     directory: /
     schedule:
-      interval: weekly
+      interval: monthly
     labels:
       - "C-Dependencies"
     cooldown:
