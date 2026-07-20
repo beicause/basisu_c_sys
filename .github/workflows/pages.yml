@@ -49,8 +49,8 @@ jobs:
 
       - name: Install rust toolchain
         run: |
-          rustup toolchain install stable --profile=minimal
-          rustup toolchain install nightly --profile=minimal --component rustfmt
+          rustup toolchain install stable --no-self-update --profile=minimal
+          rustup toolchain install nightly --no-self-update --profile=minimal --component rustfmt
           rustup target add wasm32-unknown-unknown
           rustup target add --toolchain nightly wasm32-unknown-unknown
 
