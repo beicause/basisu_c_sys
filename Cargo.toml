@@ -3,7 +3,7 @@ resolver = "3"
 members = ["crates/*", "examples/*"]
 
 [workspace.package]
-repository = "https://github.com/beicause/bevy_basisu_loader"
+repository = "https://github.com/beicause/basisu_c_sys"
 license = "MIT OR Apache-2.0"
 
 [workspace.dependencies]

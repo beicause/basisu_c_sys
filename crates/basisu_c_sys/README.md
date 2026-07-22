@@ -1,7 +1,7 @@
 # Rust binding and wrappers for the Basis Universal pure C API.
 
-[![Build](https://github.com/beicause/bevy_basisu_loader/actions/workflows/ci.yml/badge.svg)](https://github.com/beicause/bevy_basisu_loader/actions)
-[![License](https://img.shields.io/badge/license-Apache--2.0_OR_MIT-blue.svg)](https://github.com/beicause/bevy_basisu_loader)
+[![Build](https://github.com/beicause/basisu_c_sys/actions/workflows/ci.yml/badge.svg)](https://github.com/beicause/basisu_c_sys/actions)
+[![License](https://img.shields.io/badge/license-Apache--2.0_OR_MIT-blue.svg)](https://github.com/beicause/basisu_c_sys)
 [![Cargo](https://img.shields.io/crates/v/basisu_c_sys.svg)](https://crates.io/crates/basisu_c_sys)
 [![Documentation](https://docs.rs/basisu_c_sys/badge.svg)](https://docs.rs/basisu_c_sys)
 

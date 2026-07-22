@@ -1,9 +1,9 @@
 # Bevy KTX2 BasisU texture loader
 
-[![Build](https://github.com/beicause/bevy_basisu_loader/actions/workflows/ci.yml/badge.svg)](https://github.com/beicause/bevy_basisu_loader/actions)
-[![License](https://img.shields.io/badge/license-Apache--2.0_OR_MIT-blue.svg)](https://github.com/beicause/bevy_basisu_loader)
-[![Cargo](https://img.shields.io/crates/v/bevy_basisu_loader.svg)](https://crates.io/crates/bevy_basisu_loader)
-[![Documentation](https://docs.rs/bevy_basisu_loader/badge.svg)](https://docs.rs/bevy_basisu_loader)
+[![Build](https://github.com/beicause/basisu_c_sys/actions/workflows/ci.yml/badge.svg)](https://github.com/beicause/basisu_c_sys/actions)
+[![License](https://img.shields.io/badge/license-Apache--2.0_OR_MIT-blue.svg)](https://github.com/beicause/basisu_c_sys)
+[![Cargo](https://img.shields.io/crates/v/basisu_c_sys.svg)](https://crates.io/crates/basisu_c_sys)
+[![Documentation](https://docs.rs/basisu_c_sys/badge.svg)](https://docs.rs/basisu_c_sys)
 
 A Bevy plugin that provides a KTX2 Basis Universal texture loader.
 
@@ -15,7 +15,7 @@ Although Bevy's `ImageLoader` has built-in support for Basis Universal textures 
 
 This plugin adds a loader for Basis Universal KTX2 textures with support for all formats supported by basis universal v2.0 (ETC1S, UASTC, ASTC, XUASTC), and web support through JavaScript glue to call [Basis Universal][] C++ library compiled with Emscripten which includes only the transcoder and necessary transcoding formats.
 
-WebGPU example: https://beicause.github.io/bevy_basisu_loader
+WebGPU example: <https://beicause.github.io/basisu_c_sys>
 
 To encode textures to basisu `.ktx2`,  use [bevy_basisu_saver](../bevy_basisu_saver/) or the command line tool in [Basis Universal](https://github.com/BinomialLLC/basis_universal/?tab=readme-ov-file#compressing-and-unpacking-ktx2basis-files) repo.
 

@@ -6,7 +6,7 @@
 | [bevy_basisu_loader](./crates/bevy_basisu_loader)| Basisu texture loader for bevy |
 | [bevy_basisu_saver](./crates/bevy_basisu_saver/)| Basisu saver and asset processor for bevy |
 
-Documents and live WebGPU example: <https://beicause.github.io/bevy_basisu_loader>
+Documents and live WebGPU example: <https://beicause.github.io/basisu_c_sys>
 
 To compile for `wasm32-unknown-unknown`, you need to install [Emscripten SDK](https://emscripten.org/) and [CMake](https://cmake.org/).
 

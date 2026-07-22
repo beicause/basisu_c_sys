@@ -1,7 +1,7 @@
 # Bevy BasisU texture saver and asset processor
 
-[![Build](https://github.com/beicause/bevy_basisu_loader/actions/workflows/ci.yml/badge.svg)](https://github.com/beicause/bevy_basisu_loader/actions)
-[![License](https://img.shields.io/badge/license-Apache--2.0_OR_MIT-blue.svg)](https://github.com/beicause/bevy_basisu_loader)
+[![Build](https://github.com/beicause/basisu_c_sys/actions/workflows/ci.yml/badge.svg)](https://github.com/beicause/basisu_c_sys/actions)
+[![License](https://img.shields.io/badge/license-Apache--2.0_OR_MIT-blue.svg)](https://github.com/beicause/basisu_c_sys)
 [![Cargo](https://img.shields.io/crates/v/bevy_basisu_saver.svg)](https://crates.io/crates/bevy_basisu_saver)
 [![Documentation](https://docs.rs/bevy_basisu_saver/badge.svg)](https://docs.rs/bevy_basisu_saver)
 
