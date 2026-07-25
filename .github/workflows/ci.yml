@@ -29,8 +29,11 @@ jobs:
       - name: Check for typos
         uses: crate-ci/typos@v1.47.2
 
-      - name: Check for tombi
+      - name: Install tombi
         uses: tombi-toml/setup-tombi@v1.1.6
+
+      - name: Check for tombi
+        run: tombi lint --error-on-warnings; tombi format --check --diff
 
   build:
     needs: lint
