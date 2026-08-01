@@ -29,7 +29,7 @@ jobs:
     # runtime is normally 10-15 minutes
     timeout-minutes: 30
     steps:
-      - uses: actions/checkout@v7.0.0
+      - uses: actions/checkout@v7.0.1
 
       - name: Clone `basisu_c_sys_asset_files`
         run: git clone --depth 1 https://github.com/beicause/basisu_c_sys_asset_files
@@ -63,7 +63,7 @@ jobs:
           save-if: true
 
       - name: Install cargo-binstall
-        uses: cargo-bins/cargo-binstall@v1.20.1
+        uses: cargo-bins/cargo-binstall@v1.21.1
 
       - name: Install wasm-bindgen
         run: cargo binstall --version ^0.2 --force wasm-bindgen-cli
