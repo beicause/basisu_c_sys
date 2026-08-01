@@ -24,13 +24,13 @@ jobs:
     # runtime is normally 10 seconds
     timeout-minutes: 2
     steps:
-      - uses: actions/checkout@v7.0.0
+      - uses: actions/checkout@v7.0.1
 
       - name: Check for typos
-        uses: crate-ci/typos@v1.47.2
+        uses: crate-ci/typos@v1.48.0
 
       - name: Install tombi
-        uses: tombi-toml/setup-tombi@v1.1.6
+        uses: tombi-toml/setup-tombi@v1.2.4
 
       - name: Check for tombi
         run: tombi lint --error-on-warnings; tombi format --check --diff
@@ -47,7 +47,7 @@ jobs:
         os: [ubuntu-latest, macos-latest, windows-latest]
 
     steps:
-      - uses: actions/checkout@v7.0.0
+      - uses: actions/checkout@v7.0.1
 
       - name: Install Linux dependencies
         if: ${{ matrix.os == 'ubuntu-latest' }}
@@ -101,7 +101,7 @@ jobs:
         os: [ubuntu-latest, macos-latest, windows-latest]
 
     steps:
-      - uses: actions/checkout@v7.0.0
+      - uses: actions/checkout@v7.0.1
 
       - name: Clone `basisu_c_sys_asset_files`
         run: git clone --depth 1 https://github.com/beicause/basisu_c_sys_asset_files
@@ -142,7 +142,7 @@ jobs:
     timeout-minutes: 15
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v7.0.0
+      - uses: actions/checkout@v7.0.1
 
       - name: Install Emscripten
         uses: mymindstorm/setup-emsdk@v16
@@ -188,7 +188,7 @@ jobs:
     timeout-minutes: 15
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v7.0.0
+      - uses: actions/checkout@v7.0.1
 
       - name: Disable debug symbols
         shell: bash
@@ -214,7 +214,7 @@ jobs:
           save-if: ${{ github.ref == 'refs/heads/master' }}
 
       - name: Install cargo-binstall
-        uses: cargo-bins/cargo-binstall@v1.20.1
+        uses: cargo-bins/cargo-binstall@v1.21.1
 
       - name: Install Android NDK
         run: ${ANDROID_HOME}/cmdline-tools/latest/bin/sdkmanager 'ndk;${{env.ANDROID_NDK_VERSION}}'
