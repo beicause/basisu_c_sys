@@ -11,14 +11,15 @@ use bevy::{
         tokens,
     },
     image::ImageSampler,
+    input::mouse::{MouseScrollUnit, MouseWheel},
     log::LogPlugin,
+    picking::hover::HoverMap,
     prelude::*,
     render::render_resource::{
         Extent3d, TextureDataOrder, TextureDescriptor, TextureDimension, TextureUsages,
         TextureViewDescriptor, TextureViewDimension,
     },
     scene::EntityScene,
-    text::TextBounds,
     ui::{Checked, GlobalZIndex, widget::NodeImageMode},
     ui_widgets::{RadioGroup, ValueChange, radio_self_update},
 };
@@ -85,15 +86,11 @@ const SKYBOX_FACES: [&str; 6] = [
     ORIGINAL_PATH_SKYBOX_BACK,
 ];
 
-/// Marks a grid cell whose fixed slot size and image fit are computed at runtime so the
-/// whole grid fits on one screen regardless of window size.
-#[derive(Component, Default, Clone)]
-struct GridCell;
-
-/// Grid layout: 3 visible rows × 5 columns; the 18 entries wrap into a 4th row that
-/// is reachable by scrolling the grid container.
+/// Grid layout: GRID_COLS equal columns; rows are auto-sized to their cells (square
+/// image + label), so a 3×4 viewport shows about three rows and the rest of the
+/// eighteen cells is reachable by scrolling the grid container (`scroll_grid`).
 const GRID_COLS: f32 = 5.0;
-const GRID_ROWS: f32 = 3.0;
+const GRID_ROWS: f32 = 3.5;
 const GRID_GAP: f32 = 8.0;
 const GRID_MARGIN: f32 = 12.0;
 /// Bottom padding that clears the persistent button bar (absolute, bottom-left).
@@ -101,68 +98,6 @@ const GRID_BOTTOM: f32 = 64.0;
 /// Dark translucent backdrop behind the floating UI panels, so light text and radio
 /// outlines stay legible over both the dark grid and the bright skybox.
 const OVERLAY_BG: Color = Color::srgba(0.0, 0.0, 0.0, 0.65);
-/// Image inset inside its cell.
-const CELL_PADDING: f32 = 6.0;
-/// Vertical space reserved for the (possibly two-line) file-name label.
-const LABEL_SPACE: f32 = 40.0;
-
-/// One-shot sizing pass for `GridCell` cells: gives every cell its 1/5 × 1/3 window slot
-/// and scales each image down (never up) to fit the slot while preserving aspect ratio.
-/// Runs every frame until the image assets are loaded, then removes `GridCell`.
-fn fit_cell_images(
-    mut commands: Commands,
-    mut cells: Query<(Entity, &mut Node, &Children), With<GridCell>>,
-    mut image_nodes: Query<(&mut Node, &ImageNode), Without<GridCell>>,
-    mut text_bounds: Query<&mut TextBounds, Without<GridCell>>,
-    images: Res<Assets<Image>>,
-    windows: Query<&Window>,
-) {
-    let Ok(window) = windows.single() else {
-        return;
-    };
-    let cell_w = (window.width() - 2.0 * GRID_MARGIN - (GRID_COLS - 1.0) * GRID_GAP) / GRID_COLS;
-    let cell_h =
-        (window.height() - GRID_BOTTOM - GRID_MARGIN - (GRID_ROWS - 1.0) * GRID_GAP) / GRID_ROWS;
-    let mut fitted = Vec::new();
-    for (entity, mut node, children) in &mut cells {
-        node.width = Val::Px(cell_w);
-        node.height = Val::Px(cell_h);
-        let mut ready = true;
-        for child in children.iter() {
-            if let Ok((mut child_node, image_node)) = image_nodes.get_mut(child) {
-                let Some(image) = images.get(&image_node.image) else {
-                    // Image asset not loaded yet; retry next frame.
-                    ready = false;
-                    continue;
-                };
-                let size = image.size();
-                let scale = ((cell_w - 2.0 * CELL_PADDING) / size.x as f32)
-                    .min((cell_h - LABEL_SPACE) / size.y as f32)
-                    .min(1.0);
-                child_node.width = Val::Px(size.x as f32 * scale);
-                child_node.height = Val::Px(size.y as f32 * scale);
-                info!(
-                    "fit: cell {:.0}x{:.0}, image {:.0}x{:.0} -> {:.0}x{:.0} (scale {:.3})",
-                    cell_w,
-                    cell_h,
-                    size.x as f32,
-                    size.y as f32,
-                    size.x as f32 * scale,
-                    size.y as f32 * scale,
-                    scale,
-                );
-            } else if let Ok(mut bounds) = text_bounds.get_mut(child) {
-                bounds.width = Some(cell_w - 2.0 * CELL_PADDING);
-            }
-        }
-        if ready {
-            fitted.push(entity);
-        }
-    }
-    for entity in fitted {
-        commands.entity(entity).remove::<GridCell>();
-    }
-}
 
 /// Per-app state for [`build_face_cubemap`]: the face handles we started loading
 /// (so the loads are issued exactly once) and a sticky failure flag.
@@ -268,6 +203,42 @@ fn build_face_cubemap(
     info!("built uncompressed skybox cubemap ({size:?}, {} layers)", 6);
 }
 
+/// Mouse-wheel delta per `MouseScrollUnit::Line`, in logical pixels.
+const SCROLL_LINE_HEIGHT: f32 = 40.0;
+
+/// Marker on the image-grid container so [`scroll_grid`] targets exactly one entity:
+/// every `Node` has a required `ScrollPosition`, so a bare `&mut ScrollPosition` query
+/// would match every UI node and `single_mut()` would always fail.
+#[derive(Component, Default, Clone)]
+struct GridScroll;
+
+/// Scrolls the image grid's overflowing rows into view, and only while the pointer is
+/// over the grid container itself (so wheeling over the button bar does not scroll).
+/// The grid is despawned while the skybox scene is active, making this a no-op there.
+/// Bevy 0.19 has no built-in wheel scrolling — the official
+/// `ui/scroll_and_overflow/scroll` example wires the same input-to-`ScrollPosition`
+/// path by hand.
+fn scroll_grid(
+    mut mouse_wheel_reader: MessageReader<MouseWheel>,
+    hover_map: Res<HoverMap>,
+    mut grid: Query<(Entity, &mut ScrollPosition, &ComputedNode), With<GridScroll>>,
+) {
+    let Ok((grid_entity, mut scroll_position, computed)) = grid.single_mut() else {
+        return;
+    };
+    if !hover_map.values().any(|map| map.contains_key(&grid_entity)) {
+        return;
+    }
+    let max_offset = (computed.content_size() - computed.size()) * computed.inverse_scale_factor();
+    for mouse_wheel in mouse_wheel_reader.read() {
+        let mut delta = -Vec2::new(mouse_wheel.x, mouse_wheel.y);
+        if mouse_wheel.unit == MouseScrollUnit::Line {
+            delta *= SCROLL_LINE_HEIGHT;
+        }
+        scroll_position.y = (scroll_position.y + delta.y).clamp(0.0, max_offset.y.max(0.0));
+    }
+}
+
 #[bevy_main]
 pub fn main() {
     App::new()
@@ -294,7 +265,7 @@ pub fn main() {
         .add_plugins((BasisuLoaderPlugin, FeathersPlugins))
         .insert_resource(UiTheme(create_dark_theme()))
         .add_systems(Startup, setup)
-        .add_systems(Update, (rotate_camera, fit_cell_images, build_face_cubemap))
+        .add_systems(Update, (rotate_camera, build_face_cubemap, scroll_grid))
         .run();
 }
 
@@ -451,7 +422,7 @@ fn file_name(path: &'static str) -> &'static str {
 }
 
 /// Label font size, shrunk for long file names so the label stays inside its cell
-/// (long names also wrap via `TextBounds`, but shrinking keeps most on one line).
+/// (which is as wide as the grid column).
 fn label_font_size(label: &str) -> f32 {
     match label.len() {
         0..=12 => 12.0,
@@ -482,13 +453,17 @@ fn grid_cells(alpha0: Handle<Image>, desk2: Handle<Image>) -> impl SceneList {
     cells
 }
 
-/// Scene 1: image grid. Every entry of [`GRID_ENTRIES`] gets one cell in a 5-column
-/// grid (3 visible rows) sized to the window; images are downscaled (never upscaled)
-/// to fit their cell with aspect ratio preserved, and every cell is labeled with its
-/// file name (shrunk for long names). The grid container scrolls vertically, so rows
-/// beyond the third (the grid has 18 entries) stay reachable. Cell sizes are set at
-/// runtime by `fit_cell_images`.
+/// Scene 1: image grid. Every entry of [`GRID_ENTRIES`] gets one cell in an automatic
+/// CSS grid: `GRID_COLS` equal `fr` columns, rows auto-sized to their content (a
+/// square image plus a file-name label shrunk for long names). Nothing is sized by
+/// hand — the grid container scrolls vertically (via `scroll_grid`) when the
+/// eighteen cells exceed the viewport.
 fn images_scene(alpha0: Handle<Image>, desk2: Handle<Image>) -> impl Scene {
+    // Grid tracks: GRID_COLS equal columns; GRID_ROWS explicit auto rows plus
+    // implicit auto rows, so each row is as tall as its cells.
+    let columns = vec![RepeatedGridTrack::flex(GRID_COLS as u16, 1.0)];
+    let rows = vec![RepeatedGridTrack::auto(GRID_ROWS as u16)];
+    let auto_rows = vec![GridTrack::auto()];
     bsn! {
         Camera2d
         // The grid shows HDR assets (desk .exr, HDR ktx2): an HDR target plus no
@@ -496,11 +471,16 @@ fn images_scene(alpha0: Handle<Image>, desk2: Handle<Image>) -> impl Scene {
         Hdr
         template_value(Tonemapping::None)
         SceneRoot
+        // Scrollable: rows beyond the viewport are reached via `scroll_grid`.
+        ScrollPosition(Vec2::ZERO)
+        GridScroll
         Node {
             width: percent(100),
             height: percent(100),
-            flex_direction: FlexDirection::Row,
-            flex_wrap: FlexWrap::Wrap,
+            display: Display::Grid,
+            grid_template_columns: columns,
+            grid_template_rows: rows,
+            grid_auto_rows: auto_rows,
             // Top-aligned so overflowing rows scroll into view from the bottom
             // instead of being clipped symmetrically.
             align_content: AlignContent::FlexStart,
@@ -649,23 +629,31 @@ fn skybox_scene() -> impl SceneList {
 }
 
 /// A grid cell loading an image by asset path string (bsn resolves it to a Handle at
-/// spawn time via HandleTemplate) with a file-name label underneath.
+/// spawn time via HandleTemplate) with a file-name label underneath. The cell is a
+/// plain grid item: the image fills the cell width and keeps a square aspect, the
+/// label sits below it.
 fn image_cell(path: &'static str, label: &'static str) -> impl Scene {
     let label_size = label_font_size(label);
     bsn! {
         Node {
             flex_direction: FlexDirection::Column,
             align_items: AlignItems::Center,
-            justify_content: JustifyContent::Center,
             row_gap: px(4.0),
         }
-        GridCell
         Children [
-            (ImageNode {
-                image: path,
-                image_mode: NodeImageMode::Stretch,
-            }),
-            (Text(label) TextFont { font_size: px(label_size) } TextBounds { width: None, height: None } ThemedText),
+            (
+                // Auto mode: the image's own aspect ratio sizes the node height from
+                // the definite 100% width, so non-square sources (kodim20 768x512,
+                // wikipedia 1848x888) are never distorted.
+                ImageNode {
+                    image: path,
+                    image_mode: NodeImageMode::Auto,
+                }
+                Node {
+                    width: percent(100),
+                }
+            ),
+            (Text(label) TextFont { font_size: px(label_size) } ThemedText),
         ]
     }
 }
@@ -678,16 +666,19 @@ fn image_cell_handle(handle: Handle<Image>, label: &'static str) -> impl Scene {
         Node {
             flex_direction: FlexDirection::Column,
             align_items: AlignItems::Center,
-            justify_content: JustifyContent::Center,
             row_gap: px(4.0),
         }
-        GridCell
         Children [
-            (ImageNode {
-                image: handle,
-                image_mode: NodeImageMode::Stretch,
-            }),
-            (Text(label) TextFont { font_size: px(label_size) } TextBounds { width: None, height: None } ThemedText),
+            (
+                ImageNode {
+                    image: handle,
+                    image_mode: NodeImageMode::Auto,
+                }
+                Node {
+                    width: percent(100),
+                }
+            ),
+            (Text(label) TextFont { font_size: px(label_size) } ThemedText),
         ]
     }
 }
