@@ -1,29 +1,26 @@
 use crate::{
     extra::BuHeap,
+    extra::types,
     transcoder as trans_sys,
     utils::{BasisTextureFormat, TranscodeTargetFormat},
 };
 use alloc::vec::Vec;
 use async_lock::OnceCell;
 use core::num::NonZero;
-use wgpu_types::{
-    AstcBlock, AstcChannel, Extent3d, TextureDataOrder, TextureFormat, TextureViewDimension,
-};
 
 #[derive(Debug, Clone, PartialEq)]
 pub struct TranscodedImage {
     /// The output data of image pixels.
+    /// The data order currently is always `TextureDataOrder::MipMajor`.
     pub data: Vec<u8>,
-    /// The data order. Currently it's always [`TextureDataOrder::MipMajor`].
-    pub data_order: TextureDataOrder,
     /// The size of transcoded image.
-    pub size: Extent3d,
+    pub size: types::Extent3d,
     /// The format of transcoded image.
-    pub format: TextureFormat,
+    pub format: types::TextureFormat,
     /// The mip level count of transcoded image.
     pub mip_level_count: u32,
     /// The texture view dimension of transcoded image. It can be D2, D2Array, Cube or CubeArray.
-    pub view_dimension: TextureViewDimension,
+    pub view_dimension: types::TextureViewDimension,
 }
 
 static BASISU_TRANSCODER_INITIALIZED: OnceCell<()> = OnceCell::new();
@@ -301,20 +298,20 @@ impl BasisuTranscoder {
 
         let view_dimension = if info.layers == 0 {
             if info.faces == 1 {
-                TextureViewDimension::D2
+                types::TextureViewDimension::D2
             } else if info.faces == 6 {
-                TextureViewDimension::Cube
+                types::TextureViewDimension::Cube
             } else {
                 return Err(BasisuTranscodeError::InvalidFaceCount(info.faces));
             }
         } else if info.faces == 1 {
-            TextureViewDimension::D2Array
+            types::TextureViewDimension::D2Array
         } else if info.faces == 6 {
-            TextureViewDimension::CubeArray
+            types::TextureViewDimension::CubeArray
         } else {
             return Err(BasisuTranscodeError::InvalidFaceCount(info.faces));
         };
-        let extent = Extent3d {
+        let extent = types::Extent3d {
             width: info.width,
             height: info.height,
             depth_or_array_layers: total_layers * info.faces,
@@ -326,7 +323,6 @@ impl BasisuTranscoder {
         };
         Ok(TranscodedImage {
             data,
-            data_order: TextureDataOrder::MipMajor,
             // Note: we must give wgpu the logical texture dimensions, so it can correctly compute mip sizes.
             // However this currently causes wgpu to panic if the dimensions aren't a multiple of blocksize.
             // See https://github.com/gfx-rs/wgpu/issues/7677 for more context.
@@ -502,7 +498,11 @@ fn select_preferred_transcode_target(
     }
 }
 
-pub fn transcode_target_to_wgpu_format(transcode: TranscodeTargetFormat) -> Option<TextureFormat> {
+pub fn transcode_target_to_wgpu_format(
+    transcode: TranscodeTargetFormat,
+) -> Option<types::TextureFormat> {
+    use types::{AstcBlock, AstcChannel, TextureFormat};
+
     Some(match transcode {
         TranscodeTargetFormat::Etc1Rgb => TextureFormat::Etc2Rgb8Unorm,
         TranscodeTargetFormat::Etc2Rgba => TextureFormat::Etc2Rgba8Unorm,

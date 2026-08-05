@@ -15,9 +15,9 @@ use basisu_c_sys::{
     },
     extra::{
         BasisuEncoder, BasisuEncoderParams, SourceImage, SourceImageFormat, basisu_encoder_init,
+        types,
     },
 };
-use wgpu_types::{Extent3d, TextureViewDimension};
 
 use crate::common::SNAPSHOT_PATH;
 
@@ -54,7 +54,7 @@ fn encode_cubemap_xuastc_ldr_4x4_by_slice() -> Vec<u8> {
         let source = SourceImage {
             data: img.as_bytes(),
             format: SourceImageFormat::Rgba8,
-            size: Extent3d {
+            size: types::Extent3d {
                 width: img.width(),
                 height: img.height(),
                 depth_or_array_layers: 1,
@@ -63,7 +63,7 @@ fn encode_cubemap_xuastc_ldr_4x4_by_slice() -> Vec<u8> {
         encoder.set_image_slice(i as u32, source).unwrap();
     }
     let params = BasisuEncoderParams::new_with_srgb_defaults(BasisTextureFormat::XuastcLdr4x4)
-        .with_tex_type(TextureViewDimension::Cube);
+        .with_tex_type(types::TextureViewDimension::Cube);
     encoder
         .compress(params.with_flags(BU_COMP_FLAGS_DEBUG_OUTPUT | BU_COMP_FLAGS_VALIDATE_OUTPUT))
         .unwrap()
@@ -84,7 +84,7 @@ fn encode_cubemap_astc_ldr_8x8_mips_by_image() -> Vec<u8> {
             .copied()
             .collect::<Vec<u8>>(),
         format: SourceImageFormat::Rgba8,
-        size: wgpu_types::Extent3d {
+        size: types::Extent3d {
             width: images[0].width(),
             height: images[0].height(),
             depth_or_array_layers: images.len() as u32,
@@ -94,7 +94,7 @@ fn encode_cubemap_astc_ldr_8x8_mips_by_image() -> Vec<u8> {
     encoder
         .compress(
             BasisuEncoderParams::new_with_srgb_defaults(BasisTextureFormat::AstcLdr8x8)
-                .with_tex_type(TextureViewDimension::Cube)
+                .with_tex_type(types::TextureViewDimension::Cube)
                 .with_flags(
                     BU_COMP_FLAGS_DEBUG_OUTPUT
                         | BU_COMP_FLAGS_VALIDATE_OUTPUT
@@ -148,7 +148,7 @@ fn encode_exr_image() -> Vec<u8> {
     let source_image = SourceImage {
         data: image.as_bytes(),
         format: SourceImageFormat::Rgba32Float,
-        size: wgpu_types::Extent3d {
+        size: types::Extent3d {
             width: image.width(),
             height: image.height(),
             depth_or_array_layers: 1,

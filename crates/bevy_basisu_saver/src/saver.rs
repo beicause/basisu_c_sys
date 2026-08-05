@@ -1,5 +1,5 @@
 use basisu_c_sys::extra::{
-    BasisuEncodeError, BasisuEncoder, BasisuEncoderParams, SourceImageFormat,
+    BasisuEncodeError, BasisuEncoder, BasisuEncoderParams, SourceImageFormat, types,
 };
 use bevy::{
     asset::{
@@ -8,7 +8,7 @@ use bevy::{
     },
     image::{Image, ImageLoader},
     reflect::TypePath,
-    render::render_resource::TextureFormat,
+    render::render_resource::{Extent3d, TextureFormat},
 };
 use bevy_basisu_loader::{BasisuLoader, BasisuLoaderSettings};
 use serde::{Deserialize, Serialize};
@@ -92,7 +92,7 @@ impl AssetSaver for BasisuSaver {
         encoder.set_image(basisu_c_sys::extra::SourceImage {
             data,
             format,
-            size: asset.texture_descriptor.size,
+            size: convert_extent3d(asset.texture_descriptor.size),
         })?;
         let result = encoder.compress(
             settings
@@ -118,5 +118,13 @@ impl AssetSaver for BasisuSaver {
             sampler: asset.sampler.clone(),
             ..Default::default()
         })
+    }
+}
+
+fn convert_extent3d(size: Extent3d) -> types::Extent3d {
+    types::Extent3d {
+        width: size.width,
+        height: size.height,
+        depth_or_array_layers: size.depth_or_array_layers,
     }
 }

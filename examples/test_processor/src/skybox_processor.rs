@@ -4,10 +4,10 @@ use bevy::{
     asset::{AsyncReadExt, AsyncWriteExt, RenderAssetUsages, processor::Process},
     image::{CompressedImageFormats, Image},
     reflect::TypePath,
-    render::render_resource::TextureViewDimension,
+    render::render_resource::Extent3d,
 };
 use bevy_basisu_loader::{BasisuLoader, BasisuLoaderSettings};
-use bevy_basisu_saver::sys::extra::{BasisuEncoder, BasisuEncoderParams, SourceImageFormat};
+use bevy_basisu_saver::sys::extra::{BasisuEncoder, BasisuEncoderParams, SourceImageFormat, types};
 use bevy_basisu_saver::sys::{
     common::{BU_COMP_FLAGS_DEBUG_OUTPUT, BU_COMP_FLAGS_VALIDATE_OUTPUT},
     extra::SourceImage,
@@ -64,7 +64,7 @@ fn encode_cubemap(face_paths: &[String; 6], debug: bool) -> Vec<u8> {
                 SourceImage {
                     data: image.data.as_deref().unwrap(),
                     format: SourceImageFormat::Rgba8,
-                    size: image.texture_descriptor.size,
+                    size: convert_extent3d(image.texture_descriptor.size),
                 },
             )
             .unwrap();
@@ -72,7 +72,7 @@ fn encode_cubemap(face_paths: &[String; 6], debug: bool) -> Vec<u8> {
     let params = BasisuEncoderParams::new_with_srgb_defaults(
         bevy_basisu_saver::sys::BasisTextureFormat::XuastcLdr8x8,
     )
-    .with_tex_type(TextureViewDimension::Cube);
+    .with_tex_type(types::TextureViewDimension::Cube);
 
     encoder
         .compress(if debug {
@@ -81,4 +81,12 @@ fn encode_cubemap(face_paths: &[String; 6], debug: bool) -> Vec<u8> {
             params
         })
         .unwrap()
+}
+
+fn convert_extent3d(size: Extent3d) -> types::Extent3d {
+    types::Extent3d {
+        width: size.width,
+        height: size.height,
+        depth_or_array_layers: size.depth_or_array_layers,
+    }
 }

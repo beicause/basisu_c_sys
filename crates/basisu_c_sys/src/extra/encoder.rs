@@ -1,10 +1,10 @@
 use crate::common;
 use crate::encoder as enc_sys;
 use crate::extra::BuHeap;
+use crate::extra::types;
 use crate::utils::BasisTextureFormat;
 use alloc::vec::Vec;
 use async_lock::OnceCell;
-use wgpu_types::{Extent3d, TextureViewDimension};
 
 #[derive(Debug, Clone, Copy)]
 pub enum SourceImageFormat {
@@ -27,7 +27,7 @@ pub struct SourceImage<'a> {
     pub data: &'a [u8],
     pub format: SourceImageFormat,
     /// The size of image.
-    pub size: Extent3d,
+    pub size: types::Extent3d,
 }
 
 impl SourceImage<'_> {
@@ -96,7 +96,7 @@ pub enum BasisuEncodeError {
     EmptyImageData,
     #[error("Image {image_size:?} Expects data length {expected_len}, got {data_len}")]
     ImageUnmatchedDataAndSize {
-        image_size: Extent3d,
+        image_size: types::Extent3d,
         expected_len: usize,
         data_len: usize,
     },
@@ -148,22 +148,17 @@ impl BasisuEncoderParams {
     }
 
     /// Return [`Self`] with `common::BU_COMP_FLAGS_TEXTURE_TYPE_*` set according to the view dimension.
-    ///
-    /// Panic if the view dimension is D1 or D3.
-    pub const fn with_tex_type(mut self, tex_type: TextureViewDimension) -> Self {
+    pub const fn with_tex_type(mut self, tex_type: types::TextureViewDimension) -> Self {
         self.flags_and_quality = self.flags_and_quality
             & !(common::BU_COMP_FLAGS_TEXTURE_TYPE_MASK
                 << common::BU_COMP_FLAGS_TEXTURE_TYPE_SHIFT);
 
         self.flags_and_quality = self.flags_and_quality
             | match tex_type {
-                TextureViewDimension::D2 => common::BU_COMP_FLAGS_TEXTURE_TYPE_2D,
-                TextureViewDimension::D2Array => common::BU_COMP_FLAGS_TEXTURE_TYPE_2D_ARRAY,
-                TextureViewDimension::Cube | TextureViewDimension::CubeArray => {
+                types::TextureViewDimension::D2 => common::BU_COMP_FLAGS_TEXTURE_TYPE_2D,
+                types::TextureViewDimension::D2Array => common::BU_COMP_FLAGS_TEXTURE_TYPE_2D_ARRAY,
+                types::TextureViewDimension::Cube | types::TextureViewDimension::CubeArray => {
                     common::BU_COMP_FLAGS_TEXTURE_TYPE_CUBEMAP_ARRAY
-                }
-                TextureViewDimension::D1 | TextureViewDimension::D3 => {
-                    panic!("Compressing 1D or 3D texture is unsupported")
                 }
             };
         self
@@ -327,11 +322,9 @@ impl Drop for BasisuEncoder {
 
 #[cfg(test)]
 mod tests {
-    use wgpu_types::Extent3d;
-
     use crate::extra::{
         BasisuEncodeError, BasisuEncoder, SourceImage, SourceImageFormat, basisu_encoder_init,
-        encoder::BASISU_ENCODER_INITIALIZED,
+        encoder::BASISU_ENCODER_INITIALIZED, types,
     };
 
     #[test]
@@ -352,14 +345,14 @@ mod tests {
             encoder.set_image(SourceImage {
                 data: &[1],
                 format: SourceImageFormat::Rgba8,
-                size: Extent3d {
+                size: types::Extent3d {
                     width: 1,
                     height: 1,
                     depth_or_array_layers: 1
                 },
             }),
             Err(BasisuEncodeError::ImageUnmatchedDataAndSize {
-                image_size: Extent3d {
+                image_size: types::Extent3d {
                     width: 1,
                     height: 1,
                     depth_or_array_layers: 1
