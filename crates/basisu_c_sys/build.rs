@@ -1,5 +1,7 @@
 use std::sync::OnceLock;
 
+mod wasm_bindgen;
+
 const FLAGS: &[&str] = &[
     "/wd4189",
     "-Wno-unused-variable",
@@ -99,7 +101,7 @@ fn main() {
     let target = std::env::var("TARGET").unwrap();
 
     if target == "wasm32-unknown-unknown" {
-        wasm_bindgen();
+        wasm_bindgen::generate();
         let out_dir = std::env::var("OUT_DIR").unwrap();
         let target_feature = std::env::var("CARGO_CFG_TARGET_FEATURE").unwrap();
         let args_dir = std::path::PathBuf::from_iter([&out_dir, "build_args"]);
@@ -269,190 +271,6 @@ fn bindgen() {
         .expect("Unable to generate bindings")
         .write_to_file(binding_file)
         .expect("Couldn't write bindings!");
-}
-
-fn wasm_bindgen() {
-    let encoder_api_file =
-        std::path::PathBuf::from_iter([&std::env::var("OUT_DIR").unwrap(), "basisu_c_api.rs"]);
-    let transcoder_api_file = std::path::PathBuf::from_iter([
-        &std::env::var("OUT_DIR").unwrap(),
-        "basisu_c_transcoder_api.rs",
-    ]);
-    let encoder_api_file = std::fs::read_to_string(encoder_api_file).unwrap();
-    let transcoder_api_file = std::fs::read_to_string(transcoder_api_file).unwrap();
-
-    let encoder_ast = syn::parse_file(&encoder_api_file).unwrap();
-    let transcoder_ast = syn::parse_file(&transcoder_api_file).unwrap();
-
-    fn gen_binding_funcs(file_ast: &syn::File) -> Vec<syn::ForeignItem> {
-        file_ast
-            .items
-            .iter()
-            .filter_map(|item| {
-                if let syn::Item::ForeignMod(foreign) = item {
-                    assert!(foreign.items.len() == 1);
-                    let syn::ForeignItem::Fn(func) = &foreign.items[0] else {
-                        return None;
-                    };
-                    let mut func_cloned: syn::ForeignItemFn = syn::parse_quote!(#func);
-                    let func_name = "_".to_string() + &func.sig.ident.to_string();
-                    func_cloned.attrs =
-                        syn::parse_quote!(#[wasm_bindgen(method,js_name=#func_name)]);
-                    func_cloned
-                        .sig
-                        .inputs
-                        .insert(0, syn::parse_quote!(this: &Basisu));
-
-                    if let syn::ReturnType::Type(_, ty) = &mut func_cloned.sig.output
-                        && matches!(
-                            ty.as_ref(),
-                            syn::Type::Path(tp) if tp.qself.is_none() && tp.path.is_ident("Bool32")
-                        )
-                    {
-                        *ty = syn::parse_quote!(u32);
-                    }
-                    Some(syn::ForeignItem::Fn(func_cloned))
-                } else {
-                    None
-                }
-            })
-            .collect()
-    }
-
-    fn gen_public_funcs(file_ast: &syn::File) -> Vec<syn::Item> {
-        file_ast
-            .items
-            .iter()
-            .filter_map(|item| {
-                if let syn::Item::ForeignMod(foreign) = item {
-                    assert!(foreign.items.len() == 1);
-                    let syn::ForeignItem::Fn(func) = &foreign.items[0] else {
-                        return None;
-                    };
-                    let func_name = func.sig.ident.clone();
-                    let func_args = func
-                        .sig
-                        .inputs
-                        .iter()
-                        .map(|arg| {
-                            let syn::FnArg::Typed(pat_type) = arg else {
-                                unreachable!()
-                            };
-                            let syn::Pat::Ident(ident) = &*pat_type.pat else {
-                                unreachable!()
-                            };
-                            ident.ident.clone()
-                        })
-                        .collect::<Vec<syn::Ident>>();
-                    let block: syn::Block = if let syn::ReturnType::Type(_, ty) = &func.sig.output
-                        && matches!(
-                            ty.as_ref(),
-                            syn::Type::Path(tp) if tp.qself.is_none() && tp.path.is_ident("Bool32")
-                        ) {
-                        syn::parse_quote! (
-                            {
-                                BASISU_INSTANCE.with(|inst| {
-                                    let inst = inst.get().unwrap();
-                                    Bool32(inst.#func_name(#(#func_args),*))
-                                })
-                            }
-                        )
-                    } else {
-                        syn::parse_quote! (
-                            {
-                                BASISU_INSTANCE.with(|inst| {
-                                    let inst = inst.get().unwrap();
-                                    inst.#func_name(#(#func_args),*)
-                                })
-                            }
-                        )
-                    };
-                    let func_attrs = &func.attrs;
-                    let func_sig = &func.sig;
-                    let mut func = syn::ItemFn {
-                        attrs: syn::parse_quote!(#(#func_attrs),*),
-                        vis: syn::Visibility::Public(syn::token::Pub::default()),
-                        sig: syn::parse_quote!(#func_sig),
-                        block: Box::new(block),
-                        modifiers: syn::FnModifiers::default(),
-                    };
-                    func.sig.safety = syn::Safety::Unsafe(syn::token::Unsafe::default());
-                    Some(syn::Item::Fn(func))
-                } else {
-                    None
-                }
-            })
-            .collect()
-    }
-
-    let encoder_binding_apis = gen_binding_funcs(&encoder_ast);
-    let transcoder_binding_apis = gen_binding_funcs(&transcoder_ast);
-
-    std::fs::write(
-        std::path::PathBuf::from_iter([
-            &std::env::var("OUT_DIR").unwrap(),
-            "wasm_encoder_binding.rs",
-        ]),
-        prettyplease::unparse(&syn::parse_quote!(
-            #[wasm_bindgen]
-            extern "C" {
-                #[derive(Debug)]
-                pub type Basisu;
-
-                #[wasm_bindgen(method,getter,js_name=HEAPU8)]
-                pub(crate) fn wasm_heap_memory(this: &Basisu) -> Uint8Array;
-
-                #(#encoder_binding_apis)*
-                #(#transcoder_binding_apis)*
-            }
-        )),
-    )
-    .unwrap();
-
-    std::fs::write(
-        std::path::PathBuf::from_iter([
-            &std::env::var("OUT_DIR").unwrap(),
-            "wasm_transcoder_binding.rs",
-        ]),
-        prettyplease::unparse(&syn::parse_quote!(
-            #[wasm_bindgen]
-            extern "C" {
-                #[derive(Debug)]
-                pub type Basisu;
-
-                #[wasm_bindgen(method,getter,js_name=HEAPU8)]
-                pub(crate) fn wasm_heap_memory(this: &Basisu) -> Uint8Array;
-
-                #(#transcoder_binding_apis)*
-            }
-        )),
-    )
-    .unwrap();
-
-    let encoder_pub_funcs = gen_public_funcs(&encoder_ast);
-    let transcoder_pub_funcs = gen_public_funcs(&transcoder_ast);
-
-    std::fs::write(
-        std::path::PathBuf::from_iter([
-            &std::env::var("OUT_DIR").unwrap(),
-            "wasm_encoder_pub_funcs.rs",
-        ]),
-        prettyplease::unparse(&syn::parse_quote!(
-            #(#encoder_pub_funcs)*
-        )),
-    )
-    .unwrap();
-
-    std::fs::write(
-        std::path::PathBuf::from_iter([
-            &std::env::var("OUT_DIR").unwrap(),
-            "wasm_transcoder_pub_funcs.rs",
-        ]),
-        prettyplease::unparse(&syn::parse_quote!(
-            #(#transcoder_pub_funcs)*
-        )),
-    )
-    .unwrap();
 }
 
 fn compile_basisu_static() {
