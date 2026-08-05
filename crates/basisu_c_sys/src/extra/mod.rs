@@ -3,7 +3,6 @@
 mod encoder;
 mod transcoder;
 
-use bytemuck::NoUninit;
 #[cfg(feature = "encoder")]
 #[cfg_attr(docsrs, doc(cfg(feature = "encoder")))]
 pub use encoder::*;
@@ -40,8 +39,7 @@ impl BuHeap {
             }
         }
     }
-    pub fn new<T: NoUninit>(data: &[T]) -> Option<Self> {
-        let data = bytemuck::must_cast_slice(data);
+    pub fn new(data: &[u8]) -> Option<Self> {
         let capacity = NonZero::new(data.len() as u64)?;
         let mut bt = Self::new_uninit(capacity);
         bt.try_write(0, data).unwrap();

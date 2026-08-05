@@ -4,36 +4,54 @@ use crate::extra::BuHeap;
 use crate::utils::BasisTextureFormat;
 use alloc::vec::Vec;
 use async_lock::OnceCell;
-use bytemuck::NoUninit;
-use bytemuck::PodCastError;
 use wgpu_types::{Extent3d, TextureViewDimension};
 
-#[derive(Debug, Clone)]
-pub enum SourceImageData<'a> {
-    /// A 32bpp RGBA data slice (4 bytes per pixel)
-    Rgba8(&'a [u8]),
-    /// A 64bpp float RGBA data slice (16 bytes per pixel)
-    Rgba32Float(&'a [f32]),
+#[derive(Debug, Clone, Copy)]
+pub enum SourceImageFormat {
+    Rgba8,
+    Rgba32Float,
 }
 
-impl<'a> SourceImageData<'a> {
-    /// Cast the slice to [`SourceImageData::Rgba32Float`]. Return an error if the casting failed.
-    pub fn rgba32float<T: NoUninit>(data: &'a [T]) -> Result<SourceImageData<'a>, PodCastError> {
-        bytemuck::try_cast_slice(data).map(Self::Rgba32Float)
-    }
-
-    /// Cast the slice to [`SourceImageData::Rgba8`]. Return an error if the casting failed.
-    pub fn rgba8<T: NoUninit>(data: &'a [T]) -> Result<SourceImageData<'a>, PodCastError> {
-        bytemuck::try_cast_slice(data).map(Self::Rgba32Float)
+impl SourceImageFormat {
+    fn pixel_bytes(&self) -> u32 {
+        match self {
+            SourceImageFormat::Rgba8 => 4 * size_of::<u8>() as u32,
+            SourceImageFormat::Rgba32Float => 4 * size_of::<f32>() as u32,
+        }
     }
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Copy)]
 pub struct SourceImage<'a> {
     /// The input data of image pixels.
-    pub data: SourceImageData<'a>,
+    pub data: &'a [u8],
+    pub format: SourceImageFormat,
     /// The size of image.
     pub size: Extent3d,
+}
+
+impl SourceImage<'_> {
+    fn expected_per_layer_bytes(&self) -> u32 {
+        self.size.width * self.size.height * self.format.pixel_bytes()
+    }
+
+    fn expected_bytes(&self) -> u32 {
+        self.expected_per_layer_bytes() * self.size.depth_or_array_layers
+    }
+
+    fn validate_image_data(&self) -> Result<(), BasisuEncodeError> {
+        if self.data.is_empty() {
+            return Err(BasisuEncodeError::EmptyImageData);
+        }
+        if self.data.len() != self.expected_bytes() as usize {
+            return Err(BasisuEncodeError::ImageUnmatchedDataAndSize {
+                image_size: self.size,
+                expected_len: self.expected_bytes() as usize,
+                data_len: self.data.len(),
+            });
+        }
+        Ok(())
+    }
 }
 
 static BASISU_ENCODER_INITIALIZED: OnceCell<()> = OnceCell::new();
@@ -178,33 +196,20 @@ impl BasisuEncoder {
     pub fn set_image(&mut self, image: SourceImage) -> Result<(), BasisuEncodeError> {
         self.clear_image();
 
-        match image.data {
-            SourceImageData::Rgba8(data) => unsafe {
-                let pixel_bytes = 4;
-                let expected_len = (image.size.width
-                    * image.size.height
-                    * image.size.depth_or_array_layers
-                    * pixel_bytes) as usize;
-                if data.len() != expected_len {
-                    return Err(BasisuEncodeError::ImageUnmatchedDataAndSize {
-                        image_size: image.size,
-                        expected_len,
-                        data_len: data.len(),
-                    });
-                }
-
-                let Some(bu_heap) = BuHeap::new(data) else {
-                    return Err(BasisuEncodeError::EmptyImageData);
-                };
-                let ptr = u64::from(bu_heap.ptr());
+        image.validate_image_data()?;
+        let bu_heap =
+            BuHeap::new(image.data).expect("The image data should be validated to not be empty");
+        let ptr = u64::from(bu_heap.ptr());
+        match image.format {
+            SourceImageFormat::Rgba8 => unsafe {
                 for i in 0..image.size.depth_or_array_layers {
                     if enc_sys::bu_comp_params_set_image_rgba32(
                         self.params,
                         i,
-                        ptr + (i * image.size.width * image.size.height * pixel_bytes) as u64,
+                        ptr + (i * image.expected_per_layer_bytes()) as u64,
                         image.size.width,
                         image.size.height,
-                        image.size.width * pixel_bytes,
+                        image.size.width * image.format.pixel_bytes(),
                     )
                     .is_err()
                     {
@@ -212,32 +217,15 @@ impl BasisuEncoder {
                     }
                 }
             },
-            SourceImageData::Rgba32Float(data) => unsafe {
-                let pixel_bytes = 16;
-                let expected_len = (image.size.width
-                    * image.size.height
-                    * image.size.depth_or_array_layers
-                    * pixel_bytes) as usize;
-                if data.len() != expected_len {
-                    return Err(BasisuEncodeError::ImageUnmatchedDataAndSize {
-                        image_size: image.size,
-                        expected_len,
-                        data_len: data.len(),
-                    });
-                }
-
-                let Some(bu_heap) = BuHeap::new(data) else {
-                    return Err(BasisuEncodeError::EmptyImageData);
-                };
-                let ptr = u64::from(bu_heap.ptr());
+            SourceImageFormat::Rgba32Float => unsafe {
                 for i in 0..image.size.depth_or_array_layers {
                     if enc_sys::bu_comp_params_set_image_float_rgba(
                         self.params,
                         i,
-                        ptr + (i * image.size.width * image.size.height * pixel_bytes) as u64,
+                        ptr + (i * image.expected_per_layer_bytes()) as u64,
                         image.size.width,
                         image.size.height,
-                        image.size.width * pixel_bytes,
+                        image.size.width * image.format.pixel_bytes(),
                     )
                     .is_err()
                     {
@@ -271,63 +259,33 @@ impl BasisuEncoder {
             return Err(BasisuEncodeError::SetImageSliceOnlyAcceptsOneLayer);
         }
 
-        match image.data {
-            SourceImageData::Rgba8(data) => unsafe {
-                let pixel_bytes = 4;
-                let expected_len = (image.size.width
-                    * image.size.height
-                    * image.size.depth_or_array_layers
-                    * pixel_bytes) as usize;
-                if data.len() != expected_len {
-                    return Err(BasisuEncodeError::ImageUnmatchedDataAndSize {
-                        image_size: image.size,
-                        expected_len,
-                        data_len: data.len(),
-                    });
-                }
-
-                let Some(bu_heap) = BuHeap::new(data) else {
-                    return Err(BasisuEncodeError::EmptyImageData);
-                };
-                let ptr = u64::from(bu_heap.ptr());
+        image.validate_image_data()?;
+        let bu_heap =
+            BuHeap::new(image.data).expect("The image data should be validated to not be empty");
+        let ptr = u64::from(bu_heap.ptr());
+        match image.format {
+            SourceImageFormat::Rgba8 => unsafe {
                 if enc_sys::bu_comp_params_set_image_rgba32(
                     self.params,
                     index,
                     ptr,
                     image.size.width,
                     image.size.height,
-                    image.size.width * pixel_bytes,
+                    image.size.width * image.format.pixel_bytes(),
                 )
                 .is_err()
                 {
                     return Err(BasisuEncodeError::BuSetImageFailed);
                 }
             },
-            SourceImageData::Rgba32Float(data) => unsafe {
-                let pixel_bytes = 16;
-                let expected_len = (image.size.width
-                    * image.size.height
-                    * image.size.depth_or_array_layers
-                    * pixel_bytes) as usize;
-                if data.len() != expected_len {
-                    return Err(BasisuEncodeError::ImageUnmatchedDataAndSize {
-                        image_size: image.size,
-                        expected_len,
-                        data_len: data.len(),
-                    });
-                }
-
-                let Some(bu_heap) = BuHeap::new(data) else {
-                    return Err(BasisuEncodeError::EmptyImageData);
-                };
-                let ptr = u64::from(bu_heap.ptr());
+            SourceImageFormat::Rgba32Float => unsafe {
                 if enc_sys::bu_comp_params_set_image_float_rgba(
                     self.params,
                     index,
                     ptr,
                     image.size.width,
                     image.size.height,
-                    image.size.width * pixel_bytes,
+                    image.size.width * image.format.pixel_bytes(),
                 )
                 .is_err()
                 {
@@ -372,7 +330,7 @@ mod tests {
     use wgpu_types::Extent3d;
 
     use crate::extra::{
-        BasisuEncodeError, BasisuEncoder, SourceImage, SourceImageData, basisu_encoder_init,
+        BasisuEncodeError, BasisuEncoder, SourceImage, SourceImageFormat, basisu_encoder_init,
         encoder::BASISU_ENCODER_INITIALIZED,
     };
 
@@ -392,7 +350,8 @@ mod tests {
         let mut encoder = BasisuEncoder::new();
         assert_eq!(
             encoder.set_image(SourceImage {
-                data: SourceImageData::Rgba8(&[]),
+                data: &[1],
+                format: SourceImageFormat::Rgba8,
                 size: Extent3d {
                     width: 1,
                     height: 1,
@@ -406,7 +365,7 @@ mod tests {
                     depth_or_array_layers: 1
                 },
                 expected_len: 4,
-                data_len: 0
+                data_len: 1
             })
         );
     }

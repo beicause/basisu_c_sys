@@ -1,4 +1,6 @@
-use basisu_c_sys::extra::{BasisuEncodeError, BasisuEncoder, BasisuEncoderParams, SourceImageData};
+use basisu_c_sys::extra::{
+    BasisuEncodeError, BasisuEncoder, BasisuEncoderParams, SourceImageFormat,
+};
 use bevy::{
     asset::{
         AsyncWriteExt, processor::LoadTransformAndSave, saver::AssetSaver,
@@ -79,21 +81,17 @@ impl AssetSaver for BasisuSaver {
         };
 
         let mut encoder = BasisuEncoder::new();
+        let (format, data) = match (&asset.data, asset.texture_descriptor.format) {
+            (None, _) => return Err(BasisuSaverError::EmptyData),
+            (Some(data), TextureFormat::Rgba8Unorm | TextureFormat::Rgba8UnormSrgb) => {
+                (SourceImageFormat::Rgba8, data)
+            }
+            (Some(data), TextureFormat::Rgba32Float) => (SourceImageFormat::Rgba32Float, data),
+            (_, format) => return Err(BasisuSaverError::UnsupportedTextureFormat(format)),
+        };
         encoder.set_image(basisu_c_sys::extra::SourceImage {
-            data: match (&asset.data, asset.texture_descriptor.format) {
-                (None, _) => return Err(BasisuSaverError::EmptyData),
-                (Some(data), TextureFormat::Rgba8Unorm | TextureFormat::Rgba8UnormSrgb) => {
-                    SourceImageData::Rgba8(data)
-                }
-                (Some(data), TextureFormat::Rgba32Float) => {
-                    if let Ok(data) = SourceImageData::rgba32float(data) {
-                        data
-                    } else {
-                        return Err(BasisuSaverError::UnalignedRgba32Float);
-                    }
-                }
-                (_, format) => return Err(BasisuSaverError::UnsupportedTextureFormat(format)),
-            },
+            data,
+            format,
             size: asset.texture_descriptor.size,
         })?;
         let result = encoder.compress(
