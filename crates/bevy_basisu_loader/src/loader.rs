@@ -1,13 +1,13 @@
 use basisu_c_sys::TranscodeTargetFormat;
 use basisu_c_sys::extra::{
-    BasisuTranscodeError, BasisuTranscoder, ChannelType, SupportedTextureCompression,
+    BasisuTranscodeError, BasisuTranscoder, ChannelType, SupportedTextureCompression, types,
 };
 use bevy::asset::{AssetLoader, RenderAssetUsages};
 use bevy::image::ImageSampler;
 use bevy::prelude::*;
 use bevy::render::render_resource::{
-    TextureDescriptor, TextureDimension, TextureUsages, TextureViewDescriptor,
-    WgpuFeatures as Features,
+    AstcBlock, AstcChannel, Extent3d, TextureDescriptor, TextureDimension, TextureFormat,
+    TextureUsages, TextureViewDescriptor, TextureViewDimension, WgpuFeatures as Features,
 };
 use serde::{Deserialize, Serialize};
 use thiserror::Error;
@@ -122,21 +122,21 @@ impl AssetLoader for BasisuLoader {
         }
         Ok(Image {
             data: Some(out_image.data),
-            data_order: out_image.data_order,
+            data_order: bevy::render::render_resource::TextureDataOrder::MipMajor,
             texture_descriptor: TextureDescriptor {
                 label: None,
-                size: out_image.size,
+                size: convert_extent3d(out_image.size),
                 mip_level_count: out_image.mip_level_count,
                 sample_count: 1,
                 dimension: TextureDimension::D2,
-                format: out_image.format,
+                format: convert_format(out_image.format),
                 usage: TextureUsages::TEXTURE_BINDING
                     | TextureUsages::COPY_DST
                     | TextureUsages::COPY_DST,
                 view_formats: &[],
             },
             texture_view_descriptor: Some(TextureViewDescriptor {
-                dimension: Some(out_image.view_dimension),
+                dimension: Some(convert_view_dimension(out_image.view_dimension)),
                 ..Default::default()
             }),
             copy_on_resize: false,
@@ -147,5 +147,89 @@ impl AssetLoader for BasisuLoader {
 
     fn extensions(&self) -> &[&str] {
         &["basisu.ktx2"]
+    }
+}
+
+fn convert_extent3d(size: types::Extent3d) -> Extent3d {
+    Extent3d {
+        width: size.width,
+        height: size.height,
+        depth_or_array_layers: size.depth_or_array_layers,
+    }
+}
+
+fn convert_astc_channel(channel: types::AstcChannel) -> AstcChannel {
+    match channel {
+        types::AstcChannel::Unorm => AstcChannel::Unorm,
+        types::AstcChannel::UnormSrgb => AstcChannel::UnormSrgb,
+        types::AstcChannel::Hdr => AstcChannel::Hdr,
+    }
+}
+fn convert_astc_block(block: types::AstcBlock) -> AstcBlock {
+    match block {
+        types::AstcBlock::B4x4 => AstcBlock::B4x4,
+        types::AstcBlock::B5x4 => AstcBlock::B5x4,
+        types::AstcBlock::B5x5 => AstcBlock::B5x5,
+        types::AstcBlock::B6x5 => AstcBlock::B6x5,
+        types::AstcBlock::B6x6 => AstcBlock::B6x6,
+        types::AstcBlock::B8x5 => AstcBlock::B8x5,
+        types::AstcBlock::B8x6 => AstcBlock::B8x6,
+        types::AstcBlock::B8x8 => AstcBlock::B8x8,
+        types::AstcBlock::B10x5 => AstcBlock::B10x5,
+        types::AstcBlock::B10x6 => AstcBlock::B10x6,
+        types::AstcBlock::B10x8 => AstcBlock::B10x8,
+        types::AstcBlock::B10x10 => AstcBlock::B10x10,
+        types::AstcBlock::B12x10 => AstcBlock::B12x10,
+        types::AstcBlock::B12x12 => AstcBlock::B12x12,
+    }
+}
+
+fn convert_format(format: types::TextureFormat) -> TextureFormat {
+    match format {
+        types::TextureFormat::R8Unorm => TextureFormat::R8Unorm,
+        types::TextureFormat::R16Float => TextureFormat::R16Float,
+        types::TextureFormat::Rg8Unorm => TextureFormat::Rg8Unorm,
+        types::TextureFormat::Rg16Float => TextureFormat::Rg16Float,
+        types::TextureFormat::Rgba8Unorm => TextureFormat::Rgba8Unorm,
+        types::TextureFormat::Rgba8UnormSrgb => TextureFormat::Rgba8UnormSrgb,
+        types::TextureFormat::Rgb9e5Ufloat => TextureFormat::Rgb9e5Ufloat,
+        types::TextureFormat::Rgba16Float => TextureFormat::Rgba16Float,
+        types::TextureFormat::Bc1RgbaUnorm => TextureFormat::Bc1RgbaUnorm,
+        types::TextureFormat::Bc1RgbaUnormSrgb => TextureFormat::Bc1RgbaUnormSrgb,
+        types::TextureFormat::Bc2RgbaUnorm => TextureFormat::Bc2RgbaUnorm,
+        types::TextureFormat::Bc2RgbaUnormSrgb => TextureFormat::Bc2RgbaUnormSrgb,
+        types::TextureFormat::Bc3RgbaUnorm => TextureFormat::Bc3RgbaUnorm,
+        types::TextureFormat::Bc3RgbaUnormSrgb => TextureFormat::Bc3RgbaUnormSrgb,
+        types::TextureFormat::Bc4RUnorm => TextureFormat::Bc4RUnorm,
+        types::TextureFormat::Bc4RSnorm => TextureFormat::Bc4RSnorm,
+        types::TextureFormat::Bc5RgUnorm => TextureFormat::Bc5RgUnorm,
+        types::TextureFormat::Bc5RgSnorm => TextureFormat::Bc5RgSnorm,
+        types::TextureFormat::Bc6hRgbUfloat => TextureFormat::Bc6hRgbUfloat,
+        types::TextureFormat::Bc6hRgbFloat => TextureFormat::Bc6hRgbFloat,
+        types::TextureFormat::Bc7RgbaUnorm => TextureFormat::Bc7RgbaUnorm,
+        types::TextureFormat::Bc7RgbaUnormSrgb => TextureFormat::Bc7RgbaUnormSrgb,
+        types::TextureFormat::Etc2Rgb8Unorm => TextureFormat::Etc2Rgb8Unorm,
+        types::TextureFormat::Etc2Rgb8UnormSrgb => TextureFormat::Etc2Rgb8UnormSrgb,
+        types::TextureFormat::Etc2Rgb8A1Unorm => TextureFormat::Etc2Rgb8A1Unorm,
+        types::TextureFormat::Etc2Rgb8A1UnormSrgb => TextureFormat::Etc2Rgb8A1UnormSrgb,
+        types::TextureFormat::Etc2Rgba8Unorm => TextureFormat::Etc2Rgba8Unorm,
+        types::TextureFormat::Etc2Rgba8UnormSrgb => TextureFormat::Etc2Rgba8UnormSrgb,
+        types::TextureFormat::EacR11Unorm => TextureFormat::EacR11Unorm,
+        types::TextureFormat::EacR11Snorm => TextureFormat::EacR11Snorm,
+        types::TextureFormat::EacRg11Unorm => TextureFormat::EacRg11Unorm,
+        types::TextureFormat::EacRg11Snorm => TextureFormat::EacRg11Snorm,
+        types::TextureFormat::Astc { block, channel } => TextureFormat::Astc {
+            block: convert_astc_block(block),
+            channel: convert_astc_channel(channel),
+        },
+    }
+}
+
+fn convert_view_dimension(dim: types::TextureViewDimension) -> TextureViewDimension {
+    match dim {
+        types::TextureViewDimension::D2 => TextureViewDimension::D2,
+        types::TextureViewDimension::D2Array => TextureViewDimension::D2Array,
+        types::TextureViewDimension::Cube => TextureViewDimension::Cube,
+        types::TextureViewDimension::CubeArray => TextureViewDimension::CubeArray,
     }
 }

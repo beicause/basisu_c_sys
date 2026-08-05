@@ -5,10 +5,9 @@ use common::block_on;
 
 use basisu_c_sys::extra::{
     BasisuTranscodeError, BasisuTranscoder, ChannelType, SupportedTextureCompression,
-    TranscodeInfo, TranscodedImage, basisu_transcoder_init,
+    TranscodeInfo, TranscodedImage, basisu_transcoder_init, types,
 };
 use image::{DynamicImage, ImageBuffer, ImageFormat};
-use wgpu_types::{TextureDataOrder, TextureFormat};
 
 use crate::common::SNAPSHOT_PATH;
 
@@ -108,14 +107,13 @@ fn transcode_assets_uncompressed() {
     let each_result = |file_name: &str, mut transcoded_image: TranscodedImage| {
         assert!(
             [
-                TextureFormat::Rgba8Unorm,
-                TextureFormat::Rgba8UnormSrgb,
-                TextureFormat::Rgba16Float
+                types::TextureFormat::Rgba8Unorm,
+                types::TextureFormat::Rgba8UnormSrgb,
+                types::TextureFormat::Rgba16Float
             ]
             .contains(&transcoded_image.format)
         );
-        assert_eq!(transcoded_image.data_order, TextureDataOrder::MipMajor);
-        let is_hdr = transcoded_image.format == TextureFormat::Rgba16Float;
+        let is_hdr = transcoded_image.format == types::TextureFormat::Rgba16Float;
         let data = core::mem::take(&mut transcoded_image.data);
         let pixel_size = if is_hdr { 8 } else { 4 };
         let mut offset = 0usize;

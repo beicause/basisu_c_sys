@@ -13,6 +13,8 @@ use alloc::vec::Vec;
 use core::num::NonZero;
 use core::ops::{Bound, Range, RangeBounds};
 
+pub mod types;
+
 #[derive(Debug, thiserror::Error)]
 pub(crate) enum BuHeapAccessError {
     #[error("Invalid {range:?}, end < start")]
