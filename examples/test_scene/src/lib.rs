@@ -553,7 +553,10 @@ fn images_scene(loaded: &LoadedAssets) -> impl Scene {
 /// that switches between the three cube-map ktx2 assets and the runtime-stitched
 /// uncompressed cubemap. Three scene roots, each marked
 /// `SceneRoot` so the whole scene despawns when switching back to the grid:
-/// 1. the camera (Camera3d + Skybox), 2. the hint UI root, 3. the cubemap picker UI root.
+/// 1. the camera (Camera3d + Skybox),
+/// 2. the hint UI root,
+/// 3. the cubemap picker UI root.
+///
 /// UI roots must have no parent (no `ChildOf`), which is why the overlays are roots here
 /// instead of children of the camera.
 fn skybox_scene() -> impl SceneList {
