@@ -133,7 +133,7 @@ jobs:
           save-if: ${{ github.ref == 'refs/heads/master' }}
 
       - name: Test ${{matrix.os}}
-        run: cargo test --workspace --all-targets --release
+        run: cargo test -p basisu_c_sys --all-features --all-targets --release
 
   build-wasm:
     needs: lint

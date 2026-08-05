@@ -11,10 +11,10 @@ include = [
   "CMakeLists.txt",
   "README.md",
   "build.rs",
-  "wasm_bindgen.rs",
   "src/*.rs",
   "src/extra/*.rs",
   "vendor/basis_universal",
+  "wasm_bindgen.rs",
   "write_cmake_args.rs"
 ]
 
@@ -68,7 +68,6 @@ insta = "1.47.2"
 bindgen = "0.72"
 cc = { version = "1.2", features = ["parallel"] }
 cmake = "0.1.58"
-
 
 [target.wasm32-unknown-unknown.dependencies]
 async-lock = { version = "3.4.2", default-features = false }

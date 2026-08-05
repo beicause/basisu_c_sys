@@ -169,6 +169,12 @@ impl BasisuEncoderParams {
         self.flags_and_quality |= flags;
         self
     }
+
+    /// Remove the flags (See `BU_COMP_FLAGS_*`) from `self`.
+    pub const fn with_removed_flags(mut self, flags: u64) -> Self {
+        self.flags_and_quality &= !flags;
+        self
+    }
 }
 
 impl BasisuEncoder {

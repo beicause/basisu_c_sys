@@ -1,5 +1,25 @@
 use std::fmt::Write as _;
 
+/// Whitespace-normalizes `s` exactly like `split_whitespace().collect::<Vec<_>>().join(" ")`
+/// (collapse every run to a single space, drop leading/trailing) without the
+/// intermediate `Vec<String>` allocation.
+fn normalize_ws(s: &str) -> String {
+    let mut out = String::with_capacity(s.len());
+    let mut pending_space = false;
+    for c in s.chars() {
+        if c.is_whitespace() {
+            pending_space = !out.is_empty();
+        } else {
+            if pending_space {
+                out.push(' ');
+                pending_space = false;
+            }
+            out.push(c);
+        }
+    }
+    out
+}
+
 struct FnDecl {
     attrs: String,        // `#[...]` groups before `fn`, space-joined (e.g. `#[must_use]`), empty if none
     name: String,
@@ -68,11 +88,10 @@ fn parse_block_fn(body: &str) -> Option<FnDecl> {
         let semi = after_arrow
             .find(';')
             .expect("expected `;` after return type in extern \"C\" block");
-        let ret_raw = after_arrow[..semi].trim();
-        ret = Some(ret_raw.split_whitespace().collect::<Vec<_>>().join(" "));
+        ret = Some(normalize_ws(&after_arrow[..semi]));
     }
 
-    let args = args_raw.split_whitespace().collect::<Vec<_>>().join(" ");
+    let args = normalize_ws(args_raw);
 
     Some(FnDecl { attrs, name, args, ret })
 }
@@ -147,20 +166,53 @@ fn arg_names(args: &str) -> Vec<String> {
     names
 }
 
+/// FFI newtypes that need special handling in the generated wasm bindings.
+///
+/// A newtype-returning FFI fn is exposed to JS as its underlying scalar type
+/// in the `#[wasm_bindgen]` shim (wasm-bindgen cannot return wrapper types),
+/// while the public wrapper keeps the newtype return and re-wraps the raw
+/// value with the newtype's constructor (`Bool32(raw)`).
+///
+/// This is the single extension point for newtypes: add a row here and both
+/// generators pick up the mapping with no further changes.
+struct NewtypeShim {
+    /// Newtype as it appears in FFI return types; also its constructor name.
+    newtype: &'static str,
+    /// Scalar type the `#[wasm_bindgen]` shim must return instead.
+    scalar: &'static str,
+}
+
+/// `Bool32` is `#[repr(transparent)] pub struct Bool32(pub u32)` in the corpus.
+const SHIM_NEWTYPES: &[NewtypeShim] = &[NewtypeShim {
+    newtype: "Bool32",
+    scalar: "u32",
+}];
+
+/// Looks up `ret` in [`SHIM_NEWTYPES`]; `Some` when `ret` is a handled newtype.
+fn shim_newtype(ret: &str) -> Option<&'static NewtypeShim> {
+    SHIM_NEWTYPES.iter().find(|shim| shim.newtype == ret)
+}
+
 fn gen_binding_funcs(file_content: &str) -> Vec<String> {
     parse_extern_fns(file_content)
         .into_iter()
         .map(|decl| {
             let mut out = String::new();
-            write!(out, "#[wasm_bindgen(method, js_name = \"_{}\")] pub fn {}(", decl.name, decl.name)
-                .unwrap();
+            write!(
+                out,
+                "#[wasm_bindgen(method, js_name = \"_{}\")]\npub fn {}(",
+                decl.name, decl.name
+            )
+            .unwrap();
             write!(out, "this: &Basisu").unwrap();
             if !decl.args.is_empty() {
                 write!(out, ", {}", decl.args).unwrap();
             }
             match &decl.ret {
-                Some(ret) if ret == "Bool32" => write!(out, ") -> u32;").unwrap(),
-                Some(ret) => write!(out, ") -> {ret};").unwrap(),
+                Some(ret) => match shim_newtype(ret) {
+                    Some(shim) => write!(out, ") -> {};", shim.scalar).unwrap(),
+                    None => write!(out, ") -> {ret};").unwrap(),
+                },
                 None => write!(out, ");").unwrap(),
             }
             out
@@ -174,10 +226,13 @@ fn gen_public_funcs(file_content: &str) -> Vec<String> {
         .map(|decl| {
             let arg_list = arg_names(&decl.args).join(", ");
             let mut out = String::new();
+            if !decl.attrs.is_empty() {
+                writeln!(out, "{}", decl.attrs).unwrap();
+            }
             write!(
                 out,
-                "{attrs}pub unsafe fn {name}({args})",
-                attrs = decl.attrs, name = decl.name, args = decl.args
+                "pub unsafe fn {name}({args})",
+                name = decl.name, args = decl.args
             )
             .unwrap();
             if let Some(ret) = &decl.ret {
@@ -186,10 +241,11 @@ fn gen_public_funcs(file_content: &str) -> Vec<String> {
             writeln!(out, " {{").unwrap();
             writeln!(out, "    BASISU_INSTANCE.with(|inst| {{").unwrap();
             writeln!(out, "        let inst = inst.get().unwrap();").unwrap();
-            if decl.ret.as_deref() == Some("Bool32") {
-                writeln!(out, "        Bool32(inst.{}({arg_list}))", decl.name).unwrap();
-            } else {
-                writeln!(out, "        inst.{}({arg_list})", decl.name).unwrap();
+            match decl.ret.as_deref().and_then(shim_newtype) {
+                Some(shim) => {
+                    writeln!(out, "        {}(inst.{}({arg_list}))", shim.newtype, decl.name).unwrap()
+                }
+                None => writeln!(out, "        inst.{}({arg_list})", decl.name).unwrap(),
             }
             writeln!(out, "    }})").unwrap();
             write!(out, "}}").unwrap();
@@ -209,7 +265,9 @@ fn write_binding_file(encoder_apis: &[String], transcoder_apis: &[String]) -> St
     writeln!(out, "    pub(crate) fn wasm_heap_memory(this: &Basisu) -> Uint8Array;").unwrap();
     writeln!(out).unwrap();
     for api in encoder_apis.iter().chain(transcoder_apis) {
-        writeln!(out, "    {api}").unwrap();
+        for line in api.lines() {
+            writeln!(out, "    {line}").unwrap();
+        }
     }
     writeln!(out, "}}").unwrap();
     out
@@ -371,7 +429,7 @@ unsafe extern "C" {
         let out = gen_binding_funcs(SAMPLE);
         assert_eq!(
             out[0],
-            "#[wasm_bindgen(method, js_name = \"_bu_alloc\")] pub fn bu_alloc(this: &Basisu, size: u64) -> u32;"
+            "#[wasm_bindgen(method, js_name = \"_bu_alloc\")]\npub fn bu_alloc(this: &Basisu, size: u64) -> u32;"
         );
     }
 
@@ -380,7 +438,7 @@ unsafe extern "C" {
         let out = gen_binding_funcs(SAMPLE);
         assert_eq!(
             out[2],
-            "#[wasm_bindgen(method, js_name = \"_bu_init\")] pub fn bu_init(this: &Basisu);"
+            "#[wasm_bindgen(method, js_name = \"_bu_init\")]\npub fn bu_init(this: &Basisu);"
         );
     }
 
@@ -389,7 +447,7 @@ unsafe extern "C" {
         let out = gen_binding_funcs(SAMPLE);
         assert_eq!(
             out[3],
-            "#[wasm_bindgen(method, js_name = \"_bu_get_version\")] pub fn bu_get_version(this: &Basisu) -> u32;"
+            "#[wasm_bindgen(method, js_name = \"_bu_get_version\")]\npub fn bu_get_version(this: &Basisu) -> u32;"
         );
     }
 
@@ -404,8 +462,31 @@ unsafe extern "C" {
         let out = gen_public_funcs(SAMPLE);
         assert_eq!(
             out[0],
-            "#[must_use]pub unsafe fn bu_alloc(size: u64) -> Bool32 {\n    BASISU_INSTANCE.with(|inst| {\n        let inst = inst.get().unwrap();\n        Bool32(inst.bu_alloc(size))\n    })\n}"
+            "#[must_use]\npub unsafe fn bu_alloc(size: u64) -> Bool32 {\n    BASISU_INSTANCE.with(|inst| {\n        let inst = inst.get().unwrap();\n        Bool32(inst.bu_alloc(size))\n    })\n}"
         );
+    }
+
+    #[test]
+    fn newtype_table_drives_both_generators() {
+        // Every row in SHIM_NEWTYPES must flow through both generators with no
+        // further special-casing: the shim returns the scalar, the wrapper
+        // re-wraps with the newtype constructor. Adding a row must not require
+        // touching the generators.
+        for shim in SHIM_NEWTYPES {
+            let content = format!(
+                "unsafe extern \"C\" {{\n    #[must_use]\n    pub fn bu_probe() -> {};\n}}\n",
+                shim.newtype
+            );
+            let binding = &gen_binding_funcs(&content)[0];
+            assert!(
+                binding.ends_with(&format!("-> {};", shim.scalar)),
+                "shim must return {}",
+                shim.scalar
+            );
+            let wrapper = &gen_public_funcs(&content)[0];
+            assert!(wrapper.contains(&format!("-> {} {{", shim.newtype)));
+            assert!(wrapper.contains(&format!("{}(inst.bu_probe())", shim.newtype)));
+        }
     }
 
     #[test]
