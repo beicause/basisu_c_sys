@@ -285,28 +285,33 @@ fn wasm_bindgen() {
     let transcoder_ast = syn::parse_file(&transcoder_api_file).unwrap();
 
     fn gen_binding_funcs(file_ast: &syn::File) -> Vec<syn::ForeignItem> {
-        let ty_bool32: syn::Type = syn::parse_quote!(Bool32);
-        let ty_u32: syn::Type = syn::parse_quote!(u32);
-
         file_ast
             .items
             .iter()
             .filter_map(|item| {
                 if let syn::Item::ForeignMod(foreign) = item {
                     assert!(foreign.items.len() == 1);
-                    let syn::ForeignItem::Fn(mut func) = foreign.items[0].clone() else {
+                    let syn::ForeignItem::Fn(func) = &foreign.items[0] else {
                         return None;
                     };
+                    let mut func_cloned: syn::ForeignItemFn = syn::parse_quote!(#func);
                     let func_name = "_".to_string() + &func.sig.ident.to_string();
-                    func.attrs = syn::parse_quote!(#[wasm_bindgen(method,js_name=#func_name)]);
-                    func.sig.inputs.insert(0, syn::parse_quote!(this: &Basisu));
+                    func_cloned.attrs =
+                        syn::parse_quote!(#[wasm_bindgen(method,js_name=#func_name)]);
+                    func_cloned
+                        .sig
+                        .inputs
+                        .insert(0, syn::parse_quote!(this: &Basisu));
 
-                    if let syn::ReturnType::Type(_, ty) = &mut func.sig.output
-                        && ty.as_ref() == &ty_bool32
+                    if let syn::ReturnType::Type(_, ty) = &mut func_cloned.sig.output
+                        && matches!(
+                            ty.as_ref(),
+                            syn::Type::Path(tp) if tp.qself.is_none() && tp.path.is_ident("Bool32")
+                        )
                     {
-                        *ty = ty_u32.clone().into();
+                        *ty = syn::parse_quote!(u32);
                     }
-                    Some(syn::ForeignItem::Fn(func))
+                    Some(syn::ForeignItem::Fn(func_cloned))
                 } else {
                     None
                 }
@@ -315,20 +320,19 @@ fn wasm_bindgen() {
     }
 
     fn gen_public_funcs(file_ast: &syn::File) -> Vec<syn::Item> {
-        let ty_bool32: syn::Type = syn::parse_quote!(Bool32);
-
         file_ast
             .items
             .iter()
             .filter_map(|item| {
                 if let syn::Item::ForeignMod(foreign) = item {
                     assert!(foreign.items.len() == 1);
-                    let syn::ForeignItem::Fn(func) = foreign.items[0].clone() else {
+                    let syn::ForeignItem::Fn(func) = &foreign.items[0] else {
                         return None;
                     };
                     let func_name = func.sig.ident.clone();
-                    let func_inputs = func.sig.inputs.clone();
-                    let func_args = func_inputs
+                    let func_args = func
+                        .sig
+                        .inputs
                         .iter()
                         .map(|arg| {
                             let syn::FnArg::Typed(pat_type) = arg else {
@@ -341,8 +345,10 @@ fn wasm_bindgen() {
                         })
                         .collect::<Vec<syn::Ident>>();
                     let block: syn::Block = if let syn::ReturnType::Type(_, ty) = &func.sig.output
-                        && ty.as_ref() == &ty_bool32
-                    {
+                        && matches!(
+                            ty.as_ref(),
+                            syn::Type::Path(tp) if tp.qself.is_none() && tp.path.is_ident("Bool32")
+                        ) {
                         syn::parse_quote! (
                             {
                                 BASISU_INSTANCE.with(|inst| {
@@ -361,13 +367,16 @@ fn wasm_bindgen() {
                             }
                         )
                     };
+                    let func_attrs = &func.attrs;
+                    let func_sig = &func.sig;
                     let mut func = syn::ItemFn {
-                        attrs: func.attrs,
-                        vis: syn::Visibility::Public(Default::default()),
-                        sig: func.sig,
+                        attrs: syn::parse_quote!(#(#func_attrs),*),
+                        vis: syn::Visibility::Public(syn::token::Pub::default()),
+                        sig: syn::parse_quote!(#func_sig),
                         block: Box::new(block),
+                        modifiers: syn::FnModifiers::default(),
                     };
-                    func.sig.unsafety = Some(Default::default());
+                    func.sig.safety = syn::Safety::Unsafe(syn::token::Unsafe::default());
                     Some(syn::Item::Fn(func))
                 } else {
                     None
