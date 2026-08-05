@@ -9,14 +9,14 @@ license = "MIT OR Apache-2.0"
 [workspace.dependencies]
 bevy = { version = "0.19", default-features = false }
 
-[profile.test]
-opt-level = 1
-
 [profile.dev]
 opt-level = 1
 
 [profile.dev.package."*"]
 opt-level = 3
+
+[profile.test]
+opt-level = 1
 
 [profile.web_release]
 inherits = "release"

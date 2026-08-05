@@ -66,12 +66,14 @@ bevy = {
     "bevy_mesh",
     "bevy_shader",
     "bevy_text",
+
+    "exr",
+    "hdr",
+    "jpeg",
+    "png",
+
     # "bevy_animation",
     # "bevy_gizmos",
-    "png",
-    "exr",
-    "jpeg",
-    "hdr",
 
     "bevy_core_pipeline",
     "bevy_pbr",
