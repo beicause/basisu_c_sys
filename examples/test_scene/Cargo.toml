@@ -26,13 +26,15 @@ bevy = {
     # "vorbis",
 
     # collection: scene
-    # "bevy_scene",
+    "bevy_scene",
 
-    # collection: picking
-    # "bevy_picking",
+    # collection: picking (bevy_feathers 的按钮指针事件需要)
+    "bevy_picking",
     # "mesh_picking",
     # "sprite_picking",
-    # "ui_picking",
+    "ui_picking",
+
+    "bevy_feathers",
 
     # collection: default_app
     "async_executor",
@@ -66,8 +68,10 @@ bevy = {
     "bevy_text",
     # "bevy_animation",
     # "bevy_gizmos",
-    # "hdr",
-    # "png",
+    "png",
+    "exr",
+    "jpeg",
+    "hdr",
 
     "bevy_core_pipeline",
     "bevy_pbr",
