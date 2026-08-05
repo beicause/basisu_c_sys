@@ -98,7 +98,7 @@ const SKYBOX_FACES: [&str; 6] = [
 /// percent of the grid's height (labels sit in their own auto-sized rows below each
 /// image), so `GRID_ROWS` image rows are visible on screen at once — fractions allowed,
 /// e.g. 3.5 means three and a half rows — and the remaining cells are reached by
-/// scrolling the grid container (`overflow: scroll` + `ScrollPosition`, driven by
+/// scrolling (the clipped viewport + translated `GridContent`, driven by
 /// [`scroll_grid`]).
 const GRID_COLS: f32 = 5.0;
 const GRID_ROWS: f32 = 3.5;
@@ -246,6 +246,7 @@ pub fn main() {
                 rotate_camera,
                 build_face_cubemap,
                 fit_grid_images,
+                size_grid_rows,
                 scroll_grid,
             ),
         )
@@ -305,8 +306,8 @@ fn ui_scene() -> impl Scene {
     bsn! {
         Node {
             position_type: PositionType::Absolute,
-            bottom: px(16.0),
-            left: px(16.0),
+            bottom: px(12.0),
+            left: px(12.0),
             flex_direction: FlexDirection::Row,
             align_items: AlignItems::Center,
             column_gap: px(16.0),
@@ -333,7 +334,7 @@ fn ui_scene() -> impl Scene {
                                     padding: px(8.0),
                                     align_items: AlignItems::Center,
                                 }
-                                Children [ (Text("Images") TextFont { font_size: px(22.0) } ThemedText) ]
+                                Children [ (Text("Images") TextFont { font_size: px(20.0) } ThemedText) ]
                             },
                         }
                         Checked
@@ -351,7 +352,7 @@ fn ui_scene() -> impl Scene {
                                     padding: px(8.0),
                                     align_items: AlignItems::Center,
                                 }
-                                Children [ (Text("Skybox") TextFont { font_size: px(22.0) } ThemedText) ]
+                                Children [ (Text("Skybox") TextFont { font_size: px(20.0) } ThemedText) ]
                             },
                         }
                         on(|_change: On<ValueChange<bool>>, mut commands: Commands, roots: Query<Entity, With<SceneRoot>>| {
@@ -465,23 +466,24 @@ fn grid_cells(loaded: &LoadedAssets) -> impl SceneList {
 }
 
 /// Scene 1: image grid. Every entry of [`GRID_ENTRIES`] gets one cell in a CSS grid:
-/// `GRID_COLS` equal `fr` columns; image rows are exactly `100 / GRID_ROWS` percent of
-/// the grid's height (labels live in auto-sized rows under each image), so `GRID_ROWS`
-/// image rows are visible on screen at once — fractions allowed, e.g. 3.5. Rows beyond
-/// that are reached by scrolling the container (`overflow: scroll` driven by
-/// [`scroll_grid`], see below). Every image is contain-fitted
-/// into its cell by [`fit_grid_images`], so it never exceeds the cell and keeps its
-/// original aspect ratio.
+/// `GRID_COLS` equal `fr` columns; image rows are sized by [`size_grid_rows`] so that
+/// `GRID_ROWS` image rows fit the visible height (labels live in auto-sized rows under
+/// each image). Rows beyond the viewport are reached by scrolling: the grid lives
+/// inside a clipped viewport and [`scroll_grid`] translates the `GridContent` wrapper
+/// (bevy 0.19's `ScrollPosition` mechanism cannot scroll grid containers — taffy
+/// reports a grid's content size as its largest item, so the scroll range is always
+/// empty). Every image is contain-fitted into its cell by [`fit_grid_images`], so it
+/// never exceeds the cell and keeps its original aspect ratio.
 fn images_scene(loaded: &LoadedAssets) -> impl Scene {
-    // Grid tracks: GRID_COLS equal columns; one `100 / GRID_ROWS`-percent image row
-    // per visible row, each followed by an auto-sized label row (explicit tracks, so
-    // labels never change the image row height).
+    // Grid tracks: GRID_COLS equal columns; one image row per visible row (px, sized
+    // by `size_grid_rows` from the viewport height), each followed by an auto-sized
+    // label row (explicit tracks, so labels never change the image row height).
     let columns = vec![RepeatedGridTrack::flex(GRID_COLS as u16, 1.0)];
     let image_row_count = (GRID_ENTRIES.len() as f32 / GRID_COLS).ceil() as usize;
-    let mut rows = Vec::with_capacity(image_row_count * 2);
+    let mut rows: Vec<RepeatedGridTrack> = Vec::with_capacity(image_row_count * 2);
     for _ in 0..image_row_count {
-        rows.push(GridTrack::percent(100.0 / GRID_ROWS));
-        rows.push(GridTrack::auto());
+        rows.push(GridTrack::px::<RepeatedGridTrack>(0.0)); // placeholder; sized below
+        rows.push(GridTrack::auto::<RepeatedGridTrack>());
     }
     let auto_rows = vec![GridTrack::auto()];
     bsn! {
@@ -491,25 +493,17 @@ fn images_scene(loaded: &LoadedAssets) -> impl Scene {
         Hdr
         template_value(Tonemapping::None)
         SceneRoot
-        // Scrollable: rows beyond the viewport are reached by wheeling over the grid.
-        // `scroll_grid` reads `MouseWheel` + `HoverMap` (bevy 0.19's
-        // `ui/scroll_and_overflow/scroll` pattern) and writes this container's
-        // `ScrollPosition` directly; `GridScroll` marks it as the scroll target.
-        ScrollPosition(Vec2::ZERO)
-        GridScroll
+        // Clipped viewport: rows below the visible area are hidden and revealed by
+        // translating the GridContent wrapper below (`scroll_grid`).
+        GridViewport
         Node {
             width: percent(100),
             height: percent(100),
-            display: Display::Grid,
-            grid_template_columns: columns,
-            grid_template_rows: rows,
-            grid_auto_rows: auto_rows,
-            // Top-aligned so overflowing rows scroll into view from the bottom
-            // instead of being clipped symmetrically.
-            align_content: AlignContent::FlexStart,
-            overflow: Overflow::scroll_y(),
-            column_gap: px(GRID_GAP),
-            row_gap: px(GRID_GAP),
+            // Flex-start so the GridContent wrapper below sizes to its content
+            // (the grid's full height) instead of stretching to the viewport —
+            // the wrapper's height IS the scrollable extent.
+            align_items: AlignItems::FlexStart,
+            overflow: Overflow::clip(),
             padding: UiRect::new(
                 px(GRID_MARGIN),
                 px(GRID_MARGIN),
@@ -520,7 +514,37 @@ fn images_scene(loaded: &LoadedAssets) -> impl Scene {
         ThemeBackgroundColor(tokens::WINDOW_BG)
         InheritableThemeTextColor(tokens::TEXT_MAIN)
         Children [
-            { grid_cells(loaded) }
+            (
+                // Scrollable content: translated by -scroll in `scroll_grid`.
+                GridContent
+                Node {
+                    width: percent(100),
+                    position_type: PositionType::Relative,
+                    top: px(0.0),
+                }
+                Children [
+                    (
+                        // The actual CSS grid; its height is its content (auto), so
+                        // the wrapper's ComputedNode gives the scrollable extent.
+                        GridRoot
+                        Node {
+                            width: percent(100),
+                            display: Display::Grid,
+                            grid_template_columns: columns,
+                            grid_template_rows: rows,
+                            grid_auto_rows: auto_rows,
+                            // Top-aligned so overflowing rows scroll into view from
+                            // the bottom instead of being clipped symmetrically.
+                            align_content: AlignContent::FlexStart,
+                            column_gap: px(GRID_GAP),
+                            row_gap: px(GRID_GAP),
+                        }
+                        Children [
+                            { grid_cells(loaded) }
+                        ]
+                    )
+                ]
+            )
         ]
     }
 }
@@ -560,7 +584,7 @@ fn skybox_scene() -> impl SceneList {
             SceneRoot
             Children [
                 (
-                    Text("Q/E: rotate camera")
+                    Text("Q/E (Left/Right): rotate camera")
                     TextFont { font_size: px(16.0) }
                     // Match the radio captions' effective rendering: the caption
                     // wrapper `Node` has no `ThemedText`, so the theme's
@@ -745,32 +769,76 @@ fn rotate_camera(
     }
 }
 
-/// Marks the scrollable grid container; [`scroll_grid`] drives its `ScrollPosition`
-/// directly from wheel events while the pointer is inside the grid subtree. The
-/// delta math (negation, `Line` scaling, clamp to the scrollable extent) follows
-/// bevy 0.19's `ui/scroll_and_overflow/scroll` example verbatim; the only
-/// difference is that the hovered-subtree test is done by walking `ChildOf` here
-/// instead of relying on entity-event propagation reaching the container.
+/// Marks the clipped viewport root of the grid scene; used to measure the visible
+/// area (see [`scroll_grid`]).
 #[derive(Component, Default, Clone)]
-struct GridScroll;
+struct GridViewport;
+
+/// Marks the scrollable content wrapper (translated by [`scroll_grid`]).
+#[derive(Component, Default, Clone)]
+struct GridContent;
+
+/// Marks the CSS grid node inside [`GridContent`]; [`size_grid_rows`] sizes its
+/// image rows from the viewport height.
+#[derive(Component, Default, Clone)]
+struct GridRoot;
 
 /// Mouse-wheel distance per `MouseScrollUnit::Line`, in logical pixels.
 const SCROLL_LINE_HEIGHT: f32 = 40.0;
 
-/// Scrolls the grid container from wheel events when the pointer hovers the grid or
-/// one of its descendants (walked up via `ChildOf`), clamping `ScrollPosition` to the
-/// scrollable extent. No-op while the content fits or the pointer is outside the
-/// grid subtree (e.g. over the persistent button bar).
+/// Sizes the grid's image rows so `GRID_ROWS` of them fit the viewport's visible
+/// height (the CSS-grid equivalent of the old `percent(100 / GRID_ROWS)` tracks,
+/// but in px so the grid's auto height equals its content extent — required for
+/// [`scroll_grid`] to measure the scroll range). Writes only on change.
+fn size_grid_rows(
+    mut q_grid: Query<&mut Node, With<GridRoot>>,
+    viewport: Single<&ComputedNode, With<GridViewport>>,
+) {
+    let Ok(mut grid) = q_grid.single_mut() else {
+        return;
+    };
+    let visible_h = (viewport.size().y - GRID_MARGIN - GRID_BOTTOM).max(1.0);
+    let image_h = visible_h / GRID_ROWS;
+    let image_row_count = (GRID_ENTRIES.len() as f32 / GRID_COLS).ceil() as usize;
+    let mut rows: Vec<RepeatedGridTrack> = Vec::with_capacity(image_row_count * 2);
+    for _ in 0..image_row_count {
+        rows.push(GridTrack::px::<RepeatedGridTrack>(image_h));
+        rows.push(GridTrack::auto::<RepeatedGridTrack>());
+    }
+    if grid.grid_template_rows != rows {
+        grid.grid_template_rows = rows;
+    }
+}
+
+/// Scrolls the grid by translating the `GridContent` wrapper: wheel deltas are
+/// accumulated (same sign and `Line` scaling as bevy 0.19's
+/// `ui/scroll_and_overflow/scroll` example), and the pointer must hover the grid
+/// subtree (walked up via `ChildOf`). The scroll range is
+/// `content height − visible height`, clamped; no-op when the content fits or the
+/// pointer is outside the grid (e.g. over the persistent button bar).
 fn scroll_grid(
     mut mouse_wheel_reader: MessageReader<MouseWheel>,
     hover_map: Res<HoverMap>,
-    mut q_scroll: Query<(&mut ScrollPosition, &Node, &ComputedNode, Entity), With<GridScroll>>,
+    mut q_content: Query<(&mut Node, &ComputedNode, Entity), With<GridContent>>,
+    viewport: Single<&ComputedNode, With<GridViewport>>,
     q_parent: Query<&ChildOf>,
 ) {
-    let Ok((mut scroll_position, node, computed, grid)) = q_scroll.single_mut() else {
+    let mut delta_y = 0.0;
+    for mouse_wheel in mouse_wheel_reader.read() {
+        let delta = -mouse_wheel.y;
+        delta_y += if mouse_wheel.unit == MouseScrollUnit::Line {
+            delta * SCROLL_LINE_HEIGHT
+        } else {
+            delta
+        };
+    }
+    if delta_y == 0.0 {
+        return;
+    }
+    let Ok((mut content_node, content, content_entity)) = q_content.single_mut() else {
         return;
     };
-    // Only scroll when the pointer is over the grid subtree (the grid itself or any
+    // Only scroll when the pointer is over the grid subtree (the wrapper or any
     // descendant); the persistent button bar and the skybox UI are not inside it.
     let over_grid = hover_map
         .values()
@@ -778,7 +846,7 @@ fn scroll_grid(
         .any(|hovered| {
             let mut cur = Some(hovered);
             while let Some(entity) = cur {
-                if entity == grid {
+                if entity == content_entity {
                     return true;
                 }
                 cur = q_parent.get(entity).ok().map(|parent| parent.0);
@@ -788,22 +856,18 @@ fn scroll_grid(
     if !over_grid {
         return;
     }
-    let max_offset = (computed.content_size() - computed.size()) * computed.inverse_scale_factor();
-    for mouse_wheel in mouse_wheel_reader.read() {
-        let mut delta = -Vec2::new(mouse_wheel.x, mouse_wheel.y);
-        if mouse_wheel.unit == MouseScrollUnit::Line {
-            delta *= SCROLL_LINE_HEIGHT;
-        }
-        if node.overflow.y == OverflowAxis::Scroll && delta.y != 0. {
-            let max = if delta.y > 0. {
-                scroll_position.y >= max_offset.y
-            } else {
-                scroll_position.y <= 0.
-            };
-            if !max {
-                scroll_position.y += delta.y;
-            }
-        }
+    let visible_h = viewport.size().y - GRID_MARGIN - GRID_BOTTOM;
+    let max_scroll = (content.size().y - visible_h).max(0.0);
+    if max_scroll <= 0.0 {
+        return; // content fits; nothing to scroll
+    }
+    let current = match content_node.top {
+        Val::Px(v) => -v,
+        _ => 0.0,
+    };
+    let next = (current + delta_y).clamp(0.0, max_scroll);
+    if (next - current).abs() > 0.01 {
+        content_node.top = Val::Px(-next);
     }
 }
 
