@@ -1,5 +1,5 @@
 use bevy::{
-    asset::{AssetMetaCheck, HandleTemplate},
+    asset::{AssetMetaCheck, HandleTemplate, LoadState, RenderAssetUsages},
     camera::Hdr,
     core_pipeline::{Skybox, tonemapping::Tonemapping},
     ecs::template::OptionTemplate,
@@ -10,8 +10,14 @@ use bevy::{
         theme::{InheritableThemeTextColor, ThemeBackgroundColor, ThemedText, UiTheme},
         tokens,
     },
+    image::ImageSampler,
     log::LogPlugin,
     prelude::*,
+    render::render_resource::{
+        Extent3d, TextureDataOrder, TextureDescriptor, TextureDimension, TextureUsages,
+        TextureViewDescriptor, TextureViewDimension,
+    },
+    scene::EntityScene,
     text::TextBounds,
     ui::{Checked, GlobalZIndex, widget::NodeImageMode},
     ui_widgets::{RadioGroup, ValueChange, radio_self_update},
@@ -52,7 +58,10 @@ struct SceneRoot;
 /// Handles for assets that are loaded once and reused, so scene switching never
 /// re-issues loads or re-transcodes textures:
 /// - `alpha0`/`desk2` need special `BasisuLoaderSettings` (`load_builder`),
-/// - the three cube maps are swapped at runtime by the skybox scene's radio group.
+/// - the three cube-map ktx2 assets are swapped at runtime by the skybox scene's
+///   radio group,
+/// - `face_cubemap` is the uncompressed cubemap stitched from the six skybox face
+///   jpgs by `build_face_cubemap` (None until that system finishes).
 /// Plain-path assets (grid cells, originals) resolve through bevy's per-path handle
 /// cache at spawn time, so they need no explicit caching.
 #[derive(Resource)]
@@ -62,26 +71,42 @@ struct LoadedAssets {
     skybox: Handle<Image>,
     skybox_astc: Handle<Image>,
     skybox_xuastc: Handle<Image>,
+    face_cubemap: Option<Handle<Image>>,
 }
 
+/// The six skybox face images, in cubemap layer order (+X, -X, +Y, -Y, +Z, -Z) — the
+/// same order `examples/test_processor/assets/skybox.pack.ron` feeds to the encoder.
+const SKYBOX_FACES: [&str; 6] = [
+    ORIGINAL_PATH_SKYBOX_RIGHT,
+    ORIGINAL_PATH_SKYBOX_LEFT,
+    ORIGINAL_PATH_SKYBOX_TOP,
+    ORIGINAL_PATH_SKYBOX_BOTTOM,
+    ORIGINAL_PATH_SKYBOX_FRONT,
+    ORIGINAL_PATH_SKYBOX_BACK,
+];
+
 /// Marks a grid cell whose fixed slot size and image fit are computed at runtime so the
-/// whole 8-column grid fits on one screen regardless of window size.
+/// whole grid fits on one screen regardless of window size.
 #[derive(Component, Default, Clone)]
 struct GridCell;
 
-/// Grid layout: 8 columns across, cells sized as if 4 rows fill the window height.
-const GRID_COLS: f32 = 8.0;
-const GRID_ROWS: f32 = 4.0;
+/// Grid layout: 3 visible rows × 5 columns; the 18 entries wrap into a 4th row that
+/// is reachable by scrolling the grid container.
+const GRID_COLS: f32 = 5.0;
+const GRID_ROWS: f32 = 3.0;
 const GRID_GAP: f32 = 8.0;
 const GRID_MARGIN: f32 = 12.0;
 /// Bottom padding that clears the persistent button bar (absolute, bottom-left).
 const GRID_BOTTOM: f32 = 64.0;
+/// Dark translucent backdrop behind the floating UI panels, so light text and radio
+/// outlines stay legible over both the dark grid and the bright skybox.
+const OVERLAY_BG: Color = Color::srgba(0.0, 0.0, 0.0, 0.65);
 /// Image inset inside its cell.
 const CELL_PADDING: f32 = 6.0;
 /// Vertical space reserved for the (possibly two-line) file-name label.
 const LABEL_SPACE: f32 = 40.0;
 
-/// One-shot sizing pass for `GridCell` cells: gives every cell its 1/8 × 1/4 window slot
+/// One-shot sizing pass for `GridCell` cells: gives every cell its 1/5 × 1/3 window slot
 /// and scales each image down (never up) to fit the slot while preserving aspect ratio.
 /// Runs every frame until the image assets are loaded, then removes `GridCell`.
 fn fit_cell_images(
@@ -139,6 +164,110 @@ fn fit_cell_images(
     }
 }
 
+/// Per-app state for [`build_face_cubemap`]: the face handles we started loading
+/// (so the loads are issued exactly once) and a sticky failure flag.
+#[derive(Default)]
+struct BuildCubemapState {
+    handles: Vec<Handle<Image>>,
+    failed: bool,
+}
+
+/// Loads the six skybox face jpgs and stitches them into a single uncompressed
+/// cubemap `Image`: 6 array layers in (+X, -X, +Y, -Y, +Z, -Z) order, viewed as
+/// [`TextureViewDimension::Cube`] — the same layering `skybox.pack.ron` feeds to the
+/// basisu encoder, so this cubemap matches the ktx2 ones visually. The result is
+/// added to `Assets<Image>` and cached in `LoadedAssets.face_cubemap` for the skybox
+/// scene's "uncompressed" radio. Runs once per app start; no-op afterwards.
+fn build_face_cubemap(
+    mut state: Local<BuildCubemapState>,
+    asset_server: Res<AssetServer>,
+    mut images: ResMut<Assets<Image>>,
+    mut loaded: ResMut<LoadedAssets>,
+) {
+    if loaded.face_cubemap.is_some() || state.failed {
+        return;
+    }
+    // Issue the loads once; `asset_server.load` dedupes against the grid's copies.
+    if state.handles.is_empty() {
+        state.handles = SKYBOX_FACES.map(|path| asset_server.load(path)).to_vec();
+        return;
+    }
+    // Wait until every face is loaded (or stop forever on a hard failure).
+    for handle in &state.handles {
+        match asset_server.load_state(handle) {
+            LoadState::Loaded => {}
+            LoadState::Failed(err) => {
+                error!("failed to load skybox face for cubemap: {err}");
+                state.failed = true;
+                return;
+            }
+            LoadState::NotLoaded | LoadState::Loading => return,
+        }
+    }
+    let mut faces = Vec::with_capacity(6);
+    for handle in &state.handles {
+        faces.push(images.get(handle).unwrap());
+    }
+    // All faces must share one 2D size and format to be stitched into layers.
+    let size = faces[0].texture_descriptor.size;
+    let format = faces[0].texture_descriptor.format;
+    let layer_bytes = size.width as usize * size.height as usize * 4;
+    let mut data = Vec::with_capacity(6 * layer_bytes);
+    for image in &faces {
+        let descriptor = &image.texture_descriptor;
+        if descriptor.size != size
+            || descriptor.dimension != TextureDimension::D2
+            || descriptor.format != format
+            || image.data.as_deref().is_none_or(|d| d.len() != layer_bytes)
+        {
+            error!(
+                "skybox faces are not uniform ({}x{} {:?} vs {}x{} {:?}); \
+                 skipping uncompressed cubemap",
+                descriptor.size.width,
+                descriptor.size.height,
+                descriptor.format,
+                size.width,
+                size.height,
+                format,
+            );
+            state.failed = true;
+            return;
+        }
+        data.extend_from_slice(image.data.as_deref().unwrap());
+    }
+    let cubemap = Image {
+        data: Some(data),
+        data_order: TextureDataOrder::default(),
+        texture_descriptor: TextureDescriptor {
+            label: Some("skybox faces cubemap"),
+            size: Extent3d {
+                width: size.width,
+                height: size.height,
+                depth_or_array_layers: 6,
+            },
+            mip_level_count: 1,
+            sample_count: 1,
+            dimension: TextureDimension::D2,
+            format,
+            usage: TextureUsages::TEXTURE_BINDING | TextureUsages::COPY_DST,
+            view_formats: &[],
+        },
+        sampler: ImageSampler::Default,
+        texture_view_descriptor: Some(TextureViewDescriptor {
+            label: Some("skybox faces cubemap view"),
+            dimension: Some(TextureViewDimension::Cube),
+            array_layer_count: Some(6),
+            mip_level_count: Some(1),
+            ..default()
+        }),
+        asset_usage: RenderAssetUsages::RENDER_WORLD,
+        copy_on_resize: false,
+    };
+    let handle = images.add(cubemap);
+    loaded.face_cubemap = Some(handle);
+    info!("built uncompressed skybox cubemap ({size:?}, {} layers)", 6);
+}
+
 #[bevy_main]
 pub fn main() {
     App::new()
@@ -165,14 +294,14 @@ pub fn main() {
         .add_plugins((BasisuLoaderPlugin, FeathersPlugins))
         .insert_resource(UiTheme(create_dark_theme()))
         .add_systems(Startup, setup)
-        .add_systems(Update, (rotate_camera, fit_cell_images))
+        .add_systems(Update, (rotate_camera, fit_cell_images, build_face_cubemap))
         .run();
 }
 
 fn setup(mut commands: Commands, asset_server: Res<AssetServer>) {
     // Load special-handling assets once and cache their handles; scene switches reuse them.
-    let alpha0 = load_alpha0(&asset_server);
-    let desk2 = load_desk2(&asset_server);
+    let alpha0 = load_alpha0(asset_server.as_ref());
+    let desk2 = load_desk2(asset_server.as_ref());
     let skybox = asset_server.load(IMAGE_PATH_SKYBOX);
     let skybox_astc = asset_server.load(SNAPSHOT_PATH_SKYBOX_ASTC);
     let skybox_xuastc = asset_server.load(SNAPSHOT_PATH_SKYBOX_XUASTC);
@@ -182,6 +311,7 @@ fn setup(mut commands: Commands, asset_server: Res<AssetServer>) {
         skybox,
         skybox_astc,
         skybox_xuastc,
+        face_cubemap: None,
     });
     // Persistent UI layer (scene-switch radio bar), not part of either switchable scene.
     commands.spawn_scene(ui_scene());
@@ -216,8 +346,11 @@ fn ui_scene() -> impl Scene {
             flex_direction: FlexDirection::Row,
             align_items: AlignItems::Center,
             column_gap: px(16.0),
+            padding: UiRect::all(px(8.0)),
+            border_radius: px(8.0),
         }
         GlobalZIndex(1)
+        BackgroundColor(OVERLAY_BG)
         InheritableThemeTextColor(tokens::TEXT_MAIN)
         Children [
             (
@@ -270,11 +403,91 @@ fn ui_scene() -> impl Scene {
     }
 }
 
-/// Scene 1: image grid. Every `.basisu.ktx2` asset (including the 3 encoder snapshots)
-/// plus every original asset, each original adjacent to its compressed variants, laid out
-/// in a single grid of 8 columns (up to 4 rows) that fits on one screen; images are
-/// downscaled (never upscaled) to fit their cell with aspect ratio preserved, and every
-/// cell is labeled with its file name. Cell sizes are set at runtime by `fit_cell_images`.
+/// One cell of the Scene 1 grid, in display order. The grid is fully described by the
+/// [`GRID_ENTRIES`] table below — add, remove, or reorder entries to reconfigure it
+/// (combined with `GRID_COLS` / `GRID_ROWS` for the layout).
+#[derive(Clone, Copy)]
+enum GridEntry {
+    /// Load this asset path with default loader settings.
+    Path(&'static str),
+    /// Use a handle cached in [`LoadedAssets`] (needs special `BasisuLoaderSettings`).
+    Handle(HandleKind),
+}
+
+/// Which cached handle a [`GridEntry::Handle`] cell uses.
+#[derive(Clone, Copy)]
+enum HandleKind {
+    Alpha0,
+    Desk2,
+}
+
+/// Scene 1's grid cells, left-to-right / top-to-bottom: every compressed `.basisu.ktx2`
+/// with its original next to it (alpha0, desk, kodim20, tough, wikipedia, skybox faces).
+/// The cube-map ktx2 assets are not in the grid — they are switchable in the skybox scene.
+const GRID_ENTRIES: &[GridEntry] = &[
+    GridEntry::Path(ORIGINAL_PATH_ALPHA0),
+    GridEntry::Handle(HandleKind::Alpha0),
+    GridEntry::Path(ORIGINAL_PATH_DESK),
+    GridEntry::Path(IMAGE_PATH_DESK1),
+    GridEntry::Handle(HandleKind::Desk2),
+    GridEntry::Path(SNAPSHOT_PATH_DESK),
+    GridEntry::Path(ORIGINAL_PATH_KODIM20),
+    GridEntry::Path(IMAGE_PATH_KODIM20),
+    GridEntry::Path(ORIGINAL_PATH_TOUGH),
+    GridEntry::Path(IMAGE_PATH_TOUGH),
+    GridEntry::Path(ORIGINAL_PATH_WIKIPEDIA),
+    GridEntry::Path(IMAGE_PATH_WIKIPEDIA),
+    GridEntry::Path(ORIGINAL_PATH_SKYBOX_RIGHT),
+    GridEntry::Path(ORIGINAL_PATH_SKYBOX_LEFT),
+    GridEntry::Path(ORIGINAL_PATH_SKYBOX_TOP),
+    GridEntry::Path(ORIGINAL_PATH_SKYBOX_BOTTOM),
+    GridEntry::Path(ORIGINAL_PATH_SKYBOX_FRONT),
+    GridEntry::Path(ORIGINAL_PATH_SKYBOX_BACK),
+];
+
+/// File name portion of an asset path; used as the cell label.
+fn file_name(path: &'static str) -> &'static str {
+    path.rsplit('/').next().unwrap_or(path)
+}
+
+/// Label font size, shrunk for long file names so the label stays inside its cell
+/// (long names also wrap via `TextBounds`, but shrinking keeps most on one line).
+fn label_font_size(label: &str) -> f32 {
+    match label.len() {
+        0..=12 => 12.0,
+        13..=18 => 11.0,
+        19..=26 => 10.0,
+        _ => 9.0,
+    }
+}
+
+/// Builds one cell scene per [`GRID_ENTRIES`] entry, in order. Returns a `SceneList`
+/// so it can be spliced into the grid's `Children` with `{ … }`.
+fn grid_cells(alpha0: Handle<Image>, desk2: Handle<Image>) -> impl SceneList {
+    let mut cells: Vec<Box<dyn SceneList>> = Vec::new();
+    for entry in GRID_ENTRIES {
+        let cell: Box<dyn SceneList> = match entry {
+            GridEntry::Path(path) => Box::new(EntityScene(image_cell(path, file_name(path)))),
+            GridEntry::Handle(HandleKind::Alpha0) => Box::new(EntityScene(image_cell_handle(
+                alpha0.clone(),
+                file_name(IMAGE_PATH_ALPHA0),
+            ))),
+            GridEntry::Handle(HandleKind::Desk2) => Box::new(EntityScene(image_cell_handle(
+                desk2.clone(),
+                file_name(IMAGE_PATH_DESK2),
+            ))),
+        };
+        cells.push(cell);
+    }
+    cells
+}
+
+/// Scene 1: image grid. Every entry of [`GRID_ENTRIES`] gets one cell in a 5-column
+/// grid (3 visible rows) sized to the window; images are downscaled (never upscaled)
+/// to fit their cell with aspect ratio preserved, and every cell is labeled with its
+/// file name (shrunk for long names). The grid container scrolls vertically, so rows
+/// beyond the third (the grid has 18 entries) stay reachable. Cell sizes are set at
+/// runtime by `fit_cell_images`.
 fn images_scene(alpha0: Handle<Image>, desk2: Handle<Image>) -> impl Scene {
     bsn! {
         Camera2d
@@ -288,7 +501,10 @@ fn images_scene(alpha0: Handle<Image>, desk2: Handle<Image>) -> impl Scene {
             height: percent(100),
             flex_direction: FlexDirection::Row,
             flex_wrap: FlexWrap::Wrap,
-            align_content: AlignContent::Center,
+            // Top-aligned so overflowing rows scroll into view from the bottom
+            // instead of being clipped symmetrically.
+            align_content: AlignContent::FlexStart,
+            overflow: Overflow::scroll_y(),
             column_gap: px(GRID_GAP),
             row_gap: px(GRID_GAP),
             padding: UiRect::new(
@@ -301,43 +517,21 @@ fn images_scene(alpha0: Handle<Image>, desk2: Handle<Image>) -> impl Scene {
         ThemeBackgroundColor(tokens::WINDOW_BG)
         InheritableThemeTextColor(tokens::TEXT_MAIN)
         Children [
-            (image_cell(ORIGINAL_PATH_ALPHA0, "alpha0.png")),
-            (image_cell_handle(alpha0, IMAGE_PATH_ALPHA0)),
-            (image_cell(ORIGINAL_PATH_DESK, "Desk_fixed_6x6.exr")),
-            (image_cell(IMAGE_PATH_DESK1, IMAGE_PATH_DESK1)),
-            (image_cell_handle(desk2, IMAGE_PATH_DESK2)),
-            (image_cell(SNAPSHOT_PATH_DESK, "encoder__desk_uastc_hdr_6x6_mips.snap.basisu.ktx2")),
-            (image_cell(ORIGINAL_PATH_KODIM20, "kodim20.png")),
-            (image_cell(IMAGE_PATH_KODIM20, IMAGE_PATH_KODIM20)),
-            (image_cell(ORIGINAL_PATH_TOUGH, "tough_fixed.png")),
-            (image_cell(IMAGE_PATH_TOUGH, IMAGE_PATH_TOUGH)),
-            (image_cell(ORIGINAL_PATH_WIKIPEDIA, "wikipedia_fixed_6x6.png")),
-            (image_cell(IMAGE_PATH_WIKIPEDIA, IMAGE_PATH_WIKIPEDIA)),
-            (image_cell(ORIGINAL_PATH_SKYBOX_RIGHT, "skybox/right.jpg")),
-            (image_cell(ORIGINAL_PATH_SKYBOX_LEFT, "skybox/left.jpg")),
-            (image_cell(ORIGINAL_PATH_SKYBOX_TOP, "skybox/top.jpg")),
-            (image_cell(ORIGINAL_PATH_SKYBOX_BOTTOM, "skybox/bottom.jpg")),
-            (image_cell(ORIGINAL_PATH_SKYBOX_FRONT, "skybox/front.jpg")),
-            (image_cell(ORIGINAL_PATH_SKYBOX_BACK, "skybox/back.jpg")),
-            // Cube map ktx2 files cannot be displayed in an `ImageNode` (the UI material
-            // requires a D2 texture view; cube views fail validation and crash the app),
-            // so they get a label-only cell.
-            (label_cell(IMAGE_PATH_SKYBOX)),
-            (label_cell(SNAPSHOT_PATH_SKYBOX_ASTC)),
-            (label_cell(SNAPSHOT_PATH_SKYBOX_XUASTC)),
+            { grid_cells(alpha0, desk2) }
         ]
     }
 }
 
 /// Scene 2: skybox with a camera-control hint (top-left) and a radio group (top-right)
-/// that switches between the three cube-map ktx2 assets. Three scene roots, each marked
+/// that switches between the three cube-map ktx2 assets and the runtime-stitched
+/// uncompressed cubemap. Three scene roots, each marked
 /// `SceneRoot` so the whole scene despawns when switching back to the grid:
 /// 1. the camera (Camera3d + Skybox), 2. the hint UI root, 3. the cubemap picker UI root.
 /// UI roots must have no parent (no `ChildOf`), which is why the overlays are roots here
 /// instead of children of the camera.
 fn skybox_scene() -> impl SceneList {
     let skybox_image = OptionTemplate::from(HandleTemplate::from(IMAGE_PATH_SKYBOX));
-    let backdrop = Color::srgba(0.0, 0.0, 0.0, 0.45);
+    let backdrop = OVERLAY_BG;
     bsn_list! {
         (
             Camera3d::default()
@@ -431,29 +625,33 @@ fn skybox_scene() -> impl SceneList {
                         skybox.image = Some(loaded.skybox_xuastc.clone());
                     })
                 ),
+                (
+                    // Cubemap stitched at runtime from the six skybox face jpgs by
+                    // `build_face_cubemap` (uncompressed). No-op until it is ready.
+                    @FeathersRadio {
+                        @caption: bsn! {
+                            Node {
+                                padding: px(4.0),
+                                align_items: AlignItems::Center,
+                            }
+                            Children [ (Text("uncompressed") TextFont { font_size: px(16.0) } ThemedText) ]
+                        },
+                    }
+                    on(|_change: On<ValueChange<bool>>, mut skybox: Single<&mut Skybox>, loaded: Res<LoadedAssets>| {
+                        if let Some(handle) = loaded.face_cubemap.clone() {
+                            skybox.image = Some(handle);
+                        }
+                    })
+                ),
             ]
         )
-    }
-}
-
-/// A grid cell for assets that cannot be rendered in an `ImageNode` (cube map ktx2):
-/// just the file name label, centered in the runtime-sized cell.
-fn label_cell(label: &'static str) -> impl Scene {
-    bsn! {
-        Node {
-            align_items: AlignItems::Center,
-            justify_content: JustifyContent::Center,
-        }
-        GridCell
-        Children [
-            (Text(label) TextFont { font_size: px(12.0) } TextBounds { width: None, height: None } ThemedText),
-        ]
     }
 }
 
 /// A grid cell loading an image by asset path string (bsn resolves it to a Handle at
 /// spawn time via HandleTemplate) with a file-name label underneath.
 fn image_cell(path: &'static str, label: &'static str) -> impl Scene {
+    let label_size = label_font_size(label);
     bsn! {
         Node {
             flex_direction: FlexDirection::Column,
@@ -467,7 +665,7 @@ fn image_cell(path: &'static str, label: &'static str) -> impl Scene {
                 image: path,
                 image_mode: NodeImageMode::Stretch,
             }),
-            (Text(label) TextFont { font_size: px(12.0) } TextBounds { width: None, height: None } ThemedText),
+            (Text(label) TextFont { font_size: px(label_size) } TextBounds { width: None, height: None } ThemedText),
         ]
     }
 }
@@ -475,6 +673,7 @@ fn image_cell(path: &'static str, label: &'static str) -> impl Scene {
 /// A grid cell taking a preloaded handle (needed for the special BasisuLoaderSettings
 /// loads: alpha0 Rg channel hint, desk2 Rgb9e5 transcode).
 fn image_cell_handle(handle: Handle<Image>, label: &'static str) -> impl Scene {
+    let label_size = label_font_size(label);
     bsn! {
         Node {
             flex_direction: FlexDirection::Column,
@@ -488,7 +687,7 @@ fn image_cell_handle(handle: Handle<Image>, label: &'static str) -> impl Scene {
                 image: handle,
                 image_mode: NodeImageMode::Stretch,
             }),
-            (Text(label) TextFont { font_size: px(12.0) } TextBounds { width: None, height: None } ThemedText),
+            (Text(label) TextFont { font_size: px(label_size) } TextBounds { width: None, height: None } ThemedText),
         ]
     }
 }
