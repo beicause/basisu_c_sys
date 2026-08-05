@@ -1,3 +1,5 @@
+use std::collections::HashMap;
+
 use bevy::{
     asset::{AssetMetaCheck, HandleTemplate, LoadState, RenderAssetUsages},
     camera::Hdr,
@@ -11,15 +13,20 @@ use bevy::{
         tokens,
     },
     image::ImageSampler,
+    input::mouse::{MouseScrollUnit, MouseWheel},
     log::LogPlugin,
+    picking::hover::HoverMap,
     prelude::*,
     render::render_resource::{
         Extent3d, TextureDataOrder, TextureDescriptor, TextureDimension, TextureUsages,
         TextureViewDescriptor, TextureViewDimension,
     },
     scene::EntityScene,
-    ui::{Checked, GlobalZIndex, widget::NodeImageMode},
-    ui_widgets::{RadioGroup, ScrollArea, ValueChange, radio_self_update},
+    ui::{
+        Checked, GlobalZIndex,
+        widget::{ImageNodeSize, NodeImageMode},
+    },
+    ui_widgets::{RadioGroup, ValueChange, radio_self_update},
 };
 use bevy_basisu_loader::{BasisuLoaderPlugin, BasisuLoaderSettings};
 
@@ -57,12 +64,12 @@ struct SceneRoot;
 /// Handles for assets that are loaded once and reused, so scene switching never
 /// re-issues loads or re-transcodes textures:
 /// - `alpha0`/`desk2` need special `BasisuLoaderSettings` (`load_builder`),
+/// - `grid` caches every plain-path grid asset (`GridEntry::Path`, loaded once in
+///   `setup`), so re-spawning the grid scene reuses the same handles,
 /// - the three cube-map ktx2 assets are swapped at runtime by the skybox scene's
 ///   radio group,
 /// - `face_cubemap` is the uncompressed cubemap stitched from the six skybox face
 ///   jpgs by `build_face_cubemap` (None until that system finishes).
-/// Plain-path assets (grid cells, originals) resolve through bevy's per-path handle
-/// cache at spawn time, so they need no explicit caching.
 #[derive(Resource)]
 struct LoadedAssets {
     alpha0: Handle<Image>,
@@ -71,6 +78,8 @@ struct LoadedAssets {
     skybox_astc: Handle<Image>,
     skybox_xuastc: Handle<Image>,
     face_cubemap: Option<Handle<Image>>,
+    /// Plain-path grid assets, keyed by their asset path.
+    grid: HashMap<&'static str, Handle<Image>>,
 }
 
 /// The six skybox face images, in cubemap layer order (+X, -X, +Y, -Y, +Z, -Z) — the
@@ -88,7 +97,8 @@ const SKYBOX_FACES: [&str; 6] = [
 /// percent of the grid's height (labels sit in their own auto-sized rows below each
 /// image), so `GRID_ROWS` image rows are visible on screen at once — fractions allowed,
 /// e.g. 3.5 means three and a half rows — and the remaining cells are reached by
-/// scrolling the grid container (`ScrollArea`).
+/// scrolling the grid container (`overflow: scroll` + `ScrollPosition`, driven by the
+/// `Scroll` event / `on_scroll_handler` pair).
 const GRID_COLS: f32 = 5.0;
 const GRID_ROWS: f32 = 3.5;
 const GRID_GAP: f32 = 8.0;
@@ -228,8 +238,17 @@ pub fn main() {
         )
         .add_plugins((BasisuLoaderPlugin, FeathersPlugins))
         .insert_resource(UiTheme(create_dark_theme()))
+        .add_observer(on_scroll_handler)
         .add_systems(Startup, setup)
-        .add_systems(Update, (rotate_camera, build_face_cubemap))
+        .add_systems(
+            Update,
+            (
+                rotate_camera,
+                build_face_cubemap,
+                send_scroll_events,
+                fit_grid_images,
+            ),
+        )
         .run();
 }
 
@@ -240,18 +259,28 @@ fn setup(mut commands: Commands, asset_server: Res<AssetServer>) {
     let skybox = asset_server.load(IMAGE_PATH_SKYBOX);
     let skybox_astc = asset_server.load(SNAPSHOT_PATH_SKYBOX_ASTC);
     let skybox_xuastc = asset_server.load(SNAPSHOT_PATH_SKYBOX_XUASTC);
-    commands.insert_resource(LoadedAssets {
+    let mut loaded = LoadedAssets {
         alpha0: alpha0.clone(),
         desk2: desk2.clone(),
         skybox,
         skybox_astc,
         skybox_xuastc,
         face_cubemap: None,
-    });
+        grid: HashMap::new(),
+    };
+    // Cache every plain-path grid asset once, so switching back to the grid scene
+    // reuses the same handles instead of re-resolving the paths at spawn time.
+    for entry in GRID_ENTRIES {
+        if let GridEntry::Path(path) = *entry {
+            loaded.grid.insert(path, asset_server.load(path));
+        }
+    }
+    // Scene 1 (default): image grid. Scene 2 (skybox) is reached via the Skybox radio.
+    let grid_scene = images_scene(&loaded);
+    commands.insert_resource(loaded);
     // Persistent UI layer (scene-switch radio bar), not part of either switchable scene.
     commands.spawn_scene(ui_scene());
-    // Scene 1 (default): image grid. Scene 2 (skybox) is reached via the Skybox radio.
-    commands.spawn_scene(images_scene(alpha0, desk2));
+    commands.spawn_scene(grid_scene);
 }
 
 fn load_alpha0(asset_server: &AssetServer) -> Handle<Image> {
@@ -312,7 +341,7 @@ fn ui_scene() -> impl Scene {
                             for root in &roots {
                                 commands.entity(root).despawn();
                             }
-                            commands.spawn_scene(images_scene(loaded.alpha0.clone(), loaded.desk2.clone()));
+                            commands.spawn_scene(images_scene(&loaded));
                         })
                     ),
                     (
@@ -355,6 +384,11 @@ enum HandleKind {
     Alpha0,
     Desk2,
 }
+
+/// Marks a Scene-1 grid image entity; [`fit_grid_images`] sizes it to fit its cell
+/// while keeping the source aspect ratio.
+#[derive(Component, Default, Clone)]
+struct GridImage;
 
 /// Scene 1's grid cells, left-to-right / top-to-bottom: every compressed `.basisu.ktx2`
 /// with its original next to it (alpha0, desk, kodim20, tough, wikipedia, skybox faces).
@@ -399,7 +433,9 @@ fn label_font_size(label: &str) -> f32 {
 /// Builds one cell per [`GRID_ENTRIES`] entry, in order. Returns a `SceneList`
 /// so it can be spliced into the grid's `Children` with `{ … }`. Each entry is two
 /// placed grid items: the image on row `2k+1`, its label on the auto-sized row `2k+2`.
-fn grid_cells(alpha0: Handle<Image>, desk2: Handle<Image>) -> impl SceneList {
+/// Every cell uses a cached handle from [`LoadedAssets`]: plain paths from the `grid`
+/// cache (filled in `setup`), the two special-settings loads from `alpha0`/`desk2`.
+fn grid_cells(loaded: &LoadedAssets) -> impl SceneList {
     let mut cells: Vec<Box<dyn SceneList>> = Vec::new();
     let cols = GRID_COLS as i16;
     for (i, entry) in GRID_ENTRIES.iter().enumerate() {
@@ -409,21 +445,25 @@ fn grid_cells(alpha0: Handle<Image>, desk2: Handle<Image>) -> impl SceneList {
         let label_row = image_row + 1;
         let cell: Box<dyn SceneList> = match entry {
             GridEntry::Path(path) => Box::new(image_cell(
-                path,
+                loaded
+                    .grid
+                    .get(path)
+                    .expect("grid asset cached in setup")
+                    .clone(),
                 file_name(path),
                 col,
                 image_row,
                 label_row,
             )),
-            GridEntry::Handle(HandleKind::Alpha0) => Box::new(image_cell_handle(
-                alpha0.clone(),
+            GridEntry::Handle(HandleKind::Alpha0) => Box::new(image_cell(
+                loaded.alpha0.clone(),
                 file_name(IMAGE_PATH_ALPHA0),
                 col,
                 image_row,
                 label_row,
             )),
-            GridEntry::Handle(HandleKind::Desk2) => Box::new(image_cell_handle(
-                desk2.clone(),
+            GridEntry::Handle(HandleKind::Desk2) => Box::new(image_cell(
+                loaded.desk2.clone(),
                 file_name(IMAGE_PATH_DESK2),
                 col,
                 image_row,
@@ -439,11 +479,11 @@ fn grid_cells(alpha0: Handle<Image>, desk2: Handle<Image>) -> impl SceneList {
 /// `GRID_COLS` equal `fr` columns; image rows are exactly `100 / GRID_ROWS` percent of
 /// the grid's height (labels live in auto-sized rows under each image), so `GRID_ROWS`
 /// image rows are visible on screen at once — fractions allowed, e.g. 3.5. Rows beyond
-/// that are reached by scrolling the container (`ScrollArea`). Images fit the column
-/// width with their own aspect ratio; wide sources letterbox vertically inside the
-/// row, taller sources are center-clipped by an overflow-hidden wrapper — never
-/// stretched.
-fn images_scene(alpha0: Handle<Image>, desk2: Handle<Image>) -> impl Scene {
+/// that are reached by scrolling the container (`overflow: scroll` driven by the
+/// `Scroll` event / `on_scroll_handler` pair, see below). Every image is contain-fitted
+/// into its cell by [`fit_grid_images`], so it never exceeds the cell and keeps its
+/// original aspect ratio.
+fn images_scene(loaded: &LoadedAssets) -> impl Scene {
     // Grid tracks: GRID_COLS equal columns; one `100 / GRID_ROWS`-percent image row
     // per visible row, each followed by an auto-sized label row (explicit tracks, so
     // labels never change the image row height).
@@ -463,10 +503,12 @@ fn images_scene(alpha0: Handle<Image>, desk2: Handle<Image>) -> impl Scene {
         template_value(Tonemapping::None)
         SceneRoot
         // Scrollable: rows beyond the viewport are reached by wheeling over the grid.
-        // `ScrollArea` (bevy_ui_widgets) observes the picking `Pointer<Scroll>` event
-        // and writes the clamped `ScrollPosition` — it requires the `overflow: scroll`
-        // below and auto-inserts the `ScrollPosition` it needs.
-        ScrollArea
+        // `send_scroll_events` injects `MouseWheel` deltas into the hovered subtree;
+        // `on_scroll_handler` (registered as a global observer) applies them to this
+        // `overflow: scroll` container's `ScrollPosition` and stops propagation once
+        // consumed. Same hand-wired pattern as bevy 0.19's
+        // `ui/scroll_and_overflow/scroll` example.
+        ScrollPosition(Vec2::ZERO)
         Node {
             width: percent(100),
             height: percent(100),
@@ -490,7 +532,7 @@ fn images_scene(alpha0: Handle<Image>, desk2: Handle<Image>) -> impl Scene {
         ThemeBackgroundColor(tokens::WINDOW_BG)
         InheritableThemeTextColor(tokens::TEXT_MAIN)
         Children [
-            { grid_cells(alpha0, desk2) }
+            { grid_cells(loaded) }
         ]
     }
 }
@@ -527,12 +569,20 @@ fn skybox_scene() -> impl SceneList {
             }
             GlobalZIndex(1)
             BackgroundColor(backdrop)
-            InheritableThemeTextColor(tokens::TEXT_MAIN)
             SceneRoot
             Children [
                 (
                     Text("Q/E: rotate camera")
                     TextFont { font_size: px(16.0) }
+                    // Match the radio captions' effective rendering: the caption
+                    // wrapper `Node` has no `ThemedText`, so the theme's
+                    // `With<ThemedText>` propagation filter stops before the caption
+                    // text and it never receives the RADIO_TEXT color — it renders
+                    // bevy's default `TextColor::WHITE`. An explicit white here
+                    // reproduces that exactly; without it the hint root's TEXT_MAIN
+                    // token would propagate LIGHT_GRAY_1 and the hint would look
+                    // grayer than the captions.
+                    TextColor(Color::WHITE)
                     ThemedText
                 )
             ]
@@ -623,66 +673,12 @@ fn skybox_scene() -> impl SceneList {
 
 /// A grid cell: the image on its `100/GRID_ROWS`-percent row, the file-name label in
 /// the auto-sized row beneath it. `col`/`image_row`/`label_row` are 1-based grid
-/// lines. The image keeps its own aspect ratio (Auto mode, 100% column width fixes
-/// the width so the height follows the aspect); wide sources letterbox vertically
-/// inside the row, taller sources are center-clipped by the overflow-hidden wrapper,
-/// never stretched.
+/// lines. The image keeps its own aspect ratio and is contain-fitted into the cell
+/// by [`fit_grid_images`] (largest aspect-preserving box, centered); the
+/// overflow-hidden wrapper only guards sub-pixel rounding. The handle comes from
+/// [`LoadedAssets`] — every grid asset is cached in `setup`, including the special
+/// `BasisuLoaderSettings` loads (alpha0 Rg channel hint, desk2 Rgb9e5 transcode).
 fn image_cell(
-    path: &'static str,
-    label: &'static str,
-    col: i16,
-    image_row: i16,
-    label_row: i16,
-) -> impl SceneList {
-    let label_size = label_font_size(label);
-    let col = GridPlacement::start(col);
-    let image_row = GridPlacement::start(image_row);
-    let label_row = GridPlacement::start(label_row);
-    (
-        // Image row item: Auto mode keeps each image's own aspect ratio; the 100%
-        // width fixes the image width to the grid column, so the height follows the
-        // aspect. Wide sources (e.g. wikipedia 1848x888) letterbox vertically inside
-        // the row, never stretched or overflowing. Sources taller than the row
-        // (squares) are centered and clipped top/bottom by the hidden wrapper.
-        EntityScene(bsn! {
-            Node {
-                overflow: Overflow::hidden(),
-                align_items: AlignItems::Center,
-                justify_content: JustifyContent::Center,
-                grid_row: image_row,
-                grid_column: col,
-            }
-            Children [
-                (
-                    ImageNode {
-                        image: path,
-                        image_mode: NodeImageMode::Auto,
-                    }
-                    Node {
-                        width: percent(100),
-                    }
-                )
-            ]
-        }),
-        // Label row item: centers the file name under the image.
-        EntityScene(bsn! {
-            Node {
-                align_items: AlignItems::Center,
-                justify_content: JustifyContent::Center,
-                grid_row: label_row,
-                grid_column: col,
-            }
-            Children [
-                (Text(label) TextFont { font_size: px(label_size) } ThemedText)
-            ]
-        }),
-    )
-}
-
-/// A grid cell taking a preloaded handle (needed for the special BasisuLoaderSettings
-/// loads: alpha0 Rg channel hint, desk2 Rgb9e5 transcode). Layout identical to
-/// [`image_cell`].
-fn image_cell_handle(
     handle: Handle<Image>,
     label: &'static str,
     col: i16,
@@ -694,6 +690,9 @@ fn image_cell_handle(
     let image_row = GridPlacement::start(image_row);
     let label_row = GridPlacement::start(label_row);
     (
+        // Image row item: `fit_grid_images` sets the image's explicit px size to the
+        // largest aspect-preserving box in the cell (`width: percent(100)` is only
+        // the pre-fit fallback while the texture is still loading).
         EntityScene(bsn! {
             Node {
                 overflow: Overflow::hidden(),
@@ -711,9 +710,11 @@ fn image_cell_handle(
                     Node {
                         width: percent(100),
                     }
+                    GridImage
                 )
             ]
         }),
+        // Label row item: centers the file name under the image.
         EntityScene(bsn! {
             Node {
                 align_items: AlignItems::Center,
@@ -743,5 +744,107 @@ fn rotate_camera(
     };
     for mut transform in &mut query {
         transform.rotate_y(rotate);
+    }
+}
+
+/// Scroll delta injected into the UI hierarchy, same shape as bevy 0.19's
+/// `ui/scroll_and_overflow/scroll` example.
+#[derive(EntityEvent, Debug)]
+#[entity_event(propagate, auto_propagate)]
+struct Scroll {
+    entity: Entity,
+    /// Scroll delta in logical coordinates.
+    delta: Vec2,
+}
+
+/// Mouse-wheel distance per `MouseScrollUnit::Line`, in logical pixels.
+const SCROLL_LINE_HEIGHT: f32 = 40.0;
+
+/// Injects wheel deltas into the hovered UI subtree; the observer below (registered
+/// on the grid container) consumes what it can scroll.
+fn send_scroll_events(
+    mut mouse_wheel_reader: MessageReader<MouseWheel>,
+    hover_map: Res<HoverMap>,
+    mut commands: Commands,
+) {
+    for mouse_wheel in mouse_wheel_reader.read() {
+        let mut delta = -Vec2::new(mouse_wheel.x, mouse_wheel.y);
+        if mouse_wheel.unit == MouseScrollUnit::Line {
+            delta *= SCROLL_LINE_HEIGHT;
+        }
+        for pointer_map in hover_map.values() {
+            for entity in pointer_map.keys().copied() {
+                commands.trigger(Scroll { entity, delta });
+            }
+        }
+    }
+}
+
+/// Scrolls a `overflow: scroll` node, consuming the delta; stops propagation once
+/// the delta is fully consumed. Only the image-grid container has scroll overflow,
+/// so this only ever scrolls the grid.
+fn on_scroll_handler(
+    mut scroll: On<Scroll>,
+    mut query: Query<(&mut ScrollPosition, &Node, &ComputedNode)>,
+) {
+    let Ok((mut scroll_position, node, computed)) = query.get_mut(scroll.entity) else {
+        return;
+    };
+    let max_offset = (computed.content_size() - computed.size()) * computed.inverse_scale_factor();
+    let delta = &mut scroll.delta;
+    if node.overflow.x == OverflowAxis::Scroll && delta.x != 0. {
+        let max = if delta.x > 0. {
+            scroll_position.x >= max_offset.x
+        } else {
+            scroll_position.x <= 0.
+        };
+        if !max {
+            scroll_position.x += delta.x;
+            delta.x = 0.;
+        }
+    }
+    if node.overflow.y == OverflowAxis::Scroll && delta.y != 0. {
+        let max = if delta.y > 0. {
+            scroll_position.y >= max_offset.y
+        } else {
+            scroll_position.y <= 0.
+        };
+        if !max {
+            scroll_position.y += delta.y;
+            delta.y = 0.;
+        }
+    }
+    if *delta == Vec2::ZERO {
+        scroll.propagate(false);
+    }
+}
+
+/// Contain-fits each grid image inside its cell: reads the cell size from the
+/// wrapper's `ComputedNode` and the source texture size from `ImageNodeSize`
+/// (auto-maintained by bevy's `update_image_content_size_system`), then sets the
+/// image node's `width`/`height` in logical px so the image fills the largest
+/// aspect-preserving box inside the cell. No-op while the texture is unloaded or
+/// the wrapper is not laid out; converges one frame after either becomes ready;
+/// re-fits automatically on window resize. The skybox scene has no `GridImage`
+/// entities, so it is a no-op there.
+fn fit_grid_images(
+    mut q_image: Query<(&ChildOf, &mut Node, &ImageNodeSize), With<GridImage>>,
+    q_wrapper: Query<&ComputedNode>,
+) {
+    for (parent, mut node, image_size) in &mut q_image {
+        let Ok(wrapper) = q_wrapper.get(parent.0) else {
+            continue;
+        };
+        let src = image_size.size().as_vec2();
+        let cell = wrapper.size();
+        if src.x <= 0.0 || src.y <= 0.0 || cell.x <= 0.0 || cell.y <= 0.0 {
+            continue; // texture not loaded yet, or cell not laid out yet
+        }
+        let scale = (cell / src).min_element();
+        let fit = src * scale;
+        if node.width != Val::Px(fit.x) || node.height != Val::Px(fit.y) {
+            node.width = Val::Px(fit.x);
+            node.height = Val::Px(fit.y);
+        }
     }
 }
