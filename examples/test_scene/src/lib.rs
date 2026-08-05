@@ -22,6 +22,7 @@ use bevy::{
         TextureViewDescriptor, TextureViewDimension,
     },
     scene::EntityScene,
+    text::LineBreak,
     ui::{
         Checked, GlobalZIndex,
         widget::{ImageNodeSize, NodeImageMode},
@@ -97,8 +98,8 @@ const SKYBOX_FACES: [&str; 6] = [
 /// percent of the grid's height (labels sit in their own auto-sized rows below each
 /// image), so `GRID_ROWS` image rows are visible on screen at once — fractions allowed,
 /// e.g. 3.5 means three and a half rows — and the remaining cells are reached by
-/// scrolling the grid container (`overflow: scroll` + `ScrollPosition`, driven by the
-/// `Scroll` event / `on_scroll_handler` pair).
+/// scrolling the grid container (`overflow: scroll` + `ScrollPosition`, driven by
+/// [`scroll_grid`]).
 const GRID_COLS: f32 = 5.0;
 const GRID_ROWS: f32 = 3.5;
 const GRID_GAP: f32 = 8.0;
@@ -238,15 +239,14 @@ pub fn main() {
         )
         .add_plugins((BasisuLoaderPlugin, FeathersPlugins))
         .insert_resource(UiTheme(create_dark_theme()))
-        .add_observer(on_scroll_handler)
         .add_systems(Startup, setup)
         .add_systems(
             Update,
             (
                 rotate_camera,
                 build_face_cubemap,
-                send_scroll_events,
                 fit_grid_images,
+                scroll_grid,
             ),
         )
         .run();
@@ -419,17 +419,6 @@ fn file_name(path: &'static str) -> &'static str {
     path.rsplit('/').next().unwrap_or(path)
 }
 
-/// Label font size, shrunk for long file names so the label stays inside its cell
-/// (which is as wide as the grid column).
-fn label_font_size(label: &str) -> f32 {
-    match label.len() {
-        0..=12 => 12.0,
-        13..=18 => 11.0,
-        19..=26 => 10.0,
-        _ => 9.0,
-    }
-}
-
 /// Builds one cell per [`GRID_ENTRIES`] entry, in order. Returns a `SceneList`
 /// so it can be spliced into the grid's `Children` with `{ … }`. Each entry is two
 /// placed grid items: the image on row `2k+1`, its label on the auto-sized row `2k+2`.
@@ -479,8 +468,8 @@ fn grid_cells(loaded: &LoadedAssets) -> impl SceneList {
 /// `GRID_COLS` equal `fr` columns; image rows are exactly `100 / GRID_ROWS` percent of
 /// the grid's height (labels live in auto-sized rows under each image), so `GRID_ROWS`
 /// image rows are visible on screen at once — fractions allowed, e.g. 3.5. Rows beyond
-/// that are reached by scrolling the container (`overflow: scroll` driven by the
-/// `Scroll` event / `on_scroll_handler` pair, see below). Every image is contain-fitted
+/// that are reached by scrolling the container (`overflow: scroll` driven by
+/// [`scroll_grid`], see below). Every image is contain-fitted
 /// into its cell by [`fit_grid_images`], so it never exceeds the cell and keeps its
 /// original aspect ratio.
 fn images_scene(loaded: &LoadedAssets) -> impl Scene {
@@ -503,12 +492,11 @@ fn images_scene(loaded: &LoadedAssets) -> impl Scene {
         template_value(Tonemapping::None)
         SceneRoot
         // Scrollable: rows beyond the viewport are reached by wheeling over the grid.
-        // `send_scroll_events` injects `MouseWheel` deltas into the hovered subtree;
-        // `on_scroll_handler` (registered as a global observer) applies them to this
-        // `overflow: scroll` container's `ScrollPosition` and stops propagation once
-        // consumed. Same hand-wired pattern as bevy 0.19's
-        // `ui/scroll_and_overflow/scroll` example.
+        // `scroll_grid` reads `MouseWheel` + `HoverMap` (bevy 0.19's
+        // `ui/scroll_and_overflow/scroll` pattern) and writes this container's
+        // `ScrollPosition` directly; `GridScroll` marks it as the scroll target.
         ScrollPosition(Vec2::ZERO)
+        GridScroll
         Node {
             width: percent(100),
             height: percent(100),
@@ -675,8 +663,10 @@ fn skybox_scene() -> impl SceneList {
 /// the auto-sized row beneath it. `col`/`image_row`/`label_row` are 1-based grid
 /// lines. The image keeps its own aspect ratio and is contain-fitted into the cell
 /// by [`fit_grid_images`] (largest aspect-preserving box, centered); the
-/// overflow-hidden wrapper only guards sub-pixel rounding. The handle comes from
-/// [`LoadedAssets`] — every grid asset is cached in `setup`, including the special
+/// overflow-hidden wrapper only guards sub-pixel rounding. The label uses a
+/// viewport-relative (`Vw`) font and wraps at any character (`LineBreak::AnyCharacter`),
+/// so it never exceeds the column width. The handle comes from [`LoadedAssets`] —
+/// every grid asset is cached in `setup`, including the special
 /// `BasisuLoaderSettings` loads (alpha0 Rg channel hint, desk2 Rgb9e5 transcode).
 fn image_cell(
     handle: Handle<Image>,
@@ -685,7 +675,6 @@ fn image_cell(
     image_row: i16,
     label_row: i16,
 ) -> impl SceneList {
-    let label_size = label_font_size(label);
     let col = GridPlacement::start(col);
     let image_row = GridPlacement::start(image_row);
     let label_row = GridPlacement::start(label_row);
@@ -714,7 +703,11 @@ fn image_cell(
                 )
             ]
         }),
-        // Label row item: centers the file name under the image.
+        // Label row item: centers the file name under the image; the item stretches
+        // to the grid column, so the text wraps within the column (file names have no
+        // spaces, so `AnyCharacter` breaks at any char). Font size is viewport-
+        // relative (`Vw`), so it scales with the window; wrapping keeps the label
+        // inside the cell at any size.
         EntityScene(bsn! {
             Node {
                 align_items: AlignItems::Center,
@@ -723,7 +716,12 @@ fn image_cell(
                 grid_column: col,
             }
             Children [
-                (Text(label) TextFont { font_size: px(label_size) } ThemedText)
+                (
+                    Text(label)
+                    TextFont { font_size: FontSize::Vw(1.0) }
+                    TextLayout { linebreak: LineBreak::AnyCharacter }
+                    ThemedText
+                )
             ]
         }),
     )
@@ -747,75 +745,65 @@ fn rotate_camera(
     }
 }
 
-/// Scroll delta injected into the UI hierarchy, same shape as bevy 0.19's
-/// `ui/scroll_and_overflow/scroll` example.
-#[derive(EntityEvent, Debug)]
-#[entity_event(propagate, auto_propagate)]
-struct Scroll {
-    entity: Entity,
-    /// Scroll delta in logical coordinates.
-    delta: Vec2,
-}
+/// Marks the scrollable grid container; [`scroll_grid`] drives its `ScrollPosition`
+/// directly from wheel events while the pointer is inside the grid subtree. The
+/// delta math (negation, `Line` scaling, clamp to the scrollable extent) follows
+/// bevy 0.19's `ui/scroll_and_overflow/scroll` example verbatim; the only
+/// difference is that the hovered-subtree test is done by walking `ChildOf` here
+/// instead of relying on entity-event propagation reaching the container.
+#[derive(Component, Default, Clone)]
+struct GridScroll;
 
 /// Mouse-wheel distance per `MouseScrollUnit::Line`, in logical pixels.
 const SCROLL_LINE_HEIGHT: f32 = 40.0;
 
-/// Injects wheel deltas into the hovered UI subtree; the observer below (registered
-/// on the grid container) consumes what it can scroll.
-fn send_scroll_events(
+/// Scrolls the grid container from wheel events when the pointer hovers the grid or
+/// one of its descendants (walked up via `ChildOf`), clamping `ScrollPosition` to the
+/// scrollable extent. No-op while the content fits or the pointer is outside the
+/// grid subtree (e.g. over the persistent button bar).
+fn scroll_grid(
     mut mouse_wheel_reader: MessageReader<MouseWheel>,
     hover_map: Res<HoverMap>,
-    mut commands: Commands,
+    mut q_scroll: Query<(&mut ScrollPosition, &Node, &ComputedNode, Entity), With<GridScroll>>,
+    q_parent: Query<&ChildOf>,
 ) {
+    let Ok((mut scroll_position, node, computed, grid)) = q_scroll.single_mut() else {
+        return;
+    };
+    // Only scroll when the pointer is over the grid subtree (the grid itself or any
+    // descendant); the persistent button bar and the skybox UI are not inside it.
+    let over_grid = hover_map
+        .values()
+        .flat_map(|map| map.keys().copied())
+        .any(|hovered| {
+            let mut cur = Some(hovered);
+            while let Some(entity) = cur {
+                if entity == grid {
+                    return true;
+                }
+                cur = q_parent.get(entity).ok().map(|parent| parent.0);
+            }
+            false
+        });
+    if !over_grid {
+        return;
+    }
+    let max_offset = (computed.content_size() - computed.size()) * computed.inverse_scale_factor();
     for mouse_wheel in mouse_wheel_reader.read() {
         let mut delta = -Vec2::new(mouse_wheel.x, mouse_wheel.y);
         if mouse_wheel.unit == MouseScrollUnit::Line {
             delta *= SCROLL_LINE_HEIGHT;
         }
-        for pointer_map in hover_map.values() {
-            for entity in pointer_map.keys().copied() {
-                commands.trigger(Scroll { entity, delta });
+        if node.overflow.y == OverflowAxis::Scroll && delta.y != 0. {
+            let max = if delta.y > 0. {
+                scroll_position.y >= max_offset.y
+            } else {
+                scroll_position.y <= 0.
+            };
+            if !max {
+                scroll_position.y += delta.y;
             }
         }
-    }
-}
-
-/// Scrolls a `overflow: scroll` node, consuming the delta; stops propagation once
-/// the delta is fully consumed. Only the image-grid container has scroll overflow,
-/// so this only ever scrolls the grid.
-fn on_scroll_handler(
-    mut scroll: On<Scroll>,
-    mut query: Query<(&mut ScrollPosition, &Node, &ComputedNode)>,
-) {
-    let Ok((mut scroll_position, node, computed)) = query.get_mut(scroll.entity) else {
-        return;
-    };
-    let max_offset = (computed.content_size() - computed.size()) * computed.inverse_scale_factor();
-    let delta = &mut scroll.delta;
-    if node.overflow.x == OverflowAxis::Scroll && delta.x != 0. {
-        let max = if delta.x > 0. {
-            scroll_position.x >= max_offset.x
-        } else {
-            scroll_position.x <= 0.
-        };
-        if !max {
-            scroll_position.x += delta.x;
-            delta.x = 0.;
-        }
-    }
-    if node.overflow.y == OverflowAxis::Scroll && delta.y != 0. {
-        let max = if delta.y > 0. {
-            scroll_position.y >= max_offset.y
-        } else {
-            scroll_position.y <= 0.
-        };
-        if !max {
-            scroll_position.y += delta.y;
-            delta.y = 0.;
-        }
-    }
-    if *delta == Vec2::ZERO {
-        scroll.propagate(false);
     }
 }
 
