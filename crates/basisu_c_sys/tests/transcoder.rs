@@ -129,12 +129,13 @@ fn transcode_assets_uncompressed() {
                         ImageBuffer::from_raw(
                             width,
                             height,
-                            bytemuck::cast_slice::<u8, half::f16>(
-                                &data[offset..(offset + bytes as usize)],
-                            )
-                            .iter()
-                            .map(|hf| hf.to_f32())
-                            .collect(),
+                            data[offset..(offset + bytes as usize)]
+                                .as_chunks::<2>()
+                                .0
+                                .iter()
+                                .map(|ck| half::f16::from_le_bytes(*ck))
+                                .map(|hf| hf.to_f32())
+                                .collect(),
                         )
                         .unwrap(),
                     )
