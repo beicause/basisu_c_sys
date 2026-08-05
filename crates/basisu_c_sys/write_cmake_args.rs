@@ -1,14 +1,15 @@
-fn write_cmake_args<A, B, C>(
+fn write_cmake_args<A, B, C, D>(
     default_encoder_emcc_args: &[A],
     default_transcoder_emcc_args: &[A],
     encoder_sources: &[B],
-    transcoder_sources: &[B],
-    emcc_flags: Option<C>,
+    transcoder_sources: &[C],
+    emcc_flags: Option<D>,
     out_dir: &std::path::Path,
 ) where
     A: AsRef<str>,
     B: AsRef<str>,
     C: AsRef<str>,
+    D: AsRef<str>,
 {
     let (mut encoder_args, mut transcoder_args) = (
         default_encoder_emcc_args
@@ -29,18 +30,24 @@ fn write_cmake_args<A, B, C>(
     }
 
     for (name, sources) in [
-        ("encoder_srcs.txt", encoder_sources),
-        ("transcoder_srcs.txt", transcoder_sources),
-    ] {
-        std::fs::write(
-            out_dir.join(name),
-            sources
+        (
+            "encoder_srcs.txt",
+            encoder_sources
                 .iter()
                 .map(|src| src.as_ref())
                 .collect::<Vec<_>>()
                 .join("\n"),
-        )
-        .unwrap();
+        ),
+        (
+            "transcoder_srcs.txt",
+            transcoder_sources
+                .iter()
+                .map(|src| src.as_ref())
+                .collect::<Vec<_>>()
+                .join("\n"),
+        ),
+    ] {
+        std::fs::write(out_dir.join(name), sources).unwrap();
     }
 
     for (name, sources) in [
