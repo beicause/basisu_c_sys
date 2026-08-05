@@ -67,9 +67,9 @@ insta = "1.47.2"
 bindgen = "0.72"
 cc = { version = "1.2", features = ["parallel"] }
 cmake = "0.1.58"
-prettyplease = "0.2.37"
+prettyplease = "0.3"
 syn = {
-  version = "2.0.117",
+  version = "3",
   default-features = false,
   features = [
     "full",
