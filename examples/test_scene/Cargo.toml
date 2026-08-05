@@ -28,7 +28,7 @@ bevy = {
     # collection: scene
     "bevy_scene",
 
-    # collection: picking (bevy_feathers 的按钮指针事件需要)
+    # collection: picking
     "bevy_picking",
     # "mesh_picking",
     # "sprite_picking",
