@@ -1,3 +1,5 @@
+use std::sync::OnceLock;
+
 const FLAGS: &[&str] = &[
     "/wd4189",
     "-Wno-unused-variable",
@@ -8,6 +10,7 @@ const FLAGS: &[&str] = &[
     "-Wno-stringop-overflow",
     "-Wno-array-bounds",
     "-Wno-unused-parameter",
+    "-Wno-sign-compare",
     "-fno-exceptions",
     // Fix gcc optimization issue.
     // See vendor/basis_universal/transcoder/basisu.h
@@ -45,36 +48,26 @@ const DEFINES: &[(&str, &str)] = &[
     ("BASISD_SUPPORT_UASTC_HDR", "0"),
 ];
 
-const ENCODER_SRCS: &[&str] = &[
-    "vendor/basis_universal/encoder/basisu_astc_hdr_6x6_enc.cpp",
-    "vendor/basis_universal/encoder/basisu_astc_hdr_common.cpp",
-    "vendor/basis_universal/encoder/basisu_astc_ldr_common.cpp",
-    "vendor/basis_universal/encoder/basisu_astc_ldr_encode.cpp",
-    "vendor/basis_universal/encoder/basisu_backend.cpp",
-    "vendor/basis_universal/encoder/basisu_basis_file.cpp",
-    "vendor/basis_universal/encoder/basisu_bc7enc.cpp",
-    "vendor/basis_universal/encoder/basisu_comp.cpp",
-    "vendor/basis_universal/encoder/basisu_enc.cpp",
-    "vendor/basis_universal/encoder/basisu_etc.cpp",
-    "vendor/basis_universal/encoder/basisu_frontend.cpp",
-    "vendor/basis_universal/encoder/basisu_gpu_texture.cpp",
-    "vendor/basis_universal/encoder/basisu_kernels_sse.cpp",
-    "vendor/basis_universal/encoder/basisu_opencl.cpp",
-    "vendor/basis_universal/encoder/basisu_pvrtc1_4.cpp",
-    "vendor/basis_universal/encoder/basisu_resample_filters.cpp",
-    "vendor/basis_universal/encoder/basisu_resampler.cpp",
-    "vendor/basis_universal/encoder/basisu_ssim.cpp",
-    "vendor/basis_universal/encoder/basisu_uastc_enc.cpp",
-    "vendor/basis_universal/encoder/basisu_uastc_hdr_4x4_enc.cpp",
-    "vendor/basis_universal/encoder/basisu_wasm_api.cpp",
-    "vendor/basis_universal/encoder/basisu_wasm_transcoder_api.cpp",
-    "vendor/basis_universal/encoder/jpgd.cpp",
-    "vendor/basis_universal/encoder/pvpngreader.cpp",
-    "vendor/basis_universal/encoder/3rdparty/android_astc_decomp.cpp",
-    "vendor/basis_universal/encoder/3rdparty/tinyexr.cpp",
-    "vendor/basis_universal/transcoder/basisu_transcoder.cpp",
-    "vendor/basis_universal/zstd/zstd.c",
-];
+static ENCODER_SRCS: OnceLock<Vec<String>> = OnceLock::new();
+
+fn get_encoder_srcs() -> &'static [String] {
+    let dir = env!("CARGO_MANIFEST_DIR");
+    let srcs = &[
+        "vendor/basis_universal/transcoder/basisu_transcoder.cpp",
+        "vendor/basis_universal/zstd/zstd.c",
+    ];
+
+    ENCODER_SRCS.get_or_init(|| {
+        let mut vec = Vec::new();
+        search_files(
+            std::path::PathBuf::from_iter([dir, "vendor/basis_universal/encoder/"]),
+            "cpp",
+            &mut vec,
+        );
+        vec.extend(srcs.map(ToString::to_string));
+        vec
+    })
+}
 
 const TRANSCODER_SRCS: &[&str] = &[
     "vendor/basis_universal/encoder/basisu_wasm_transcoder_api.cpp",
@@ -83,6 +76,22 @@ const TRANSCODER_SRCS: &[&str] = &[
 ];
 
 include!(concat!(env!("CARGO_MANIFEST_DIR"), "/write_cmake_args.rs"));
+
+fn search_files(dir: impl AsRef<std::path::Path>, extension: &str, results: &mut Vec<String>) {
+    let entries = std::fs::read_dir(dir).expect("Failed to read directory");
+
+    for entry in entries.flatten() {
+        let path = entry.path();
+
+        if path.is_dir() {
+            search_files(path.to_str().unwrap(), extension, results);
+        } else if path.is_file() {
+            if path.extension().map(|s| s.to_str().unwrap()) == Some(extension) {
+                results.push(path.into_os_string().into_string().unwrap());
+            }
+        }
+    }
+}
 
 fn main() {
     bindgen();
@@ -110,7 +119,7 @@ fn main() {
             write_cmake_args(
                 &default_encoder_emcc_args,
                 &default_transcoder_emcc_args,
-                ENCODER_SRCS,
+                get_encoder_srcs(),
                 TRANSCODER_SRCS,
                 target_feature.contains("simd128").then_some("-msimd128"),
                 &args_dir,
@@ -456,15 +465,19 @@ fn compile_basisu_static() {
         for (define, value) in DEFINES {
             build.define(define, *value);
         }
-        build.files(
-            if cfg!(feature = "encoder") {
-                ENCODER_SRCS
-            } else {
+        if cfg!(feature = "encoder") {
+            build.files(
+                get_encoder_srcs()
+                    .iter()
+                    .filter(|src| src.ends_with(if is_cpp { ".cpp" } else { ".c" })),
+            );
+        } else {
+            build.files(
                 TRANSCODER_SRCS
-            }
-            .iter()
-            .filter(|src| src.ends_with(if is_cpp { ".cpp" } else { ".c" })),
-        );
+                    .iter()
+                    .filter(|src| src.ends_with(if is_cpp { ".cpp" } else { ".c" })),
+            );
+        }
         build.compile(&format!(
             "basisu_c_sys_{}",
             if is_cpp { "cpp" } else { "c" }

@@ -1,6 +1,6 @@
 #!/bin/sh
 
-git clone --depth 1 https://github.com/BinomialLLC/basis_universal --branch v2_1_0 basis_universal_repo
+git clone --depth 1 https://github.com/BinomialLLC/basis_universal --branch v2_50 basis_universal_repo
 
 rm -rf ./basis_universal
 mkdir ./basis_universal
