@@ -461,12 +461,29 @@ fn select_preferred_transcode_target(
             TranscodeTargetFormat::RGBA32
         }
     };
+    let select_xubc7 = || {
+        if supported_compressed_formats.contains(SupportedTextureCompression::BC) {
+            TranscodeTargetFormat::Bc7Rgba
+        } else if supported_compressed_formats.contains(SupportedTextureCompression::ASTC_LDR) {
+            TranscodeTargetFormat::AstcLdr4x4Rgba
+        } else if supported_compressed_formats.contains(SupportedTextureCompression::ETC2) {
+            match channel_type {
+                ChannelType::Rgb => TranscodeTargetFormat::Etc1Rgb,
+                ChannelType::Rgba | ChannelType::Auto => TranscodeTargetFormat::Etc2Rgba,
+                ChannelType::R => TranscodeTargetFormat::Etc2EacR11,
+                ChannelType::Rg => TranscodeTargetFormat::Etc2EacRg11,
+            }
+        } else {
+            TranscodeTargetFormat::RGBA32
+        }
+    };
     match basis_format {
         BasisTextureFormat::Etc1s => select_etc1s(),
         BasisTextureFormat::UastcLdr4x4 => select_astc_ldr(),
         BasisTextureFormat::UastcHdr4x4 => select_hdr_4x4(),
         BasisTextureFormat::AstcHdr6x6 => select_hdr_6x6(),
         BasisTextureFormat::UastcHdr6x6 => select_hdr_6x6(),
+        BasisTextureFormat::Xubc7 => select_xubc7(),
         BasisTextureFormat::XuastcLdr4x4
         | BasisTextureFormat::XuastcLdr5x4
         | BasisTextureFormat::XuastcLdr5x5

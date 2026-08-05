@@ -85,10 +85,9 @@ fn search_files(dir: impl AsRef<std::path::Path>, extension: &str, results: &mut
 
         if path.is_dir() {
             search_files(path.to_str().unwrap(), extension, results);
-        } else if path.is_file() {
-            if path.extension().map(|s| s.to_str().unwrap()) == Some(extension) {
-                results.push(path.into_os_string().into_string().unwrap());
-            }
+        } else if path.is_file() && path.extension().map(|s| s.to_str().unwrap()) == Some(extension)
+        {
+            results.push(path.into_os_string().into_string().unwrap());
         }
     }
 }

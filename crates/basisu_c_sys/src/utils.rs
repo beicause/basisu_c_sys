@@ -38,15 +38,17 @@ pub enum BasisTextureFormat {
     AstcLdr10x10 = common::BTF_ASTC_LDR_10X10,
     AstcLdr12x10 = common::BTF_ASTC_LDR_12X10,
     AstcLdr12x12 = common::BTF_ASTC_LDR_12X12,
+    Xubc7 = common::BTF_XUBC7,
 }
 
 impl TryFrom<u32> for BasisTextureFormat {
     type Error = ();
 
     fn try_from(value: u32) -> Result<Self, Self::Error> {
-        if value > common::BTF_ASTC_LDR_12X12 {
+        if value >= common::BTF_TOTAL_FORMATS {
             Err(())
         } else {
+            // SAFETY: `value` within [0, `common::BTF_TOTAL_FORMATS`] is a valid enum.
             Ok(unsafe { core::mem::transmute::<u32, BasisTextureFormat>(value) })
         }
     }
