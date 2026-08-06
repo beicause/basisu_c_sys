@@ -8,6 +8,5 @@ extend-exclude = [
 ]
 ignore-hidden = false
 
-
 [default]
 locale = "en-us"
