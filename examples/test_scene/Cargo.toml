@@ -26,13 +26,15 @@ bevy = {
     # "vorbis",
 
     # collection: scene
-    # "bevy_scene",
+    "bevy_scene",
 
     # collection: picking
-    # "bevy_picking",
+    "bevy_picking",
     # "mesh_picking",
     # "sprite_picking",
-    # "ui_picking",
+    "ui_picking",
+
+    "bevy_feathers",
 
     # collection: default_app
     "async_executor",
@@ -64,10 +66,14 @@ bevy = {
     "bevy_mesh",
     "bevy_shader",
     "bevy_text",
+
+    "exr",
+    "hdr",
+    "jpeg",
+    "png",
+
     # "bevy_animation",
     # "bevy_gizmos",
-    # "hdr",
-    # "png",
 
     "bevy_core_pipeline",
     "bevy_pbr",
