@@ -1,6 +1,7 @@
 #[cfg(feature = "encoder")]
 #[cfg_attr(docsrs, doc(cfg(feature = "encoder")))]
 mod encoder;
+mod once;
 mod transcoder;
 
 #[cfg(feature = "encoder")]

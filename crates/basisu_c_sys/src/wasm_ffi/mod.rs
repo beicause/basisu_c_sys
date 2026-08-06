@@ -8,25 +8,14 @@ pub use ffi::*;
 
 #[unsafe(no_mangle)]
 pub unsafe extern "C" fn __assert_fail(
-    assertion: *const CChar,
-    file: *const CChar,
-    line: CInt,
-    function: *const CChar,
+    _assertion: *const CChar,
+    _file: *const CChar,
+    _line: CInt,
+    _function: *const CChar,
 ) {
-    let assertion = unsafe { core::ffi::CStr::from_ptr(assertion as *const i8) };
-    let assertion = assertion.to_str().unwrap();
-
-    let file = unsafe { core::ffi::CStr::from_ptr(file as *const i8) };
-    let file = file.to_str().unwrap();
-
-    let function = unsafe { core::ffi::CStr::from_ptr(function as *const i8) };
-    let function = function.to_str().unwrap();
-
-    eprintln!(
-        "Assertion failed: {} ({}, {}:{})",
-        assertion, file, function, line
-    );
-    std::process::abort();
+    // wasm32-unknown-unknown has no stderr and no std to format the message
+    // with — trap immediately.
+    core::arch::wasm32::unreachable();
 }
 
 #[cfg(test)]

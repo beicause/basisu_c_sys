@@ -1,6 +1,9 @@
 #![doc = include_str!("../README.md")]
 #![cfg_attr(docsrs, feature(doc_cfg), doc(auto_cfg = false))]
+#![no_std]
 extern crate alloc;
+#[cfg(test)]
+extern crate std;
 
 #[cfg(feature = "extra")]
 #[cfg_attr(docsrs, doc(cfg(feature = "extra")))]

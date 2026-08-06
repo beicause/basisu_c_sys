@@ -68,7 +68,11 @@ pub unsafe extern "C" fn atof(s: *const c_char) -> f64 {
         for _ in 0..exp {
             factor *= 10.0;
         }
-        value = if esign < 0 { value / factor } else { value * factor };
+        value = if esign < 0 {
+            value / factor
+        } else {
+            value * factor
+        };
     }
 
     sign * value
@@ -96,17 +100,9 @@ pub unsafe extern "C" fn lrintf(x: f32) -> i32 {
     } else if d < -0.5 {
         n - 1
     } else if d == 0.5 {
-        if n & 1 == 1 {
-            n + 1
-        } else {
-            n
-        }
+        if n & 1 == 1 { n + 1 } else { n }
     } else if d == -0.5 {
-        if n & 1 == 1 {
-            n - 1
-        } else {
-            n
-        }
+        if n & 1 == 1 { n - 1 } else { n }
     } else {
         n
     }

@@ -1,6 +1,6 @@
 use alloc::vec::Vec;
-use std::sync::OnceLock;
 
+use super::once::Once;
 use crate::common;
 use crate::encoder as enc_sys;
 use crate::extra::types;
@@ -54,12 +54,12 @@ impl SourceImage<'_> {
     }
 }
 
-static BASISU_ENCODER_INITIALIZED: OnceLock<()> = OnceLock::new();
+static BASISU_ENCODER_INITIALIZED: Once = Once::new();
 
 /// Init global data of encoder ([`enc_sys::bu_init`]).
 pub fn basisu_encoder_init() {
-    BASISU_ENCODER_INITIALIZED.get_or_init(|| {
-        unsafe { enc_sys::bu_init() };
+    BASISU_ENCODER_INITIALIZED.call_once(|| unsafe {
+        enc_sys::bu_init();
     });
 }
 
@@ -172,7 +172,7 @@ impl BasisuEncoderParams {
 impl BasisuEncoder {
     /// Create a encoder. Panic if [`basisu_encoder_init`] hasn't been called.
     pub fn new() -> Self {
-        if BASISU_ENCODER_INITIALIZED.get().is_none() {
+        if !BASISU_ENCODER_INITIALIZED.is_initialized() {
             panic!("`basisu_encoder_init` must be called before create encoder");
         }
         Self {
@@ -332,7 +332,7 @@ mod tests {
     #[test]
     #[should_panic]
     fn encoder_create_before_init() {
-        if BASISU_ENCODER_INITIALIZED.get().is_some() {
+        if BASISU_ENCODER_INITIALIZED.is_initialized() {
             panic!("Basisu is already initialized, panic to skip this test");
         } else {
             BasisuEncoder::new();

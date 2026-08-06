@@ -1,3 +1,5 @@
+use super::once::Once;
+
 use crate::{
     extra::types,
     transcoder as trans_sys,
@@ -7,7 +9,6 @@ use alloc::boxed::Box;
 use alloc::vec;
 use alloc::vec::Vec;
 use core::num::NonZero;
-use std::sync::OnceLock;
 
 #[derive(Debug, Clone, PartialEq)]
 pub struct TranscodedImage {
@@ -24,12 +25,12 @@ pub struct TranscodedImage {
     pub view_dimension: types::TextureViewDimension,
 }
 
-static BASISU_TRANSCODER_INITIALIZED: OnceLock<()> = OnceLock::new();
+static BASISU_TRANSCODER_INITIALIZED: Once = Once::new();
 
 /// Init global data of transcoder ([`trans_sys::bt_init`]).
 pub fn basisu_transcoder_init() {
-    BASISU_TRANSCODER_INITIALIZED.get_or_init(|| {
-        unsafe { trans_sys::bt_init() };
+    BASISU_TRANSCODER_INITIALIZED.call_once(|| unsafe {
+        trans_sys::bt_init();
     });
 }
 
@@ -122,7 +123,7 @@ impl BasisuTranscoder {
         supported_compressed_formats: SupportedTextureCompression,
         channel_type_hint: ChannelType,
     ) -> Result<Self, BasisuTranscodeError> {
-        if BASISU_TRANSCODER_INITIALIZED.get().is_none() {
+        if !BASISU_TRANSCODER_INITIALIZED.is_initialized() {
             panic!("`basisu_transcoder_init` must be called before create transcoder");
         }
         unsafe {
@@ -608,7 +609,7 @@ mod tests {
     #[test]
     #[should_panic]
     fn transcoder_create_before_init() {
-        if super::BASISU_TRANSCODER_INITIALIZED.get().is_some() {
+        if super::BASISU_TRANSCODER_INITIALIZED.is_initialized() {
             panic!("Basisu is already initialized, panic to skip this test");
         } else {
             let _ = super::BasisuTranscoder::new(

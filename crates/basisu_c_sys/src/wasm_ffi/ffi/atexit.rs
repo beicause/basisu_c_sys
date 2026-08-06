@@ -22,18 +22,17 @@ struct AtexitEntry {
 const MAX_ATEXIT: usize = 32;
 
 #[allow(non_upper_case_globals)]
-static mut ATEXIT_ENTRIES: [AtexitEntry; MAX_ATEXIT] =
-    [AtexitEntry { func: None, arg: core::ptr::null_mut(), dso: core::ptr::null_mut() }; MAX_ATEXIT];
+static mut ATEXIT_ENTRIES: [AtexitEntry; MAX_ATEXIT] = [AtexitEntry {
+    func: None,
+    arg: core::ptr::null_mut(),
+    dso: core::ptr::null_mut(),
+}; MAX_ATEXIT];
 #[allow(non_upper_case_globals)]
 static mut ATEXIT_COUNT: usize = 0;
 
 /// `int __cxa_atexit(void (*func)(void *), void *arg, void *dso)`
 #[cfg_attr(not(test), unsafe(no_mangle))]
-pub unsafe extern "C" fn __cxa_atexit(
-    func: AtexitFn,
-    arg: *mut c_void,
-    dso: *mut c_void,
-) -> i32 {
+pub unsafe extern "C" fn __cxa_atexit(func: AtexitFn, arg: *mut c_void, dso: *mut c_void) -> i32 {
     // wasm32-unknown-unknown is single-threaded, so no synchronization is
     // needed.
     unsafe {
