@@ -10,7 +10,7 @@ mod test {
         fn snprintf(buf: *mut CChar, len: usize, fmt: *const CChar, ...) -> i32;
     }
 
-    use super::super::{CChar, CInt, CLong, CLongLong, CUInt, CULong, CULongLong, strcmp};
+    use super::super::{CChar, CInt, CLong, CLongLong, CULong, CULongLong, strcmp};
 
     #[test]
     fn plain_string() {
