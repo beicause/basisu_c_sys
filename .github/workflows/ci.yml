@@ -51,6 +51,26 @@ jobs:
         with:
           submodules: "recursive"
 
+      - name: Recreate vendored symlinks (Windows)
+        if: ${{ runner.os == 'Windows' }}
+        shell: bash
+        run: |
+          # The superproject checkout happens before the submodules are
+          # populated, so git materializes the vendored symlinks pointing into
+          # 3rdparty/basis_universal as file-type links (or plain files).
+          # Windows then fails to traverse them ("permission denied" when the
+          # build reads through them). Recreate them now that the submodules
+          # are in place, so git creates directory links.
+          git config core.symlinks true
+          rm -rf crates/basisu_c_sys/vendored/basis_universal
+          git checkout -- crates/basisu_c_sys/vendored/basis_universal
+          for link in encoder transcoder zstd; do
+            if ! test -d "crates/basisu_c_sys/vendored/basis_universal/$link"; then
+              echo "::error::vendored symlink $link is not traversable on Windows"
+              exit 1
+            fi
+          done
+
       - name: Install Linux dependencies
         if: ${{ matrix.os == 'ubuntu-latest' }}
         uses: ./.github/actions/install-linux-deps
@@ -106,6 +126,26 @@ jobs:
       - uses: actions/checkout@v7.0.1
         with:
           submodules: "recursive"
+
+      - name: Recreate vendored symlinks (Windows)
+        if: ${{ runner.os == 'Windows' }}
+        shell: bash
+        run: |
+          # The superproject checkout happens before the submodules are
+          # populated, so git materializes the vendored symlinks pointing into
+          # 3rdparty/basis_universal as file-type links (or plain files).
+          # Windows then fails to traverse them ("permission denied" when the
+          # build reads through them). Recreate them now that the submodules
+          # are in place, so git creates directory links.
+          git config core.symlinks true
+          rm -rf crates/basisu_c_sys/vendored/basis_universal
+          git checkout -- crates/basisu_c_sys/vendored/basis_universal
+          for link in encoder transcoder zstd; do
+            if ! test -d "crates/basisu_c_sys/vendored/basis_universal/$link"; then
+              echo "::error::vendored symlink $link is not traversable on Windows"
+              exit 1
+            fi
+          done
 
       - name: Install Linux dependencies
         if: ${{ matrix.os == 'ubuntu-latest' }}
