@@ -28,6 +28,7 @@ use bevy::{
         widget::{ImageNodeSize, NodeImageMode},
     },
     ui_widgets::{RadioGroup, ValueChange, radio_self_update},
+    window::WindowResolution,
 };
 use bevy_basisu_loader::{BasisuLoaderPlugin, BasisuLoaderSettings};
 
@@ -224,6 +225,13 @@ pub fn main() {
                         // Bind to canvas included in `index.html`
                         canvas: Some("#bevy".to_owned()),
                         fit_canvas_to_parent: true,
+                        // Workaround for https://github.com/bevyengine/bevy/issues/25306:
+                        // on touch screens /
+                        // device emulation the backend scale factor is != 1.0, and
+                        // bevy 0.19 UI renders 2x and picking coordinates misalign.
+                        // Forcing 1.0 lays the UI correctly,
+                        // though touch input is still incorrect.
+                        resolution: WindowResolution::default().with_scale_factor_override(1.0),
                         ..Default::default()
                     }),
                     ..Default::default()
@@ -517,6 +525,7 @@ fn images_scene(loaded: &LoadedAssets) -> impl Scene {
             (
                 // Scrollable content: translated by -scroll in `scroll_grid`.
                 GridContent
+                ScrollStart(0.0)
                 Node {
                     width: percent(100),
                     position_type: PositionType::Relative,
@@ -786,6 +795,13 @@ struct GridContent;
 #[derive(Component, Default, Clone)]
 struct GridRoot;
 
+/// Drag-scroll state on the [`GridContent`] wrapper: the scroll offset captured at
+/// `Pointer<DragStart>`, so the drag delta maps 1:1 to the scroll offset (same
+/// pattern as bevy 0.19's `ui/scroll_and_overflow/drag_to_scroll` example). Works
+/// for touch and mouse drag alike (picking emits `Pointer` events for both).
+#[derive(Component, Default, Clone)]
+struct ScrollStart(f32);
+
 /// Mouse-wheel distance per `MouseScrollUnit::Line`, in logical pixels.
 const SCROLL_LINE_HEIGHT: f32 = 40.0;
 
@@ -793,6 +809,8 @@ const SCROLL_LINE_HEIGHT: f32 = 40.0;
 /// height (the CSS-grid equivalent of the old `percent(100 / GRID_ROWS)` tracks,
 /// but in px so the grid's auto height equals its content extent — required for
 /// [`scroll_grid`] to measure the scroll range). Writes only on change.
+/// All math is in logical px (`ComputedNode` is physical; `GridTrack::px` rescales
+/// by the scale factor at layout time, so converting here avoids double-scaling).
 fn size_grid_rows(
     mut q_grid: Query<&mut Node, With<GridRoot>>,
     viewport: Single<&ComputedNode, With<GridViewport>>,
@@ -800,7 +818,8 @@ fn size_grid_rows(
     let Ok(mut grid) = q_grid.single_mut() else {
         return;
     };
-    let visible_h = (viewport.size().y - GRID_MARGIN - GRID_BOTTOM).max(1.0);
+    let viewport_logical = viewport.size() * viewport.inverse_scale_factor();
+    let visible_h = (viewport_logical.y - GRID_MARGIN - GRID_BOTTOM).max(1.0);
     let image_h = visible_h / GRID_ROWS;
     let image_row_count = (GRID_ENTRIES.len() as f32 / GRID_COLS).ceil() as usize;
     let mut rows: Vec<RepeatedGridTrack> = Vec::with_capacity(image_row_count * 2);
@@ -813,19 +832,74 @@ fn size_grid_rows(
     }
 }
 
-/// Scrolls the grid by translating the `GridContent` wrapper: wheel deltas are
-/// accumulated (same sign and `Line` scaling as bevy 0.19's
-/// `ui/scroll_and_overflow/scroll` example), and the pointer must hover the grid
-/// subtree (walked up via `ChildOf`). The scroll range is
-/// `content height − visible height`, clamped; no-op when the content fits or the
-/// pointer is outside the grid (e.g. over the persistent button bar).
+/// Scrolls the grid by translating the `GridContent` wrapper, driven by two inputs:
+/// - wheel: `MouseWheel` deltas, same sign and `Line` scaling as bevy 0.19's
+///   `ui/scroll_and_overflow/scroll` example; the pointer must hover the grid
+///   subtree (walked up via `ChildOf`);
+/// - drag (touch or mouse): `Pointer<DragStart>` / `Pointer<Drag>` messages
+///   (`Pointer` is both a `Message` and an `EntityEvent`), same pattern as bevy
+///   0.19's `ui/scroll_and_overflow/drag_to_scroll` example — the offset at drag
+///   start is captured in [`ScrollStart`], then the drag delta maps 1:1.
+///
+/// The scroll range is `content height − visible height`, clamped; no-op when the
+/// content fits or the pointer/drag target is outside the grid (e.g. over the
+/// persistent button bar).
+#[expect(clippy::too_many_arguments, reason = "It is a complex function")]
 fn scroll_grid(
     mut mouse_wheel_reader: MessageReader<MouseWheel>,
+    mut drag_start_reader: MessageReader<Pointer<DragStart>>,
+    mut drag_reader: MessageReader<Pointer<Drag>>,
     hover_map: Res<HoverMap>,
-    mut q_content: Query<(&mut Node, &ComputedNode, Entity), With<GridContent>>,
+    ui_scale: Res<UiScale>,
+    mut q_content: Query<(&mut Node, &ComputedNode, Entity, &mut ScrollStart), With<GridContent>>,
     viewport: Single<&ComputedNode, With<GridViewport>>,
     q_parent: Query<&ChildOf>,
 ) {
+    let Ok((mut content_node, content, content_entity, mut scroll_start)) = q_content.single_mut()
+    else {
+        return;
+    };
+    // `ComputedNode` sizes are physical; convert to logical px so the `Val::Px`
+    // translation (`top`) is not double-scaled by the layout scale factor.
+    let viewport_logical = viewport.size() * viewport.inverse_scale_factor();
+    let visible_h = viewport_logical.y - GRID_MARGIN - GRID_BOTTOM;
+    let content_logical = content.size() * content.inverse_scale_factor();
+    let max_scroll = (content_logical.y - visible_h).max(0.0);
+    if max_scroll <= 0.0 {
+        return; // content fits; nothing to scroll
+    }
+    let current = match content_node.top {
+        Val::Px(v) => -v,
+        _ => 0.0,
+    };
+    // Is `entity` inside the grid subtree (the wrapper or any descendant)?
+    let in_grid = |mut entity: Entity| -> bool {
+        loop {
+            if entity == content_entity {
+                return true;
+            }
+            match q_parent.get(entity) {
+                Ok(parent) => entity = parent.0,
+                Err(_) => return false,
+            }
+        }
+    };
+    // DragStart: capture the offset so the drag delta maps 1:1 (touch or mouse).
+    for drag_start in drag_start_reader.read() {
+        if in_grid(drag_start.entity) {
+            scroll_start.0 = current;
+        }
+    }
+    // Drag: follow the pointer.
+    for drag in drag_reader.read() {
+        if in_grid(drag.entity) {
+            let next = (scroll_start.0 - drag.distance.y / ui_scale.0).clamp(0.0, max_scroll);
+            if (next - current).abs() > 0.01 {
+                content_node.top = Val::Px(-next);
+            }
+        }
+    }
+    // Wheel: only when the pointer hovers the grid subtree.
     let mut delta_y = 0.0;
     for mouse_wheel in mouse_wheel_reader.read() {
         let delta = -mouse_wheel.y;
@@ -835,42 +909,16 @@ fn scroll_grid(
             delta
         };
     }
-    if delta_y == 0.0 {
-        return;
-    }
-    let Ok((mut content_node, content, content_entity)) = q_content.single_mut() else {
-        return;
-    };
-    // Only scroll when the pointer is over the grid subtree (the wrapper or any
-    // descendant); the persistent button bar and the skybox UI are not inside it.
-    let over_grid = hover_map
-        .values()
-        .flat_map(|map| map.keys().copied())
-        .any(|hovered| {
-            let mut cur = Some(hovered);
-            while let Some(entity) = cur {
-                if entity == content_entity {
-                    return true;
-                }
-                cur = q_parent.get(entity).ok().map(|parent| parent.0);
-            }
-            false
-        });
-    if !over_grid {
-        return;
-    }
-    let visible_h = viewport.size().y - GRID_MARGIN - GRID_BOTTOM;
-    let max_scroll = (content.size().y - visible_h).max(0.0);
-    if max_scroll <= 0.0 {
-        return; // content fits; nothing to scroll
-    }
-    let current = match content_node.top {
-        Val::Px(v) => -v,
-        _ => 0.0,
-    };
-    let next = (current + delta_y).clamp(0.0, max_scroll);
-    if (next - current).abs() > 0.01 {
-        content_node.top = Val::Px(-next);
+    if delta_y != 0.0
+        && hover_map
+            .values()
+            .flat_map(|map| map.keys().copied())
+            .any(in_grid)
+    {
+        let next = (current + delta_y).clamp(0.0, max_scroll);
+        if (next - current).abs() > 0.01 {
+            content_node.top = Val::Px(-next);
+        }
     }
 }
 
@@ -891,7 +939,9 @@ fn fit_grid_images(
             continue;
         };
         let src = image_size.size().as_vec2();
-        let cell = wrapper.size();
+        // `ComputedNode` is physical; convert to logical px so `Val::Px` (rescaled
+        // by the layout's scale factor) lands on the intended size at any DPR.
+        let cell = wrapper.size() * wrapper.inverse_scale_factor();
         if src.x <= 0.0 || src.y <= 0.0 || cell.x <= 0.0 || cell.y <= 0.0 {
             continue; // texture not loaded yet, or cell not laid out yet
         }

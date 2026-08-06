@@ -21,10 +21,10 @@ fn normalize_ws(s: &str) -> String {
 }
 
 struct FnDecl {
-    attrs: String,        // `#[...]` groups before `fn`, space-joined (e.g. `#[must_use]`), empty if none
+    attrs: String, // `#[...]` groups before `fn`, space-joined (e.g. `#[must_use]`), empty if none
     name: String,
-    args: String,         // text between `( ... )`, whitespace-normalized to one line; "" if none
-    ret: Option<String>,  // text after `->`, whitespace-normalized; None = void fn
+    args: String, // text between `( ... )`, whitespace-normalized to one line; "" if none
+    ret: Option<String>, // text after `->`, whitespace-normalized; None = void fn
 }
 
 fn parse_block_fn(body: &str) -> Option<FnDecl> {
@@ -93,7 +93,12 @@ fn parse_block_fn(body: &str) -> Option<FnDecl> {
 
     let args = normalize_ws(args_raw);
 
-    Some(FnDecl { attrs, name, args, ret })
+    Some(FnDecl {
+        attrs,
+        name,
+        args,
+        ret,
+    })
 }
 
 fn parse_extern_fns(content: &str) -> Vec<FnDecl> {
@@ -232,7 +237,8 @@ fn gen_public_funcs(file_content: &str) -> Vec<String> {
             write!(
                 out,
                 "pub unsafe fn {name}({args})",
-                name = decl.name, args = decl.args
+                name = decl.name,
+                args = decl.args
             )
             .unwrap();
             if let Some(ret) = &decl.ret {
@@ -242,9 +248,12 @@ fn gen_public_funcs(file_content: &str) -> Vec<String> {
             writeln!(out, "    BASISU_INSTANCE.with(|inst| {{").unwrap();
             writeln!(out, "        let inst = inst.get().unwrap();").unwrap();
             match decl.ret.as_deref().and_then(shim_newtype) {
-                Some(shim) => {
-                    writeln!(out, "        {}(inst.{}({arg_list}))", shim.newtype, decl.name).unwrap()
-                }
+                Some(shim) => writeln!(
+                    out,
+                    "        {}(inst.{}({arg_list}))",
+                    shim.newtype, decl.name
+                )
+                .unwrap(),
                 None => writeln!(out, "        inst.{}({arg_list})", decl.name).unwrap(),
             }
             writeln!(out, "    }})").unwrap();
@@ -262,7 +271,11 @@ fn write_binding_file(encoder_apis: &[String], transcoder_apis: &[String]) -> St
     writeln!(out, "    pub type Basisu;").unwrap();
     writeln!(out).unwrap();
     writeln!(out, "    #[wasm_bindgen(method, getter, js_name = HEAPU8)]").unwrap();
-    writeln!(out, "    pub(crate) fn wasm_heap_memory(this: &Basisu) -> Uint8Array;").unwrap();
+    writeln!(
+        out,
+        "    pub(crate) fn wasm_heap_memory(this: &Basisu) -> Uint8Array;"
+    )
+    .unwrap();
     writeln!(out).unwrap();
     for api in encoder_apis.iter().chain(transcoder_apis) {
         for line in api.lines() {
@@ -287,12 +300,18 @@ pub fn generate() {
     let transcoder_binding_apis = gen_binding_funcs(&transcoder_api_file);
 
     std::fs::write(
-        std::path::PathBuf::from_iter([&std::env::var("OUT_DIR").unwrap(), "wasm_encoder_binding.rs"]),
+        std::path::PathBuf::from_iter([
+            &std::env::var("OUT_DIR").unwrap(),
+            "wasm_encoder_binding.rs",
+        ]),
         write_binding_file(&encoder_binding_apis, &transcoder_binding_apis),
     )
     .unwrap();
     std::fs::write(
-        std::path::PathBuf::from_iter([&std::env::var("OUT_DIR").unwrap(), "wasm_transcoder_binding.rs"]),
+        std::path::PathBuf::from_iter([
+            &std::env::var("OUT_DIR").unwrap(),
+            "wasm_transcoder_binding.rs",
+        ]),
         write_binding_file(&[], &transcoder_binding_apis),
     )
     .unwrap();
@@ -305,7 +324,10 @@ pub fn generate() {
         writeln!(encoder_pub, "{func}").unwrap();
     }
     std::fs::write(
-        std::path::PathBuf::from_iter([&std::env::var("OUT_DIR").unwrap(), "wasm_encoder_pub_funcs.rs"]),
+        std::path::PathBuf::from_iter([
+            &std::env::var("OUT_DIR").unwrap(),
+            "wasm_encoder_pub_funcs.rs",
+        ]),
         encoder_pub,
     )
     .unwrap();
@@ -315,7 +337,10 @@ pub fn generate() {
         writeln!(transcoder_pub, "{func}").unwrap();
     }
     std::fs::write(
-        std::path::PathBuf::from_iter([&std::env::var("OUT_DIR").unwrap(), "wasm_transcoder_pub_funcs.rs"]),
+        std::path::PathBuf::from_iter([
+            &std::env::var("OUT_DIR").unwrap(),
+            "wasm_transcoder_pub_funcs.rs",
+        ]),
         transcoder_pub,
     )
     .unwrap();
