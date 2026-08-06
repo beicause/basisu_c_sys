@@ -26,26 +26,19 @@ pub mod common {
     target_vendor = "unknown",
     target_os = "unknown",
 ))]
-mod web;
-#[cfg(all(
-    target_arch = "wasm32",
-    target_vendor = "unknown",
-    target_os = "unknown",
-))]
-pub use web::*;
-
-#[cfg(not(all(
-    target_arch = "wasm32",
-    target_vendor = "unknown",
-    target_os = "unknown",
-)))]
-mod native;
-#[cfg(not(all(
-    target_arch = "wasm32",
-    target_vendor = "unknown",
-    target_os = "unknown",
-)))]
-pub use native::*;
+mod wasm_ffi;
 
 mod utils;
 pub use utils::*;
+
+#[cfg(feature = "encoder")]
+#[cfg_attr(docsrs, doc(cfg(feature = "encoder")))]
+pub mod encoder {
+    include!(concat!(env!("OUT_DIR"), "/basisu_c_api.rs"));
+    include!("bool32.rs");
+}
+
+pub mod transcoder {
+    include!(concat!(env!("OUT_DIR"), "/basisu_c_transcoder_api.rs"));
+    include!("bool32.rs");
+}
