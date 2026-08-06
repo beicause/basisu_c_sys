@@ -13,7 +13,7 @@ include = [
   "build.rs",
   "src/*.rs",
   "src/extra/*.rs",
-  "vendor/basis_universal",
+  "vendored/basis_universal",
   "wasm_bindgen.rs",
   "write_cmake_args.rs"
 ]

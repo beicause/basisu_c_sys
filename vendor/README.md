@@ -1,1 +1,0 @@
-The `basis_universal` directory contains a part of the [Basis Universal](https://github.com/BinomialLLC/basis_universal) source code. It is updated using the `update-basis-universal.sh`.

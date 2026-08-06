@@ -15,7 +15,7 @@ const FLAGS: &[&str] = &[
     "-Wno-sign-compare",
     "-fno-exceptions",
     // Fix gcc optimization issue.
-    // See vendor/basis_universal/transcoder/basisu.h
+    // See vendored/basis_universal/transcoder/basisu.h
     // See https://github.com/godotengine/godot/pull/114839
     "-fno-strict-aliasing",
 ];
@@ -55,14 +55,14 @@ static ENCODER_SRCS: OnceLock<Vec<String>> = OnceLock::new();
 fn get_encoder_srcs() -> &'static [String] {
     let dir = env!("CARGO_MANIFEST_DIR");
     let srcs = &[
-        "vendor/basis_universal/transcoder/basisu_transcoder.cpp",
-        "vendor/basis_universal/zstd/zstd.c",
+        "vendored/basis_universal/transcoder/basisu_transcoder.cpp",
+        "vendored/basis_universal/zstd/zstd.c",
     ];
 
     ENCODER_SRCS.get_or_init(|| {
         let mut vec = Vec::new();
         search_files(
-            std::path::PathBuf::from_iter([dir, "vendor/basis_universal/encoder/"]),
+            std::path::PathBuf::from_iter([dir, "vendored/basis_universal/encoder/"]),
             "cpp",
             &mut vec,
         );
@@ -72,9 +72,9 @@ fn get_encoder_srcs() -> &'static [String] {
 }
 
 const TRANSCODER_SRCS: &[&str] = &[
-    "vendor/basis_universal/encoder/basisu_wasm_transcoder_api.cpp",
-    "vendor/basis_universal/transcoder/basisu_transcoder.cpp",
-    "vendor/basis_universal/zstd/zstddeclib.c",
+    "vendored/basis_universal/encoder/basisu_wasm_transcoder_api.cpp",
+    "vendored/basis_universal/transcoder/basisu_transcoder.cpp",
+    "vendored/basis_universal/zstd/zstddeclib.c",
 ];
 
 include!(concat!(env!("CARGO_MANIFEST_DIR"), "/write_cmake_args.rs"));
@@ -182,7 +182,7 @@ fn main() {
         compile_basisu_static();
     }
 
-    println!("cargo::rerun-if-changed=vendor/");
+    println!("cargo::rerun-if-changed=vendored/");
 }
 
 #[derive(Debug)]
@@ -223,7 +223,7 @@ fn bindgen() {
         std::path::PathBuf::from_iter([&std::env::var("OUT_DIR").unwrap(), "basisu_api_common.rs"]);
     bindgen::Builder::default()
         .clang_args(&["-fvisibility=default"])
-        .header("vendor/basis_universal/encoder/basisu_wasm_api_common.h")
+        .header("vendored/basis_universal/encoder/basisu_wasm_api_common.h")
         .use_core()
         .allowlist_var("^(BU_QUALITY_.*)$")
         .allowlist_var("^(BU_EFFORT_.*)$")
@@ -242,7 +242,7 @@ fn bindgen() {
         std::path::PathBuf::from_iter([&std::env::var("OUT_DIR").unwrap(), "basisu_c_api.rs"]);
     bindgen::Builder::default()
         .clang_args(&["-fvisibility=default"])
-        .header("vendor/basis_universal/encoder/basisu_wasm_api.h")
+        .header("vendored/basis_universal/encoder/basisu_wasm_api.h")
         .use_core()
         .must_use_type("wasm_bool_t")
         .new_type_alias("Bool32")
@@ -260,7 +260,7 @@ fn bindgen() {
     ]);
     bindgen::Builder::default()
         .clang_args(&["-fvisibility=default"])
-        .header("vendor/basis_universal/encoder/basisu_wasm_transcoder_api.h")
+        .header("vendored/basis_universal/encoder/basisu_wasm_transcoder_api.h")
         .use_core()
         .must_use_type("wasm_bool_t")
         .new_type_alias("Bool32")
