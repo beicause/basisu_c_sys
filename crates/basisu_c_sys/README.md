@@ -5,11 +5,9 @@
 [![Cargo](https://img.shields.io/crates/v/basisu_c_sys.svg)](https://crates.io/crates/basisu_c_sys)
 [![Documentation](https://docs.rs/basisu_c_sys/badge.svg)](https://docs.rs/basisu_c_sys)
 
-Rust binding and wrappers for the basisu pure C API, through FFI on native and wasm-bindgen on web. See also <https://github.com/BinomialLLC/basis_universal/wiki#encoder-and-transcoding-c-api-documentation>.
+Rust binding and wrappers for the basisu pure C API, through FFI on native and direct compilation to `wasm32-unknown-unknown` on web. See also <https://github.com/BinomialLLC/basis_universal/wiki#encoder-and-transcoding-c-api-documentation>.
 
-This crate also contains optional high level API that is easier to use with `wgpu-types`. Enabling the `extra` cargo feature to use the high level `BasisuEncoder` and `BasisuTranscoder`.
-
-This supports `wasm32-unknown-unknown` by bundling basisu wasm binary and `wasm-bindgen`. You need to install [Emscripten SDK](https://emscripten.org/) and [CMake](https://cmake.org/) to compile it. And in your application, call `instantiate_basisu_wasm`(or `instantiate_custom_basisu_wasm`) function before calling other functions.
+This crate also contains an optional high level API that is easier to use with `wgpu-types`. Enabling the `extra` cargo feature to use the high level `BasisuEncoder` and `BasisuTranscoder`.
 
 Feature flags:
 - `encoder`: Enable basisu encoder, which will significantly increase the binary size. By default only transcoder is enabled.
