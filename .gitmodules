@@ -1,0 +1,7 @@
+[submodule "basisu_c_sys_asset_files"]
+	path = basisu_c_sys_asset_files
+	url = https://github.com/beicause/basisu_c_sys_asset_files
+[submodule "3rdparty/basis_universal"]
+	path = 3rdparty/basis_universal
+	url = https://github.com/BinomialLLC/basis_universal
+	branch = 9bebe16726b3a61c8c213eeee3b7cffb462ef34e

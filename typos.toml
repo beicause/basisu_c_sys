@@ -4,9 +4,10 @@ extend-exclude = [
   "*.patch",  # Automatically generated files that should not be manually modified.
   "*.bin",  # Binary files
   ".git/",  # Version control files
-  "vendor/basis_universal/*",  # BasisU source code
+  "vendored/*",
 ]
 ignore-hidden = false
+
 
 [default]
 locale = "en-us"
