@@ -69,6 +69,12 @@ pub use self::memchr::memchr;
 
 mod snprintf;
 
+mod atexit;
+pub use self::atexit::__cxa_atexit;
+
+mod stdio;
+pub use self::stdio::{atof, fputc, fwrite, lrintf, stderr};
+
 mod strcat;
 pub use self::strcat::strcat;
 

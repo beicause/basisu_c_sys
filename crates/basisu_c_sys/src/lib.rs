@@ -1,16 +1,5 @@
 #![doc = include_str!("../README.md")]
 #![cfg_attr(docsrs, feature(doc_cfg), doc(auto_cfg = false))]
-#![cfg_attr(
-    all(
-        not(all(
-            target_arch = "wasm32",
-            target_vendor = "unknown",
-            target_os = "unknown",
-        )),
-        not(test)
-    ),
-    no_std
-)]
 extern crate alloc;
 
 #[cfg(feature = "extra")]

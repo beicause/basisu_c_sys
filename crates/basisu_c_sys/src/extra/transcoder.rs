@@ -3,6 +3,8 @@ use crate::{
     transcoder as trans_sys,
     utils::{BasisTextureFormat, TranscodeTargetFormat},
 };
+use alloc::boxed::Box;
+use alloc::vec;
 use alloc::vec::Vec;
 use core::num::NonZero;
 use std::sync::OnceLock;

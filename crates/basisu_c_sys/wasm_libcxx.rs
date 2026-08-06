@@ -105,7 +105,7 @@ pub fn main() {
         .cpp(true)
         .std("c++23")
         .cpp_link_stdlib(None)
-        .includes(&includes())
+        .includes(includes())
         // musl libc includes from wasm32-libc crate
         .includes(&libc_includes);
 

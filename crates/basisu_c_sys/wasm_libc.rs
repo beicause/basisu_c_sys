@@ -90,11 +90,12 @@ pub fn main() {
     // Include order matches emscripten's MuslInternalLibrary:
     //   arch/emscripten → arch/generic → src/internal → src/include → include
     cc::Build::new()
-        .includes(&includes())
+        .includes(includes())
         .flag_if_supported("-Wno-macro-redefined")
         .file("src/wasm_ffi/errno.c")
         .file("src/wasm_ffi/version.c")
         .file("src/wasm_ffi/nanoprintf.c")
+        .file("src/wasm_ffi/stdio_shim.c")
         .std("c17")
         .compile("wasm32-libc");
 

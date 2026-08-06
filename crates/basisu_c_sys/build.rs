@@ -211,7 +211,8 @@ fn compile_basisu_static() {
                 // their own <stddef.h>/<ctype.h> and abort.
                 build
                     .includes(wasm_libcxx::includes())
-                    .includes(wasm_libc::includes());
+                    .includes(wasm_libc::includes())
+                    .cpp_link_stdlib(None);
             } else {
                 build.includes(wasm_libc::includes());
             }
