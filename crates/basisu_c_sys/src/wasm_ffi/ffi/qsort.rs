@@ -9,7 +9,6 @@ const MAXDEPTH_MULTIPLIER: CSizeT = 2;
 const INSERTION_THRESHOLD: CSizeT = 16;
 const SWAP_BUFFER_SIZE: CSizeT = 128;
 
-#[unsafe(no_mangle)]
 pub unsafe extern "C" fn qsort(
     base: *mut CVoid,
     nel: CSizeT,
@@ -224,6 +223,7 @@ fn swap(ptr1: *mut CVoid, ptr2: *mut CVoid, mut width: CSizeT) {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use alloc::vec::Vec;
 
     extern "C" fn comp(a: *const CVoid, b: *const CVoid) -> CInt {
         unsafe { *(a as *const i32) - *(b as *const i32) }

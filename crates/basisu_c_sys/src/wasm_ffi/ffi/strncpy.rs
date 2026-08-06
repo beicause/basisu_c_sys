@@ -5,7 +5,6 @@
 
 use super::CChar;
 
-#[unsafe(no_mangle)]
 pub unsafe extern "C" fn strncpy(
     dest: *mut CChar,
     src: *const CChar,

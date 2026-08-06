@@ -13,7 +13,6 @@ use core::ffi::{c_char, c_void};
 
 /// `double atof(const char *nptr)` — minimal decimal parser
 /// (optional sign, digits, fraction, exponent).
-#[cfg_attr(not(test), unsafe(no_mangle))]
 pub unsafe extern "C" fn atof(s: *const c_char) -> f64 {
     if s.is_null() {
         return 0.0;
@@ -80,7 +79,6 @@ pub unsafe extern "C" fn atof(s: *const c_char) -> f64 {
 
 /// `long int lrintf(float x)` — round half to even, matching hardware
 /// semantics. wasm32 has a 32-bit `long`, so the return type is `i32`.
-#[cfg_attr(not(test), unsafe(no_mangle))]
 pub unsafe extern "C" fn lrintf(x: f32) -> i32 {
     if x.is_nan() {
         return 0;
@@ -110,14 +108,12 @@ pub unsafe extern "C" fn lrintf(x: f32) -> i32 {
 
 /// `int fputc(int c, FILE *stream)` — no-op; there is no stdout on this
 /// target and our stub stdio functions never dereference the stream.
-#[cfg_attr(not(test), unsafe(no_mangle))]
 pub unsafe extern "C" fn fputc(c: i32, _stream: *mut c_void) -> i32 {
     c
 }
 
 /// `size_t fwrite(const void *ptr, size_t size, size_t nmemb, FILE *stream)`
 /// — pretend everything was written.
-#[cfg_attr(not(test), unsafe(no_mangle))]
 pub unsafe extern "C" fn fwrite(
     _ptr: *const c_void,
     size: usize,
@@ -126,10 +122,3 @@ pub unsafe extern "C" fn fwrite(
 ) -> usize {
     size * nmemb
 }
-
-/// `FILE *const stderr` — data symbol the C side expects. Null is fine:
-/// every use goes through our stub `vfprintf`/`fputc`/`fwrite`, which
-/// ignore the stream.
-#[cfg_attr(not(test), unsafe(no_mangle))]
-#[allow(non_upper_case_globals)]
-pub static mut stderr: *const c_void = core::ptr::null();

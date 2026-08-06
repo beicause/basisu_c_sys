@@ -4,7 +4,6 @@
 
 use super::{CChar, CInt, CSizeT, CVoid};
 
-#[unsafe(no_mangle)]
 pub unsafe extern "C" fn memchr(s: *const CVoid, c: CInt, n: CSizeT) -> *const CVoid {
     unsafe {
         let s = s as *const CChar;

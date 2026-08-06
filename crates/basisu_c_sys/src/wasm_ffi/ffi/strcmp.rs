@@ -5,7 +5,6 @@
 
 use super::{CChar, CInt};
 
-#[unsafe(no_mangle)]
 pub unsafe extern "C" fn strcmp(s1: *const CChar, s2: *const CChar) -> CInt {
     unsafe {
         for i in 0.. {

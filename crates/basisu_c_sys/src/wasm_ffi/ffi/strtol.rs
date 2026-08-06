@@ -5,22 +5,18 @@
 
 use super::{CChar, CInt, CIntMax, CLong, CLongLong, CUIntMax, CULong, CULongLong};
 
-#[unsafe(no_mangle)]
 pub unsafe extern "C" fn atoi(s: *const CChar) -> CInt {
     unsafe { strtol(s, core::ptr::null_mut(), 10) as CInt }
 }
 
-#[unsafe(no_mangle)]
 pub unsafe extern "C" fn strtol(s: *const CChar, endptr: *mut *const CChar, base: CInt) -> CLong {
     unsafe { strtox(s, endptr, base, CLong::MIN as _, CLong::MAX as _) as CLong }
 }
 
-#[unsafe(no_mangle)]
 pub unsafe extern "C" fn strtoul(s: *const CChar, endptr: *mut *const CChar, base: CInt) -> CULong {
     unsafe { strtox(s, endptr, base, 0, CULong::MAX as _) as CULong }
 }
 
-#[unsafe(no_mangle)]
 pub unsafe extern "C" fn strtoll(
     s: *const CChar,
     endptr: *mut *const CChar,
@@ -29,7 +25,6 @@ pub unsafe extern "C" fn strtoll(
     unsafe { strtox(s, endptr, base, CLongLong::MIN, CLongLong::MAX as _) as CLongLong }
 }
 
-#[unsafe(no_mangle)]
 pub unsafe extern "C" fn strtoull(
     s: *const CChar,
     endptr: *mut *const CChar,
@@ -38,7 +33,6 @@ pub unsafe extern "C" fn strtoull(
     unsafe { strtox(s, endptr, base, 0, CULongLong::MAX) as CULongLong }
 }
 
-#[unsafe(no_mangle)]
 pub unsafe extern "C" fn strtoimax(
     s: *const CChar,
     endptr: *mut *const CChar,
@@ -47,7 +41,6 @@ pub unsafe extern "C" fn strtoimax(
     unsafe { strtox(s, endptr, base, CIntMax::MIN, CIntMax::MAX as _) as CIntMax }
 }
 
-#[unsafe(no_mangle)]
 pub unsafe extern "C" fn strtoumax(
     s: *const CChar,
     endptr: *mut *const CChar,
@@ -150,7 +143,6 @@ pub unsafe fn strtox(
     }
 }
 
-#[unsafe(no_mangle)]
 pub extern "C" fn isspace(argument: CInt) -> CInt {
     match argument as CChar {
         b' ' | b'\t' | b'\n' | b'\r' | 0x0b | 0x0c => 1,
@@ -158,17 +150,14 @@ pub extern "C" fn isspace(argument: CInt) -> CInt {
     }
 }
 
-#[unsafe(no_mangle)]
 pub extern "C" fn isdigit(argument: CInt) -> CInt {
     (argument as CChar).is_ascii_digit() as CInt
 }
 
-#[unsafe(no_mangle)]
 pub extern "C" fn isalpha(argument: CInt) -> CInt {
     (argument as CChar).is_ascii_alphabetic() as CInt
 }
 
-#[unsafe(no_mangle)]
 pub extern "C" fn isupper(argument: CInt) -> CInt {
     (argument as CChar).is_ascii_uppercase() as CInt
 }

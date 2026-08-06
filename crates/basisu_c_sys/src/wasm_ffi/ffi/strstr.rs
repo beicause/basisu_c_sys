@@ -5,7 +5,6 @@
 
 use super::{CChar, CStringIter};
 
-#[unsafe(no_mangle)]
 pub unsafe extern "C" fn strstr(haystack: *const CChar, needle: *const CChar) -> *const CChar {
     unsafe {
         if *needle.offset(0) == 0 {

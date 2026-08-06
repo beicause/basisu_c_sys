@@ -5,7 +5,6 @@
 
 use super::{CChar, CInt};
 
-#[unsafe(no_mangle)]
 pub unsafe extern "C" fn strchr(haystack: *const CChar, needle: CInt) -> *const CChar {
     unsafe {
         for idx in 0.. {
@@ -21,7 +20,6 @@ pub unsafe extern "C" fn strchr(haystack: *const CChar, needle: CInt) -> *const 
     }
 }
 
-#[unsafe(no_mangle)]
 pub unsafe extern "C" fn strrchr(haystack: *const CChar, needle: CInt) -> *const CChar {
     unsafe {
         let mut last = core::ptr::null();

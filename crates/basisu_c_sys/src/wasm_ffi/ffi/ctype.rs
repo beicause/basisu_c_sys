@@ -30,7 +30,7 @@ pub type CULong = ::core::ffi::c_ulong;
 /// `int`
 pub type CInt = ::core::ffi::c_int;
 
-/// `unsigned int`
+// /// `unsigned int`
 // pub type CUInt = ::core::ffi::c_uint;
 
 /// Represents an 8-bit `char`.

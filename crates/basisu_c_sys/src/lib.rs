@@ -13,10 +13,13 @@ pub mod common {
     include!(concat!(env!("OUT_DIR"), "/basisu_api_common.rs"));
 }
 
-#[cfg(all(
-    target_arch = "wasm32",
-    target_vendor = "unknown",
-    target_os = "unknown",
+#[cfg(any(
+    test,
+    all(
+        target_arch = "wasm32",
+        target_vendor = "unknown",
+        target_os = "unknown",
+    ),
 ))]
 mod wasm_ffi;
 

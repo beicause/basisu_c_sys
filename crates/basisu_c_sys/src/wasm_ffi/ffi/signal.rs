@@ -31,7 +31,6 @@ fn default_handler(_sig: i32) {
     panic!("Aborted");
 }
 
-#[unsafe(no_mangle)]
 pub unsafe extern "C" fn signal(sig: i32, handler: SignalHandler) -> SignalHandler {
     if !SIGNALS.contains(&sig) {
         return SIG_ERR;
@@ -39,7 +38,6 @@ pub unsafe extern "C" fn signal(sig: i32, handler: SignalHandler) -> SignalHandl
     SIGNAL_HANDLERS[sig as usize].swap(handler, Ordering::Relaxed)
 }
 
-#[unsafe(no_mangle)]
 pub extern "C" fn raise(sig: i32) -> i32 {
     if !SIGNALS.contains(&sig) {
         return -1;
@@ -60,7 +58,6 @@ pub extern "C" fn raise(sig: i32) -> i32 {
     0
 }
 
-#[unsafe(no_mangle)]
 pub extern "C" fn abort() {
     raise(SIGABRT);
 }

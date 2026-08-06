@@ -4,7 +4,6 @@
 
 use super::{CChar, CInt};
 
-#[unsafe(no_mangle)]
 pub unsafe extern "C" fn strncasecmp(s1: *const CChar, s2: *const CChar, n: usize) -> CInt {
     unsafe {
         for i in 0..n {

@@ -5,7 +5,6 @@
 
 use super::CChar;
 
-#[unsafe(no_mangle)]
 pub unsafe extern "C" fn itoa(i: i64, s: *mut CChar, s_len: usize, radix: u8) -> i32 {
     unsafe {
         let (is_negative, pos_i) = if i < 0 {
@@ -22,7 +21,6 @@ pub unsafe extern "C" fn itoa(i: i64, s: *mut CChar, s_len: usize, radix: u8) ->
     }
 }
 
-#[unsafe(no_mangle)]
 pub unsafe extern "C" fn utoa(mut u: u64, s: *mut CChar, s_len: usize, radix: u8) -> i32 {
     unsafe {
         let buffer_slice = core::slice::from_raw_parts_mut(s, s_len);

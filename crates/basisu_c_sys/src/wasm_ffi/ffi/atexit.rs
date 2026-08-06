@@ -31,7 +31,6 @@ static mut ATEXIT_ENTRIES: [AtexitEntry; MAX_ATEXIT] = [AtexitEntry {
 static mut ATEXIT_COUNT: usize = 0;
 
 /// `int __cxa_atexit(void (*func)(void *), void *arg, void *dso)`
-#[cfg_attr(not(test), unsafe(no_mangle))]
 pub unsafe extern "C" fn __cxa_atexit(func: AtexitFn, arg: *mut c_void, dso: *mut c_void) -> i32 {
     // wasm32-unknown-unknown is single-threaded, so no synchronization is
     // needed.

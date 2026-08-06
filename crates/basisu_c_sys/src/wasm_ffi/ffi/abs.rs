@@ -4,7 +4,6 @@
 
 use super::CInt;
 
-#[unsafe(no_mangle)]
 pub extern "C" fn abs(i: CInt) -> CInt {
     i.abs()
 }

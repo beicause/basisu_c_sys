@@ -5,7 +5,6 @@
 
 use super::CChar;
 
-#[unsafe(no_mangle)]
 pub unsafe extern "C" fn strlen(mut s: *const CChar) -> usize {
     unsafe {
         let mut result = 0;

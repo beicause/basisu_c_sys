@@ -8,7 +8,6 @@ use super::CSizeT;
 
 const MAX_ALIGN: usize = 16;
 
-#[cfg_attr(not(test), unsafe(no_mangle))]
 pub unsafe extern "C" fn malloc(size: CSizeT) -> *mut u8 {
     let layout = alloc::alloc::Layout::from_size_align(size + MAX_ALIGN, MAX_ALIGN).unwrap();
     let ptr = unsafe { alloc::alloc::alloc(layout) };
@@ -21,7 +20,6 @@ pub unsafe extern "C" fn malloc(size: CSizeT) -> *mut u8 {
     unsafe { ptr.add(MAX_ALIGN) }
 }
 
-#[cfg_attr(not(test), unsafe(no_mangle))]
 pub unsafe extern "C" fn calloc(nmemb: CSizeT, size: CSizeT) -> *mut u8 {
     let total_size = nmemb * size;
     let layout = alloc::alloc::Layout::from_size_align(total_size + MAX_ALIGN, MAX_ALIGN).unwrap();
@@ -35,7 +33,6 @@ pub unsafe extern "C" fn calloc(nmemb: CSizeT, size: CSizeT) -> *mut u8 {
     unsafe { ptr.add(MAX_ALIGN) }
 }
 
-#[cfg_attr(not(test), unsafe(no_mangle))]
 pub unsafe extern "C" fn realloc(ptr: *mut u8, size: CSizeT) -> *mut u8 {
     unsafe {
         if ptr.is_null() {
@@ -53,7 +50,6 @@ pub unsafe extern "C" fn realloc(ptr: *mut u8, size: CSizeT) -> *mut u8 {
     }
 }
 
-#[cfg_attr(not(test), unsafe(no_mangle))]
 pub unsafe extern "C" fn free(ptr: *mut u8) {
     if ptr.is_null() {
         return;

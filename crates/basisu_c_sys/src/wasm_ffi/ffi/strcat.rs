@@ -4,7 +4,6 @@
 
 use super::{CChar, strcpy, strlen};
 
-#[unsafe(no_mangle)]
 pub unsafe extern "C" fn strcat(dest: *mut CChar, src: *const CChar) -> *const CChar {
     unsafe {
         strcpy(dest.add(strlen(dest)), src);
