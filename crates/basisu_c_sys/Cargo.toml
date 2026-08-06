@@ -37,7 +37,6 @@ path = "tests/encoder.rs"
 required-features = ["encoder", "extra"]
 
 [dependencies]
-async-lock = { version = "3.4.2", default-features = false, optional = true }
 bitflags = { version = "2.11.0", optional = true }
 serde = {
   version = "1.0.228",
@@ -78,7 +77,6 @@ default = [
 ]
 encoder = []
 extra = [
-  "dep:async-lock",
   "dep:bitflags",
   "dep:thiserror",
 ]

@@ -1,10 +1,10 @@
+use alloc::vec::Vec;
+use std::sync::OnceLock;
+
 use crate::common;
 use crate::encoder as enc_sys;
-use crate::extra::BuHeap;
 use crate::extra::types;
 use crate::utils::BasisTextureFormat;
-use alloc::vec::Vec;
-use async_lock::OnceCell;
 
 #[derive(Debug, Clone, Copy)]
 pub enum SourceImageFormat {
@@ -54,21 +54,13 @@ impl SourceImage<'_> {
     }
 }
 
-static BASISU_ENCODER_INITIALIZED: OnceCell<()> = OnceCell::new();
+static BASISU_ENCODER_INITIALIZED: OnceLock<()> = OnceLock::new();
 
-/// Init global data of encoder ([`enc_sys::bu_init`]), and basisu wasm if on web.
-pub async fn basisu_encoder_init() {
-    BASISU_ENCODER_INITIALIZED
-        .get_or_init(async || {
-            #[cfg(all(
-                target_arch = "wasm32",
-                target_vendor = "unknown",
-                target_os = "unknown",
-            ))]
-            crate::instantiate_basisu_wasm().await;
-            unsafe { enc_sys::bu_init() };
-        })
-        .await;
+/// Init global data of encoder ([`enc_sys::bu_init`]).
+pub fn basisu_encoder_init() {
+    BASISU_ENCODER_INITIALIZED.get_or_init(|| {
+        unsafe { enc_sys::bu_init() };
+    });
 }
 
 /// A wrapper of [`enc_sys::bu_enable_debug_printf`].
@@ -180,7 +172,7 @@ impl BasisuEncoderParams {
 impl BasisuEncoder {
     /// Create a encoder. Panic if [`basisu_encoder_init`] hasn't been called.
     pub fn new() -> Self {
-        if !BASISU_ENCODER_INITIALIZED.is_initialized() {
+        if BASISU_ENCODER_INITIALIZED.get().is_none() {
             panic!("`basisu_encoder_init` must be called before create encoder");
         }
         Self {
@@ -198,9 +190,7 @@ impl BasisuEncoder {
         self.clear_image();
 
         image.validate_image_data()?;
-        let bu_heap =
-            BuHeap::new(image.data).expect("The image data should be validated to not be empty");
-        let ptr = u64::from(bu_heap.ptr());
+        let ptr = image.data.as_ptr().addr() as u64;
         match image.format {
             SourceImageFormat::Rgba8 => unsafe {
                 for i in 0..image.size.depth_or_array_layers {
@@ -261,9 +251,7 @@ impl BasisuEncoder {
         }
 
         image.validate_image_data()?;
-        let bu_heap =
-            BuHeap::new(image.data).expect("The image data should be validated to not be empty");
-        let ptr = u64::from(bu_heap.ptr());
+        let ptr = image.data.as_ptr().addr() as u64;
         match image.format {
             SourceImageFormat::Rgba8 => unsafe {
                 if enc_sys::bu_comp_params_set_image_rgba32(
@@ -314,10 +302,18 @@ impl BasisuEncoder {
             }
             let out_size = enc_sys::bu_comp_params_get_comp_data_size(self.params);
             let out_ptr = enc_sys::bu_comp_params_get_comp_data_ofs(self.params);
-            let result = crate::copy_basisu_memory_to_host(out_ptr, out_size);
+            let result = copy_basisu_memory_to_host(out_ptr, out_size);
             Ok(result)
         }
     }
+}
+
+unsafe fn copy_basisu_memory_to_host(basisu_ptr: u64, count: u64) -> Vec<u8> {
+    let mut dst = alloc::vec![0u8; count as usize];
+    unsafe {
+        core::ptr::copy_nonoverlapping(basisu_ptr as *mut u8, dst.as_mut_ptr(), count as usize)
+    };
+    dst
 }
 
 impl Drop for BasisuEncoder {
@@ -336,7 +332,7 @@ mod tests {
     #[test]
     #[should_panic]
     fn encoder_create_before_init() {
-        if BASISU_ENCODER_INITIALIZED.is_initialized() {
+        if BASISU_ENCODER_INITIALIZED.get().is_some() {
             panic!("Basisu is already initialized, panic to skip this test");
         } else {
             BasisuEncoder::new();
@@ -345,7 +341,7 @@ mod tests {
 
     #[test]
     fn invalid_image_data() {
-        block_on(basisu_encoder_init());
+        basisu_encoder_init();
         let mut encoder = BasisuEncoder::new();
         assert_eq!(
             encoder.set_image(SourceImage {
@@ -367,26 +363,5 @@ mod tests {
                 data_len: 1
             })
         );
-    }
-
-    /// Blocks on the supplied `future`.
-    /// This implementation will busy-wait until it is completed.
-    /// Consider enabling the `async-io` or `futures-lite` features.
-    pub fn block_on<T>(future: impl Future<Output = T>) -> T {
-        use core::task::{Context, Poll};
-
-        // Pin the future on the stack.
-        let mut future = core::pin::pin!(future);
-
-        // We don't care about the waker as we're just going to poll as fast as possible.
-        let cx = &mut Context::from_waker(core::task::Waker::noop());
-
-        // Keep polling until the future is ready.
-        loop {
-            match future.as_mut().poll(cx) {
-                Poll::Ready(output) => return output,
-                Poll::Pending => core::hint::spin_loop(),
-            }
-        }
     }
 }

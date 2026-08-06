@@ -39,6 +39,18 @@ fn copy_headers(src_dir: &str, dest_dir: &Path) {
     }
 }
 
+pub fn includes() -> [PathBuf; 5] {
+    let out_dir = PathBuf::from(env::var("OUT_DIR").unwrap());
+    let generated_include = out_dir.join("include");
+    [
+        generated_include,
+        "vendored/musl/include".into(),
+        "vendored/musl/src/include".into(),
+        "vendored/musl/src/internal".into(),
+        "src/wasm_ffi".into(),
+    ]
+}
+
 pub fn main() {
     // Stage arch-specific bits/ headers into OUT_DIR/include/bits/.
     // Uses emscripten's pre-generated wasm32 headers (matching how emscripten
@@ -78,11 +90,8 @@ pub fn main() {
     // Include order matches emscripten's MuslInternalLibrary:
     //   arch/emscripten → arch/generic → src/internal → src/include → include
     cc::Build::new()
-        .include(&generated_include)
-        .include("vendored/musl/include")
-        .include("vendored/musl/src/include")
-        .include("vendored/musl/src/internal")
-        .include("src/wasm_ffi")
+        .includes(&includes())
+        .flag_if_supported("-Wno-macro-redefined")
         .file("src/wasm_ffi/errno.c")
         .file("src/wasm_ffi/version.c")
         .file("src/wasm_ffi/nanoprintf.c")

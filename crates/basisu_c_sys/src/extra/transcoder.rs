@@ -1,12 +1,11 @@
 use crate::{
-    extra::BuHeap,
     extra::types,
     transcoder as trans_sys,
     utils::{BasisTextureFormat, TranscodeTargetFormat},
 };
 use alloc::vec::Vec;
-use async_lock::OnceCell;
 use core::num::NonZero;
+use std::sync::OnceLock;
 
 #[derive(Debug, Clone, PartialEq)]
 pub struct TranscodedImage {
@@ -23,21 +22,13 @@ pub struct TranscodedImage {
     pub view_dimension: types::TextureViewDimension,
 }
 
-static BASISU_TRANSCODER_INITIALIZED: OnceCell<()> = OnceCell::new();
+static BASISU_TRANSCODER_INITIALIZED: OnceLock<()> = OnceLock::new();
 
-/// Init global data of transcoder ([`trans_sys::bt_init`]), and basisu wasm if on web.
-pub async fn basisu_transcoder_init() {
-    BASISU_TRANSCODER_INITIALIZED
-        .get_or_init(async || {
-            #[cfg(all(
-                target_arch = "wasm32",
-                target_vendor = "unknown",
-                target_os = "unknown",
-            ))]
-            crate::instantiate_basisu_wasm().await;
-            unsafe { trans_sys::bt_init() };
-        })
-        .await;
+/// Init global data of transcoder ([`trans_sys::bt_init`]).
+pub fn basisu_transcoder_init() {
+    BASISU_TRANSCODER_INITIALIZED.get_or_init(|| {
+        unsafe { trans_sys::bt_init() };
+    });
 }
 
 /// A wrapper of [`trans_sys::bt_enable_debug_printf`].
@@ -84,17 +75,14 @@ struct Ktx2Data {
         unused,
         reason = "This is kept to remain memory, which is referenced by ktx2 handle"
     )]
-    data: BuHeap,
+    data: Box<[u8]>,
     ktx2_handle: NonZero<u64>,
 }
 
 impl Ktx2Data {
-    fn new(data: BuHeap) -> Option<Self> {
+    fn new(data: Box<[u8]>) -> Option<Self> {
         NonZero::try_from(unsafe {
-            trans_sys::bt_ktx2_open(
-                data.ptr().into(),
-                u32::try_from(u64::from(data.capacity())).unwrap(),
-            )
+            trans_sys::bt_ktx2_open(data.as_ptr().addr() as u64, u32::try_from(data.len()).ok()?)
         })
         .ok()
         .map(|ktx2_handle| Self { data, ktx2_handle })
@@ -132,14 +120,14 @@ impl BasisuTranscoder {
         supported_compressed_formats: SupportedTextureCompression,
         channel_type_hint: ChannelType,
     ) -> Result<Self, BasisuTranscodeError> {
-        if !BASISU_TRANSCODER_INITIALIZED.is_initialized() {
+        if BASISU_TRANSCODER_INITIALIZED.get().is_none() {
             panic!("`basisu_transcoder_init` must be called before create transcoder");
         }
         unsafe {
-            let Some(input_data) = BuHeap::new(input) else {
+            if input.is_empty() {
                 return Err(BasisuTranscodeError::EmptyInputData);
-            };
-            let Some(ktx2_data) = Ktx2Data::new(input_data) else {
+            }
+            let Some(ktx2_data) = Ktx2Data::new(input.into()) else {
                 return Err(BasisuTranscodeError::LoadKtx2DataFailed);
             };
             let ktx2_handle_ptr = u64::from(ktx2_data.ktx2_handle());
@@ -242,8 +230,8 @@ impl BasisuTranscoder {
                 }
             }
 
-            let basisu_heap = BuHeap::new_uninit(NonZero::new(total_bytes.into()).unwrap());
-            let basisu_ptr = u64::from(basisu_heap.ptr());
+            let mut basisu_heap = vec![0u8; total_bytes as usize];
+            let basisu_ptr = basisu_heap.as_mut_ptr().addr() as u64;
             let mut offset = 0u64;
             for level_index in 0..info.levels {
                 for layer_index in 0..total_layers {
@@ -293,7 +281,7 @@ impl BasisuTranscoder {
                     }
                 }
             }
-            basisu_heap.try_read(..).unwrap()
+            basisu_heap
         };
 
         let view_dimension = if info.layers == 0 {
@@ -618,7 +606,7 @@ mod tests {
     #[test]
     #[should_panic]
     fn transcoder_create_before_init() {
-        if super::BASISU_TRANSCODER_INITIALIZED.is_initialized() {
+        if super::BASISU_TRANSCODER_INITIALIZED.get().is_some() {
             panic!("Basisu is already initialized, panic to skip this test");
         } else {
             let _ = super::BasisuTranscoder::new(

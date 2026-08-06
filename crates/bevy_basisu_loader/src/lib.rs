@@ -2,16 +2,6 @@ pub use basisu_c_sys as sys;
 use bevy::prelude::*;
 use bevy::render::{RenderApp, renderer::RenderDevice};
 
-#[cfg(all(
-    target_arch = "wasm32",
-    target_vendor = "unknown",
-    target_os = "unknown",
-))]
-use bevy::platform::sync::{
-    Arc,
-    atomic::{AtomicUsize, Ordering},
-};
-
 mod loader;
 
 pub use loader::*;
@@ -30,61 +20,13 @@ pub use loader::*;
 ///
 pub struct BasisuLoaderPlugin;
 
-#[cfg(all(
-    target_arch = "wasm32",
-    target_vendor = "unknown",
-    target_os = "unknown",
-))]
-#[derive(Resource, Clone, Deref)]
-struct BasisuWasmReady(Arc<AtomicUsize>);
-
 impl Plugin for BasisuLoaderPlugin {
     fn build(&self, app: &mut App) {
-        #[cfg(all(
-            target_arch = "wasm32",
-            target_vendor = "unknown",
-            target_os = "unknown",
-        ))]
-        {
-            let ready = BasisuWasmReady(Arc::new(AtomicUsize::new(0)));
-            let r = ready.clone();
-            bevy::tasks::IoTaskPool::get()
-                .spawn_local(async move {
-                    basisu_c_sys::extra::basisu_transcoder_init().await;
-                    r.store(1, Ordering::Release);
-                    bevy::log::debug!("Basisu wasm initialized")
-                })
-                .detach();
-            app.insert_resource(ready);
-        }
-        #[cfg(not(all(
-            target_arch = "wasm32",
-            target_vendor = "unknown",
-            target_os = "unknown",
-        )))]
-        bevy::tasks::block_on(basisu_c_sys::extra::basisu_transcoder_init());
+        basisu_c_sys::extra::basisu_transcoder_init();
         app.preregister_asset_loader::<BasisuLoader>(&["basisu.ktx2"]);
     }
 
-    #[cfg(all(
-        target_arch = "wasm32",
-        target_vendor = "unknown",
-        target_os = "unknown",
-    ))]
-    fn ready(&self, app: &App) -> bool {
-        app.world()
-            .resource::<BasisuWasmReady>()
-            .load(Ordering::Acquire)
-            != 0
-    }
-
     fn finish(&self, app: &mut App) {
-        #[cfg(all(
-            target_arch = "wasm32",
-            target_vendor = "unknown",
-            target_os = "unknown",
-        ))]
-        app.world_mut().remove_resource::<BasisuWasmReady>();
         let device = app
             .sub_app_mut(RenderApp)
             .world()

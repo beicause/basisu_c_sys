@@ -100,23 +100,12 @@ fn main() {
     let target = std::env::var("TARGET").unwrap();
 
     if !is_docs_rs {
-        let mut build = cc::Build::new();
-
         if target == "wasm32-unknown-unknown" {
             wasm_libc::main();
-            if let Some(libc) = std::env::var_os("DEP_WASM32_LIBC_INCLUDE") {
-                build.include(libc);
-                println!("cargo::rustc-link-lib=wasm32-libc");
-            }
-
             wasm_libcxx::main();
-            if let Some(libcxx) = std::env::var_os("DEP_WASM32_LIBCXX_INCLUDE") {
-                build.include(&libcxx);
-                println!("cargo::rustc-link-lib=wasm32-libcxx");
-            }
         }
 
-        compile_basisu_static(&mut build);
+        compile_basisu_static();
     }
 
     println!("cargo::rerun-if-changed=vendored/");
@@ -210,8 +199,24 @@ fn bindgen() {
         .expect("Couldn't write bindings!");
 }
 
-fn compile_basisu_static(build: &mut cc::Build) {
+fn compile_basisu_static() {
     for is_cpp in [true, false] {
+        let mut build = cc::Build::new();
+
+        let target = std::env::var("TARGET").unwrap();
+        if target == "wasm32-unknown-unknown" {
+            if is_cpp {
+                // libc++ headers must come before the C library headers,
+                // otherwise libc++'s <cstddef>/<cctype>/... wrappers can't find
+                // their own <stddef.h>/<ctype.h> and abort.
+                build
+                    .includes(wasm_libcxx::includes())
+                    .includes(wasm_libc::includes());
+            } else {
+                build.includes(wasm_libc::includes());
+            }
+        }
+
         // Use c++_static for Android.
         let target_os = std::env::var("CARGO_CFG_TARGET_OS").unwrap();
         if target_os == "android" {

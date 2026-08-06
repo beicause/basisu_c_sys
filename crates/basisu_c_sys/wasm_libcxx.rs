@@ -1,6 +1,8 @@
 use std::path::PathBuf;
 use std::{env, fs};
 
+use crate::wasm_libc;
+
 /// Source files excluded by emscripten's system_libs.py for libcxx.
 const LIBCXX_EXCLUDE: &[&str] = &[
     "xlocale_zos.cpp",
@@ -40,6 +42,26 @@ fn collect_cpp(dir: &str, exclude: &[&str], out: &mut Vec<String>) {
     }
 }
 
+pub fn includes() -> [String; 8] {
+    let libcxx = "vendored/emscripten/system/lib/libcxx";
+    let libcxxabi = "vendored/emscripten/system/lib/libcxxabi";
+    let llvm_libc = "vendored/emscripten/system/lib/llvm-libc";
+
+    [
+        // libcxx includes
+        format!("{libcxx}/src"),
+        format!("{libcxx}/include"),
+        format!("{libcxx}/src/include"),
+        format!("{libcxx}/src/include/ryu"),
+        // llvm-libc (provides shared/fp_bits.h needed by charconv.cpp)
+        llvm_libc.into(),
+        // libcxxabi includes
+        format!("{libcxxabi}/include"),
+        format!("{libcxxabi}/src"),
+        format!("{libcxxabi}/src/demangle"),
+    ]
+}
+
 pub fn main() {
     // The libcxx, libcxxabi, and llvm-libc sources come from the emscripten
     // LLVM fork (populated by git submodule). Build configuration mirrors
@@ -47,7 +69,6 @@ pub fn main() {
 
     let libcxx = "vendored/emscripten/system/lib/libcxx";
     let libcxxabi = "vendored/emscripten/system/lib/libcxxabi";
-    let llvm_libc = "vendored/emscripten/system/lib/llvm-libc";
 
     // ── libcxx sources (glob minus exclusions, matching emscripten) ───────
     let libcxx_sources = glob_cpp(&format!("{libcxx}/src"), LIBCXX_EXCLUDE);
@@ -77,39 +98,19 @@ pub fn main() {
     .collect();
 
     // ── Compile libcxx + libcxxabi together ──────────────────────────────
-    let out_dir = PathBuf::from(env::var("OUT_DIR").unwrap());
-    let generated_include = out_dir.join("include");
-    let libc_includes: [PathBuf; 5] = [
-        generated_include,
-        "vendored/musl/include".into(),
-        "vendored/musl/src/include".into(),
-        "vendored/musl/src/internal".into(),
-        "src/wasm_ffi".into(),
-    ];
+    let libc_includes: [PathBuf; 5] = wasm_libc::includes();
 
     let mut build = cc::Build::new();
     build
         .cpp(true)
         .std("c++23")
         .cpp_link_stdlib(None)
-        // libcxx includes
-        .include(format!("{libcxx}/src"))
-        .include(format!("{libcxx}/include"))
-        .include(format!("{libcxx}/src/include"))
-        .include(format!("{libcxx}/src/include/ryu"))
-        // llvm-libc (provides shared/fp_bits.h needed by charconv.cpp)
-        .include(llvm_libc)
-        // libcxxabi includes
-        .include(format!("{libcxxabi}/include"))
-        .include(format!("{libcxxabi}/src"))
-        .include(format!("{libcxxabi}/src/demangle"));
-
-    // musl libc includes from wasm32-libc crate
-    for path in &libc_includes {
-        build.include(path);
-    }
+        .includes(&includes())
+        // musl libc includes from wasm32-libc crate
+        .includes(&libc_includes);
 
     build
+        .flag_if_supported("-Wno-macro-redefined")
         .flag("-fno-exceptions")
         // Defines matching emscripten's system_libs.py
         .flag("-w")

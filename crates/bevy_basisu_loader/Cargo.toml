@@ -18,7 +18,6 @@ basisu_c_sys = {
   ]
 }
 
-async-lock = "3.4.2"
 bevy = {
   workspace = true,
   features = [
