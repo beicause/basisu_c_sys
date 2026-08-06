@@ -5,3 +5,11 @@
 	path = 3rdparty/basis_universal
 	url = https://github.com/BinomialLLC/basis_universal
 	branch = 9bebe16726b3a61c8c213eeee3b7cffb462ef34e
+[submodule "3rdparty/musl"]
+	path = 3rdparty/musl
+	url = https://git.musl-libc.org/git/musl
+	branch = 9fa28ece75d8a2191de7c5bb53bed224c5947417
+[submodule "3rdparty/emscripten"]
+	path = 3rdparty/emscripten
+	url = https://github.com/emscripten-core/emscripten
+	branch = ce75e06884093bcefb86a6b8fd56a5d62a4cc245
