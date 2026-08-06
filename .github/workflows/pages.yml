@@ -30,9 +30,8 @@ jobs:
     timeout-minutes: 30
     steps:
       - uses: actions/checkout@v7.0.1
-
-      - name: Clone `basisu_c_sys_asset_files`
-        run: git clone --depth 1 https://github.com/beicause/basisu_c_sys_asset_files
+        with:
+          submodules: "recursive"
 
       - name: Install Emscripten
         uses: mymindstorm/setup-emsdk@v16

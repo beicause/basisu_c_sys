@@ -48,6 +48,8 @@ jobs:
 
     steps:
       - uses: actions/checkout@v7.0.1
+        with:
+          submodules: "recursive"
 
       - name: Install Linux dependencies
         if: ${{ matrix.os == 'ubuntu-latest' }}
@@ -102,9 +104,8 @@ jobs:
 
     steps:
       - uses: actions/checkout@v7.0.1
-
-      - name: Clone `basisu_c_sys_asset_files`
-        run: git clone --depth 1 https://github.com/beicause/basisu_c_sys_asset_files
+        with:
+          submodules: "recursive"
 
       - name: Install Linux dependencies
         if: ${{ matrix.os == 'ubuntu-latest' }}
@@ -143,6 +144,8 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v7.0.1
+        with:
+          submodules: "recursive"
 
       - name: Install Emscripten
         uses: mymindstorm/setup-emsdk@v16
@@ -189,6 +192,8 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v7.0.1
+        with:
+          submodules: "recursive"
 
       - name: Disable debug symbols
         shell: bash
