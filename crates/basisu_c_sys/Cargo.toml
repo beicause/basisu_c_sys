@@ -5,7 +5,7 @@ edition = "2024"
 description = "Rust binding and wrappers for Basis Universal C API"
 repository.workspace = true
 license.workspace = true
-keywords = ["basis-universal", "ffi", "wasm", "texture"]
+keywords = ["basis-universal", "ffi", "texture", "wasm"]
 include = [
   "CHANGELOG.md",
   "CMakeLists.txt",
