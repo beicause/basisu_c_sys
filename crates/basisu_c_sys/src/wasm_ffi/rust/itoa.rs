@@ -51,14 +51,13 @@ pub unsafe extern "C" fn utoa(mut u: u64, s: *mut CChar, s_len: usize, radix: u8
 
 #[cfg(test)]
 mod test {
-    use super::super::strcmp;
     use super::*;
 
     #[test]
     fn zero() {
         let mut buf = [b'\0'; 32];
         assert_eq!(unsafe { itoa(0, buf.as_mut_ptr(), buf.len(), 10) }, 1);
-        assert_eq!(unsafe { strcmp(buf.as_ptr(), b"0\0" as *const u8) }, 0);
+        assert_eq!(&buf[..2], b"0\0");
     }
 
     #[test]
@@ -68,16 +67,13 @@ mod test {
             unsafe { itoa(0xDEADBEEF, buf.as_mut_ptr(), buf.len(), 16) },
             8
         );
-        assert_eq!(
-            unsafe { strcmp(buf.as_ptr(), b"deadbeef\0" as *const u8) },
-            0
-        );
+        assert_eq!(&buf[..9], b"deadbeef\0");
     }
 
     #[test]
     fn negative() {
         let mut buf = [b'\0'; 32];
         unsafe { itoa(-123, buf.as_mut_ptr(), buf.len(), 10) };
-        assert_eq!(unsafe { strcmp(buf.as_ptr(), b"-123\0" as *const u8) }, 0);
+        assert_eq!(&buf[..5], b"-123\0");
     }
 }

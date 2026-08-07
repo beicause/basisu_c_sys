@@ -1,10 +1,5 @@
 static int __errno_storage = 0;
 
-int *__errno(void)
-{
-    return &__errno_storage;
-}
-
 int *__errno_location(void)
 {
     return &__errno_storage;

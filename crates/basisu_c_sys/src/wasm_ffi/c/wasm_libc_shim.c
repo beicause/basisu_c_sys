@@ -776,3 +776,18 @@ uintptr_t __get_tp(void)
     wasm_main_thread.locale = &wasm_utf8_locale;
     return (uintptr_t)&wasm_main_thread;
 }
+
+/* ───────────────── 8. musl-internal allocator aliases ──────────────── */
+
+/* musl's malloc.c is not compiled (it needs brk/mmap syscalls); the Rust
+ * dlmalloc provides malloc/calloc. musl's atexit.c calls the internal
+ * __libc_malloc/__libc_calloc aliases — forward them to the public ones. */
+void *__libc_malloc(size_t n)
+{
+    return malloc(n);
+}
+
+void *__libc_calloc(size_t n, size_t s)
+{
+    return calloc(n, s);
+}

@@ -15,10 +15,7 @@ pub mod common {
 
 #[cfg(any(
     test,
-    all(
-        target_arch = "wasm32",
-        any(target_os = "unknown", target_os = "none"),
-    ),
+    all(target_arch = "wasm32", any(target_os = "unknown", target_os = "none"),),
 ))]
 mod wasm_ffi;
 

@@ -6,8 +6,9 @@
 // result — there is no stdout on this target, but the return value and ABI
 // stay correct.
 //
-// The non-variadic symbols (atof, lrintf, fputc, fwrite, stderr) live in
-// Rust: src/wasm_ffi/ffi/stdio.rs.
+// The non-variadic output symbols (fputc, fwrite, stdout, stderr, ...) are
+// in wasm_libc_shim.c; numeric conversions (atof, lrintf, ...) come from
+// the vendored musl sources compiled by wasm_libc.rs.
 
 #include <stdarg.h>
 #include <stddef.h>

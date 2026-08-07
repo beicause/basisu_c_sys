@@ -125,7 +125,6 @@ pub fn main() {
         .flag("-D_LIBCXXABI_HAS_NO_THREADS")
         .flag("-D_LIBCXXABI_NO_EXCEPTIONS")
         // local project shim
-        .file("src/wasm_ffi/c/cversion.cpp")
         .files(libcxx_sources)
         .files(cxxabi_files)
         .compile("wasm32-libcxx");

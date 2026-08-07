@@ -15,12 +15,12 @@
 //! The example only builds when the `encoder` and `extra` features are
 //! enabled (see `required-features` in `Cargo.toml`).
 
+use basisu_c_sys::BasisTextureFormat;
 use basisu_c_sys::common;
 use basisu_c_sys::extra::types::Extent3d;
 use basisu_c_sys::extra::{
-    basisu_encoder_init, BasisuEncoder, BasisuEncoderParams, SourceImage, SourceImageFormat,
+    BasisuEncoder, BasisuEncoderParams, SourceImage, SourceImageFormat, basisu_encoder_init,
 };
-use basisu_c_sys::BasisTextureFormat;
 
 fn main() {
     // A 4x4 RGBA8 gradient, enough for one 4x4 block.

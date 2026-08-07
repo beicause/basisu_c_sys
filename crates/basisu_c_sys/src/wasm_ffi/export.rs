@@ -2,27 +2,24 @@
 //! `wasm32-unknown-none`, `wasm32v1-none`).
 //!
 //! Every `no_mangle` symbol of this crate lives here, in one place,
-//! compiled only for the wasm target. The implementations in `ffi/` are
-//! plain Rust functions; native test builds compile `ffi/` but not this
+//! compiled only for the wasm target. The implementations in `rust/` are
+//! plain Rust functions; native test builds compile `rust/` but not this
 //! module, so the unit tests run on the host without colliding with libc
 //! symbols of the same name.
 //!
-//! Most libc symbols (`strcmp`, `strlen`, `tolower`, ...) are no longer
-//! defined here — they come from the vendored musl C sources compiled by
-//! `wasm_libc.rs`, which re-exports them via `--export` link args so the
-//! wasm export surface is unchanged. Only symbols musl cannot provide on
-//! bare-metal wasm stay in Rust:
+//! Most libc symbols (`strcmp`, `strlen`, `tolower`, ...) are not defined
+//! here — they come from the vendored musl C sources compiled by
+//! `wasm_libc.rs`. Only symbols musl cannot provide on bare-metal wasm
+//! stay in Rust:
 //!
 //! - `malloc`/`calloc`/`realloc`/`free` — dlmalloc (musl's malloc needs
 //!   brk/mmap syscalls)
 //! - `itoa`/`utoa` — basisu-specific, not part of musl
 //! - `signal`/`raise`/`abort` — musl's need sigaction syscalls
-//! - `__cxa_atexit`, `__assert_fail` — runtime support
-
-use core::ffi::{c_char, c_void};
+//! - `__assert_fail` — traps immediately (no stderr on bare-metal wasm)
 
 use super::rust as ffi;
-use super::rust::{CChar, CInt, CSizeT, CVoid};
+use super::rust::{CChar, CInt, CSizeT};
 
 #[unsafe(no_mangle)]
 pub unsafe extern "C" fn itoa(i: i64, s: *mut CChar, s_len: usize, radix: u8) -> i32 {
@@ -67,15 +64,6 @@ pub extern "C" fn raise(sig: i32) -> i32 {
 #[unsafe(no_mangle)]
 pub extern "C" fn abort() {
     ffi::abort()
-}
-
-#[unsafe(no_mangle)]
-pub unsafe extern "C" fn __cxa_atexit(
-    func: unsafe extern "C" fn(*mut c_void),
-    arg: *mut c_void,
-    dso: *mut c_void,
-) -> i32 {
-    unsafe { ffi::__cxa_atexit(func, arg, dso) }
 }
 
 /// `__assert_fail` — called by the C side on assertion failure.

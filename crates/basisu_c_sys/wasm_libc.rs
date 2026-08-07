@@ -9,7 +9,7 @@ const EMSCRIPTEN_ARCH: &str = "vendored/emscripten/system/lib/libc_musl_arch_ems
 /// copy of emscripten's (self-contained, uses C11 atomics only).
 const MUSL_ARCH_SHIM: &str = "src/wasm_ffi/c/musl_arch";
 
-fn parse_dir<T: AsRef<Path>>(path: T, sources: &mut Vec<PathBuf>, ext: &str, recursive: bool) {
+fn parse_dir<T: AsRef<Path>>(path: T, sources: &mut Vec<PathBuf>, ext: &str) {
     let Ok(dirs) = fs::read_dir(path) else {
         return;
     };
@@ -18,9 +18,7 @@ fn parse_dir<T: AsRef<Path>>(path: T, sources: &mut Vec<PathBuf>, ext: &str, rec
         let dir = dir.unwrap();
         let path = dir.path();
 
-        if path.is_dir() && recursive {
-            parse_dir(path, sources, ext, true);
-        } else if path.is_file()
+        if path.is_file()
             && let Some(extension) = path.extension()
             && extension == ext
         {
@@ -82,13 +80,13 @@ fn musl_includes() -> Vec<PathBuf> {
 /// Subdirectories of `vendored/musl/src` compiled wholesale (every .c file).
 /// All are self-contained (no syscalls, no mmap, no threads):
 ///
-/// - `string/`     — strcmp/strcpy/strlen/strnlen/strcasecmp/strdup/
-///                   strstr/wcslen/wmemchr/... (this fixes most of the
-///                   previously hand-written string functions)
-/// - `ctype/`      — tolower/toupper/isalpha/... + `__ctype_get_mb_cur_max`
-/// - `math/`       — the full musl math library (nextafterf, lrintf, ...)
-/// - `multibyte/`  — mbrtowc/wcrtomb/mbsnrtowcs/... (UTF-8 via the
-///                   single-threaded `__get_tp` glue in wasm_libc_shim.c)
+/// - `string/` — strcmp/strcpy/strlen/strnlen/strcasecmp/strdup/strstr/
+///   wcslen/wmemchr/... (this fixes most of the previously hand-written
+///   string functions)
+/// - `ctype/` — tolower/toupper/isalpha/... + `__ctype_get_mb_cur_max`
+/// - `math/` — the full musl math library (nextafterf, lrintf, ...)
+/// - `multibyte/` — mbrtowc/wcrtomb/mbsnrtowcs/... (UTF-8 via the
+///   single-threaded `__get_tp` glue in wasm_libc_shim.c)
 const MUSL_WHOLESALE: &[&str] = &["string", "ctype", "math", "multibyte"];
 
 /// Individual musl sources (subset of `stdlib/`, `misc/`, `locale/`,
@@ -96,23 +94,15 @@ const MUSL_WHOLESALE: &[&str] = &["string", "ctype", "math", "multibyte"];
 /// `vsscanf.c`+`sscanf.c` and `internal/` scan helpers give a real `sscanf`
 /// (used by libc++'s locale machinery).
 const MUSL_FILES: &[&str] = &[
-    // stdlib — numeric conversion + qsort (malloc stays Rust-side dlmalloc)
-    "stdlib/abs.c",
+    // stdlib — numeric conversion (malloc stays Rust-side dlmalloc)
     "stdlib/atof.c",
     "stdlib/atoi.c",
-    "stdlib/atol.c",
-    "stdlib/atoll.c",
-    "stdlib/bsearch.c",
-    "stdlib/imaxabs.c",
-    "stdlib/labs.c",
-    "stdlib/llabs.c",
-    "stdlib/qsort.c",
-    "stdlib/qsort_nr.c",
     "stdlib/strtod.c",
     "stdlib/strtol.c",
     "stdlib/wcstod.c",
     "stdlib/wcstol.c",
-    // misc — basename/dirname (used by basisu)
+    // exit — __cxa_atexit/atexit (replaces the hand-written Rust registry)
+    "exit/atexit.c", // misc — basename/dirname (used by basisu)
     "misc/basename.c",
     "misc/dirname.c",
     // locale — the _l variants simply forward to the plain functions
@@ -158,15 +148,15 @@ pub fn main() {
     let generated_include = out_dir.join("include");
 
     // The actual libc comes from musl C sources (below) plus a small set of
-    // Rust files (src/ffi/*.rs: malloc/itoa/atexit/signal) and C shims
-    // (errno, version, nanoprintf, stdio_shim, wasm_libc_shim).
+    // Rust files (src/wasm_ffi/rust/*.rs: malloc/itoa/atexit/signal) and C
+    // shims (errno, nanoprintf, stdio_shim, wasm_libc_shim).
     //
     // The wholesale dirs + explicit files mirror the "compile musl sources
     // directly" approach of sqlite-wasm-rs instead of hand-writing every
     // string/math function in Rust.
     let mut sources: Vec<PathBuf> = vec![];
     for dir in MUSL_WHOLESALE {
-        parse_dir(format!("vendored/musl/src/{dir}"), &mut sources, "c", false);
+        parse_dir(format!("vendored/musl/src/{dir}"), &mut sources, "c");
     }
     for f in MUSL_FILES {
         sources.push(format!("vendored/musl/src/{f}").into());
@@ -181,11 +171,10 @@ pub fn main() {
         .flag_if_supported("-Wno-macro-redefined")
         .flag_if_supported("-w")
         .std("c17")
-        // our own C: errno + version (nanoprintf/stdio_shim provide the
+        // our own C: errno + shims (nanoprintf/stdio_shim provide the
         // printf family; wasm_libc_shim provides pthread/time/FILE/locale/
         // setjmp stubs + the single-threaded __get_tp glue)
         .file("src/wasm_ffi/c/errno.c")
-        .file("src/wasm_ffi/c/version.c")
         .file("src/wasm_ffi/c/nanoprintf.c")
         .file("src/wasm_ffi/c/stdio_shim.c")
         .file("src/wasm_ffi/c/wasm_libc_shim.c")
