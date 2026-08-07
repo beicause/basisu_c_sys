@@ -93,7 +93,6 @@ jobs:
           key: build-${{ matrix.os }}-${{ env.CACHE_SUFFIX }}
           env-vars: ImageVersion
           cache-bin: false
-          save-if: ${{ github.ref == 'refs/heads/master' }}
 
       - name: Clippy default features
         run: cargo clippy --workspace --all-targets -- -Dwarnings
@@ -168,7 +167,6 @@ jobs:
           key: test-${{ matrix.os }}-${{ env.CACHE_SUFFIX }}
           env-vars: ImageVersion
           cache-bin: false
-          save-if: ${{ github.ref == 'refs/heads/master' }}
 
       # The `wasm` test is excluded: it only runs in the `test-wasm` job on
       # wasm32-unknown-unknown. Run the lib unit tests plus the native
@@ -210,7 +208,6 @@ jobs:
           key: build-wasm-${{ matrix.os }}-${{ env.CACHE_SUFFIX }}
           env-vars: ImageVersion
           cache-bin: false
-          save-if: ${{ github.ref == 'refs/heads/master' }}
 
       - name: Install wasmtime
         uses: bytecodealliance/actions/wasmtime/setup@v1
@@ -280,7 +277,6 @@ jobs:
           key: build-android-${{ matrix.os }}-${{ env.CACHE_SUFFIX }}
           env-vars: ImageVersion
           cache-bin: false
-          save-if: ${{ github.ref == 'refs/heads/master' }}
 
       - name: Install cargo-binstall
         uses: cargo-bins/cargo-binstall@v1.21.1
