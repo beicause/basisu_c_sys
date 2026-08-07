@@ -170,11 +170,14 @@ jobs:
           cache-bin: false
           save-if: ${{ github.ref == 'refs/heads/master' }}
 
+      # The `wasm` test is excluded: it only runs in the `test-wasm` job on
+      # wasm32-unknown-unknown. Run the lib unit tests plus the native
+      # `encoder`/`transcoder` integration tests instead.
       - name: Test ${{matrix.os}}
-        run: cargo test -p basisu_c_sys --all-features --all-targets --release
+        run: cargo test -p basisu_c_sys --all-features --release --lib --test encoder --test transcoder
 
   build-wasm:
-    name: Build wasm
+    name: Build and test wasm
     # runtime is normally 5 minutes
     timeout-minutes: 15
     # ubuntu-26.04 (preview) ships clang 21 by default, which satisfies the
@@ -209,27 +212,42 @@ jobs:
           cache-bin: false
           save-if: ${{ github.ref == 'refs/heads/master' }}
 
+      - name: Install wasmtime
+        uses: bytecodealliance/actions/wasmtime/setup@v1
+
       - name: Clippy default features
         run: cargo clippy --workspace --target wasm32-unknown-unknown --all-targets -- -Dwarnings
 
       - name: Clippy all features
         run: cargo clippy --workspace --target wasm32-unknown-unknown --all-targets --all-features -- -Dwarnings
 
-      # `--all-targets` would also build the tests and test_processor, which
-      # are not expected to support wasm. Instead build the wasm-capable
-      # crates with all features, plus the `encoder_smoke` example, whose
-      # link step is the regression test for the vendored libc symbols the
-      # encoder (C++) pulls in.
-      - name: Build wasm
+      # The insta-based encoder/transcoder integration tests cannot run on
+      # wasm (snapshot I/O is stubbed and the libtest harness cannot report
+      # pass/fail), so only the `wasm` test is run here. It has
+      # `harness = false` and its own `_start` entry that traps on failure,
+      # which wasmtime reports as a non-zero exit code.
+      - name: Test wasm with wasmtime
         run: |
-          cargo build -p basisu_c_sys --example encoder_smoke --all-features --target wasm32-unknown-unknown
-          cargo build -p test_scene --target wasm32-unknown-unknown
+          cat >> .cargo/config.toml <<EOF
+
+          [target.wasm32-unknown-unknown]
+          runner = "wasmtime run"
+          EOF
+          cargo test -p basisu_c_sys --test wasm --all-features --target wasm32-unknown-unknown
 
       # Bare-metal wasm (wasm32v1-none) has no `std`, so only `basisu_c_sys`
       # builds there; the bevy-based crates and tests (which need std / the
       # test harness) cannot compile for it.
       - name: Build wasm bare-metal
         run: cargo build -p basisu_c_sys --all-features --target wasm32v1-none
+
+      # `--all-targets` would also build the tests and test_processor, which
+      # are not expected to support wasm. Build only the wasm-capable example
+      # here; the `wasm` test (whose link step is the regression test for the
+      # vendored libc symbols the encoder C++ pulls in) is built and run by
+      # the `test-wasm` job below.
+      - name: Build wasm
+        run: cargo build -p test_scene --target wasm32-unknown-unknown
 
   build-android:
     name: Build android
