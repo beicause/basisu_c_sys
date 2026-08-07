@@ -251,7 +251,7 @@ pub fn main() {
         .add_systems(
             Update,
             (
-                rotate_camera,
+                rotate_camera_by_drag,
                 build_face_cubemap,
                 fit_grid_images,
                 size_grid_rows,
@@ -560,11 +560,12 @@ fn images_scene(loaded: &LoadedAssets) -> impl Scene {
 
 /// Scene 2: skybox with a camera-control hint (top-left) and a radio group (top-right)
 /// that switches between the three cube-map ktx2 assets and the runtime-stitched
-/// uncompressed cubemap. Three scene roots, each marked
+/// uncompressed cubemap. Four scene roots, each marked
 /// `SceneRoot` so the whole scene despawns when switching back to the grid:
 /// 1. the camera (Camera3d + Skybox),
-/// 2. the hint UI root,
-/// 3. the cubemap picker UI root.
+/// 2. the full-screen drag surface (pointer drag rotates the camera),
+/// 3. the hint UI root,
+/// 4. the cubemap picker UI root.
 ///
 /// UI roots must have no parent (no `ChildOf`), which is why the overlays are roots here
 /// instead of children of the camera.
@@ -580,6 +581,24 @@ fn skybox_scene() -> impl SceneList {
                 image: skybox_image,
                 brightness: 1000.0,
             }
+            SkyboxAngles
+            SceneRoot
+        ),
+        (
+            // Full-screen invisible drag surface: the target for the drag-to-look
+            // camera control ([`rotate_camera_by_drag`]). It sits below the hint and
+            // cubemap picker (both `GlobalZIndex(1)`) and does not block lower
+            // entities, so only drags that start on empty skybox space rotate the
+            // camera; drags starting on the UI widgets are ignored.
+            Node {
+                position_type: PositionType::Absolute,
+                left: px(0.0),
+                right: px(0.0),
+                top: px(0.0),
+                bottom: px(0.0),
+            }
+            Pickable { is_hoverable: true, should_block_lower: false }
+            SkyboxDragSurface
             SceneRoot
         ),
         (
@@ -596,7 +615,7 @@ fn skybox_scene() -> impl SceneList {
             SceneRoot
             Children [
                 (
-                    Text("Q/E (Left/Right): rotate camera")
+                    Text("Drag: rotate camera")
                     TextFont { font_size: px(16.0) }
                     // Match the radio captions' effective rendering: the caption
                     // wrapper `Node` has no `ThemedText`, so the theme's
@@ -763,22 +782,53 @@ fn image_cell(
     )
 }
 
-fn rotate_camera(
-    mut query: Query<&mut Transform, With<Camera3d>>,
-    keyboard_input: Res<ButtonInput<KeyCode>>,
+/// Marks the full-screen drag surface of the skybox scene (see [`skybox_scene`]).
+#[derive(Component, Default, Clone)]
+struct SkyboxDragSurface;
+
+/// Accumulated yaw/pitch of the skybox camera, in radians. Spawned with the skybox
+/// scene, so re-entering the scene starts from the default angle; updated from drag
+/// deltas by [`rotate_camera_by_drag`].
+#[derive(Component, Default, Clone)]
+struct SkyboxAngles {
+    yaw: f32,
+    pitch: f32,
+}
+
+/// Drag-to-look sensitivity, in radians per screen pixel.
+const SKYBOX_LOOK_SPEED: f32 = 0.003;
+
+/// Rotates the skybox camera by dragging the pointer (mouse or touch) on the
+/// full-screen [`SkyboxDragSurface`]: horizontal drags yaw the view, vertical drags
+/// pitch it (drag right = look right, drag up = look up), with the pitch clamped so
+/// the view never flips over the poles. Drags that start on the hint / cubemap
+/// picker UI are ignored (those nodes sit above the surface and block it). No-op
+/// outside the skybox scene, where there is no `Camera3d` or drag surface.
+fn rotate_camera_by_drag(
+    camera: Single<(&mut Transform, &mut SkyboxAngles), With<Camera3d>>,
+    mut drag_reader: MessageReader<Pointer<Drag>>,
+    surface: Query<Entity, With<SkyboxDragSurface>>,
 ) {
-    let rotate = if keyboard_input.pressed(KeyCode::KeyQ)
-        || keyboard_input.pressed(KeyCode::ArrowLeft)
-    {
-        0.05
-    } else if keyboard_input.pressed(KeyCode::KeyE) || keyboard_input.pressed(KeyCode::ArrowRight) {
-        -0.05
-    } else {
-        0.0
+    let Ok(surface) = surface.single() else {
+        return;
     };
-    for mut transform in &mut query {
-        transform.rotate_y(rotate);
+    let (mut transform, mut angles) = camera.into_inner();
+    let mut changed = false;
+    for drag in drag_reader.read() {
+        if drag.entity != surface {
+            continue;
+        }
+        // Screen y grows downward, so both deltas invert: a rightward drag looks
+        // right (negative yaw), an upward drag looks up (positive pitch).
+        angles.yaw -= drag.delta.x * SKYBOX_LOOK_SPEED;
+        angles.pitch -= drag.delta.y * SKYBOX_LOOK_SPEED;
+        changed = true;
     }
+    if !changed {
+        return;
+    }
+    angles.pitch = angles.pitch.clamp(-(std::f32::consts::FRAC_PI_2 - 0.01), std::f32::consts::FRAC_PI_2 - 0.01);
+    transform.rotation = Quat::from_euler(EulerRot::YXZ, angles.yaw, angles.pitch, 0.0);
 }
 
 /// Marks the clipped viewport root of the grid scene; used to measure the visible
