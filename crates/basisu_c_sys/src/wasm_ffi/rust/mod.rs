@@ -1,6 +1,9 @@
-//! A tiny C library, written in Rust.
+//! Rust parts of the tiny wasm libc — only what musl C cannot provide on
+//! bare-metal wasm32 (allocator, atexit, signals, basisu's itoa).
 //!
-//! See README.md for more details.
+//! The string/ctype/math/stdlib/multibyte functions are compiled from the
+//! vendored musl sources instead (see `wasm_libc.rs`), mirroring how
+//! sqlite-wasm-rs builds its libc shim.
 //!
 //! This file is Copyright (c) Jonathan 'theJPster' Pallant 2019
 //! Licensed under the Blue Oak Model License 1.0.0
@@ -32,64 +35,11 @@ mod itoa;
 pub use self::itoa::itoa;
 pub use self::itoa::utoa;
 
-mod abs;
-pub use self::abs::abs;
-
-mod strcmp;
-pub use self::strcmp::strcmp;
-
-mod strncmp;
-pub use self::strncmp::strncmp;
-
-mod strncasecmp;
-pub use self::strncasecmp::strncasecmp;
-
-mod strcpy;
-pub use self::strcpy::strcpy;
-
-mod strncpy;
-pub use self::strncpy::strncpy;
-
-mod strlen;
-pub use self::strlen::strlen;
-
-mod strtol;
-pub use self::strtol::atoi;
-pub use self::strtol::isalpha;
-pub use self::strtol::isdigit;
-pub use self::strtol::isspace;
-pub use self::strtol::isupper;
-pub use self::strtol::strtoimax;
-pub use self::strtol::strtol;
-pub use self::strtol::strtoll;
-pub use self::strtol::strtoul;
-pub use self::strtol::strtoull;
-pub use self::strtol::strtoumax;
-
-mod strstr;
-pub use self::strstr::strstr;
-
-mod strchr;
-pub use self::strchr::strchr;
-pub use self::strchr::strrchr;
-
-mod qsort;
-pub use self::qsort::qsort;
-
 mod signal;
 pub use self::signal::{abort, raise, signal};
 
-mod memchr;
-pub use self::memchr::memchr;
-
 mod atexit;
 pub use self::atexit::__cxa_atexit;
-
-mod stdio;
-pub use self::stdio::{atof, fputc, fwrite, lrintf};
-
-mod strcat;
-pub use self::strcat::strcat;
 
 mod ctype;
 pub use self::ctype::*;

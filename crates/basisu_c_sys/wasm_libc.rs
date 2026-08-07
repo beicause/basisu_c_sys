@@ -1,8 +1,13 @@
 use std::path::{Path, PathBuf};
 use std::{env, fs};
 
-/// Emscripten's pre-generated wasm32 arch headers
+/// Emscripten's pre-generated wasm32 arch headers.
 const EMSCRIPTEN_ARCH: &str = "vendored/emscripten/system/lib/libc_musl_arch_emscripten";
+
+/// Our replacements for the emscripten arch headers that pull in wasi/JS
+/// syscall glue (`syscall_arch.h`, `pthread_arch.h`); `atomic_arch.h` is a
+/// copy of emscripten's (self-contained, uses C11 atomics only).
+const MUSL_ARCH_SHIM: &str = "src/wasm_ffi/c/musl_arch";
 
 fn parse_dir<T: AsRef<Path>>(path: T, sources: &mut Vec<PathBuf>, ext: &str, recursive: bool) {
     let Ok(dirs) = fs::read_dir(path) else {
@@ -39,6 +44,10 @@ fn copy_headers(src_dir: &str, dest_dir: &Path) {
     }
 }
 
+/// Include paths for downstream crates (libc++, basisu). Order matters:
+/// `vendored/musl/include` before `vendored/musl/src/include` so `<stdio.h>`
+/// is the public one (`extern FILE *stdout`) and the internal
+/// `__stdout_FILE` redirects in `src/include/stdio.h` stay inactive.
 pub fn includes() -> [PathBuf; 5] {
     let out_dir = PathBuf::from(env::var("OUT_DIR").unwrap());
     let generated_include = out_dir.join("include");
@@ -50,6 +59,75 @@ pub fn includes() -> [PathBuf; 5] {
         "src/wasm_ffi/c".into(),
     ]
 }
+
+/// Include paths for compiling the musl sources themselves — mirrors musl's
+/// own Makefile order (`src/include` before `include`, so `<features.h>`
+/// provides `weak_alias` and internal redirects are active), plus our arch
+/// shim ahead of the staged `bits/` headers.
+fn musl_includes() -> Vec<PathBuf> {
+    let out_dir = PathBuf::from(env::var("OUT_DIR").unwrap());
+    vec![
+        out_dir.join("include"),
+        MUSL_ARCH_SHIM.into(),
+        // empty fp_arch.h (soft-float default) used by internal/libm.h
+        "vendored/musl/arch/generic".into(),
+        "vendored/musl/src/include".into(),
+        "vendored/musl/src/internal".into(),
+        "vendored/musl/include".into(),
+        EMSCRIPTEN_ARCH.into(),
+        "src/wasm_ffi/c".into(),
+    ]
+}
+
+/// Subdirectories of `vendored/musl/src` compiled wholesale (every .c file).
+/// All are self-contained (no syscalls, no mmap, no threads):
+///
+/// - `string/`     — strcmp/strcpy/strlen/strnlen/strcasecmp/strdup/
+///                   strstr/wcslen/wmemchr/... (this fixes most of the
+///                   previously hand-written string functions)
+/// - `ctype/`      — tolower/toupper/isalpha/... + `__ctype_get_mb_cur_max`
+/// - `math/`       — the full musl math library (nextafterf, lrintf, ...)
+/// - `multibyte/`  — mbrtowc/wcrtomb/mbsnrtowcs/... (UTF-8 via the
+///                   single-threaded `__get_tp` glue in wasm_libc_shim.c)
+const MUSL_WHOLESALE: &[&str] = &["string", "ctype", "math", "multibyte"];
+
+/// Individual musl sources (subset of `stdlib/`, `misc/`, `locale/`,
+/// `stdio/`, `internal/`). `stdio/__toread.c`+`__uflow.c`+`vfscanf.c`+
+/// `vsscanf.c`+`sscanf.c` and `internal/` scan helpers give a real `sscanf`
+/// (used by libc++'s locale machinery).
+const MUSL_FILES: &[&str] = &[
+    // stdlib — numeric conversion + qsort (malloc stays Rust-side dlmalloc)
+    "stdlib/abs.c",
+    "stdlib/atof.c",
+    "stdlib/atoi.c",
+    "stdlib/atol.c",
+    "stdlib/atoll.c",
+    "stdlib/bsearch.c",
+    "stdlib/imaxabs.c",
+    "stdlib/labs.c",
+    "stdlib/llabs.c",
+    "stdlib/qsort.c",
+    "stdlib/qsort_nr.c",
+    "stdlib/strtod.c",
+    "stdlib/strtol.c",
+    "stdlib/wcstod.c",
+    "stdlib/wcstol.c",
+    // misc — basename/dirname (used by basisu)
+    "misc/basename.c",
+    "misc/dirname.c",
+    // locale — the _l variants simply forward to the plain functions
+    "locale/strtod_l.c",
+    // stdio — the scanf family (needs the internal scan helpers below)
+    "stdio/sscanf.c",
+    "stdio/vsscanf.c",
+    "stdio/vfscanf.c",
+    "stdio/__uflow.c",
+    "stdio/__toread.c",
+    // internal — scanf/strto* scan helpers
+    "internal/intscan.c",
+    "internal/floatscan.c",
+    "internal/shgetc.c",
+];
 
 pub fn main() {
     // Stage arch-specific bits/ headers into OUT_DIR/include/bits/.
@@ -79,24 +157,39 @@ pub fn main() {
 
     let generated_include = out_dir.join("include");
 
-    // The actual libc implementations come from Rust (src/ffi/*.rs) — only
-    // a handful of small C files (errno, version, nanoprintf) need to be
-    // compiled here. musl headers are still used for the public API surface
-    // and are exposed to bindgen below.
-    let mut headers = vec![];
-    // Only include top-level C standard headers (not Linux-specific sys/*, linux/*, etc.)
-    parse_dir("vendored/musl/include", &mut headers, "h", false);
+    // The actual libc comes from musl C sources (below) plus a small set of
+    // Rust files (src/ffi/*.rs: malloc/itoa/atexit/signal) and C shims
+    // (errno, version, nanoprintf, stdio_shim, wasm_libc_shim).
+    //
+    // The wholesale dirs + explicit files mirror the "compile musl sources
+    // directly" approach of sqlite-wasm-rs instead of hand-writing every
+    // string/math function in Rust.
+    let mut sources: Vec<PathBuf> = vec![];
+    for dir in MUSL_WHOLESALE {
+        parse_dir(format!("vendored/musl/src/{dir}"), &mut sources, "c", false);
+    }
+    for f in MUSL_FILES {
+        sources.push(format!("vendored/musl/src/{f}").into());
+    }
 
-    // Include order matches emscripten's MuslInternalLibrary:
-    //   arch/emscripten → arch/generic → src/internal → src/include → include
-    cc::Build::new()
-        .includes(includes())
+    let mut build = cc::Build::new();
+    build
+        .includes(musl_includes())
+        // musl's own build flags
+        .flag("-D_XOPEN_SOURCE=700")
+        .flag("-D_GNU_SOURCE")
         .flag_if_supported("-Wno-macro-redefined")
+        .flag_if_supported("-w")
+        .std("c17")
+        // our own C: errno + version (nanoprintf/stdio_shim provide the
+        // printf family; wasm_libc_shim provides pthread/time/FILE/locale/
+        // setjmp stubs + the single-threaded __get_tp glue)
         .file("src/wasm_ffi/c/errno.c")
         .file("src/wasm_ffi/c/version.c")
         .file("src/wasm_ffi/c/nanoprintf.c")
         .file("src/wasm_ffi/c/stdio_shim.c")
-        .std("c17")
+        .file("src/wasm_ffi/c/wasm_libc_shim.c")
+        .files(sources)
         .compile("wasm32-libc");
 
     let manifest_dir = env!("CARGO_MANIFEST_DIR");
@@ -110,7 +203,7 @@ pub fn main() {
     println!("cargo::rustc-link-search=native={}", out_dir.display());
     println!("cargo::rustc-link-lib=static=wasm32-libc");
 
-    // Force-export C allocator symbols so wasm-lld --gc-sections doesn't
+    // Force-export allocator symbols so wasm-lld --gc-sections doesn't
     // remove them (they're only referenced from C code, not Rust).
     for symbol in ["malloc", "free", "calloc", "realloc"] {
         println!("cargo::rustc-link-arg=--export={symbol}");
