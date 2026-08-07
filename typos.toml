@@ -5,7 +5,7 @@ extend-exclude = [
   "*.bin",  # Binary files
   ".git/",  # Version control files
   "3rdparty/",
-  "vendored/",
+  "crates/basisu_c_sys/src/wasm_ffi/c/wasi/",
 ]
 ignore-hidden = false
 
