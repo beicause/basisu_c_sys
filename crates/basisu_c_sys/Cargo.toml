@@ -12,6 +12,7 @@ include = [
   "build.rs",
   "src/*.rs",
   "src/extra/*.rs",
+  "examples/",
   "vendored/",
 ]
 
@@ -33,6 +34,11 @@ required-features = ["extra"]
 [[test]]
 name = "encoder"
 path = "tests/encoder.rs"
+required-features = ["encoder", "extra"]
+
+[[example]]
+name = "encoder_smoke"
+path = "examples/encoder_smoke.rs"
 required-features = ["encoder", "extra"]
 
 [dependencies]

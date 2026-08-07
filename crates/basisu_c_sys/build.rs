@@ -241,6 +241,12 @@ fn compile_basisu_static() {
                     .cpp_link_stdlib(None);
             } else {
                 build.includes(wasm_libc::includes());
+                // basisu's zstd.c gates ZSTD_MULTITHREAD behind
+                // `#ifndef __EMSCRIPTEN__`, so defining __EMSCRIPTEN__ on bare
+                // wasm disables zstd's multi-threading (no pthread references
+                // from zstd). None of the other C sources (musl, nanoprintf,
+                // our shims) use __EMSCRIPTEN__.
+                build.define("__EMSCRIPTEN__", None);
             }
         }
 
