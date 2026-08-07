@@ -1,4 +1,3 @@
-use std::path::PathBuf;
 use std::fs;
 
 use crate::wasm_libc;
@@ -18,6 +17,10 @@ const LIBCXX_EXCLUDE: &[&str] = &[
     "tzdb.cpp",
     "tzdb_list.cpp",
 ];
+
+const LIBCXX: &str = "vendored/emscripten/system/lib/libcxx";
+const LIBCXXABI: &str = "vendored/emscripten/system/lib/libcxxabi";
+const LLVM_LIBC: &str = "vendored/emscripten/system/lib/llvm-libc";
 
 fn glob_cpp(dir: &str, exclude: &[&str]) -> Vec<String> {
     let mut files = vec![];
@@ -42,23 +45,29 @@ fn collect_cpp(dir: &str, exclude: &[&str], out: &mut Vec<String>) {
     }
 }
 
-pub fn includes() -> [String; 8] {
-    let libcxx = "vendored/emscripten/system/lib/libcxx";
-    let libcxxabi = "vendored/emscripten/system/lib/libcxxabi";
-    let llvm_libc = "vendored/emscripten/system/lib/llvm-libc";
-
+pub fn includes() -> [String; 3] {
     [
         // libcxx includes
-        format!("{libcxx}/src"),
-        format!("{libcxx}/include"),
-        format!("{libcxx}/src/include"),
-        format!("{libcxx}/src/include/ryu"),
-        // llvm-libc (provides shared/fp_bits.h needed by charconv.cpp)
-        llvm_libc.into(),
+        format!("{LIBCXX}/include"),
+        format!("{LIBCXX}/src/include"),
         // libcxxabi includes
-        format!("{libcxxabi}/include"),
-        format!("{libcxxabi}/src"),
-        format!("{libcxxabi}/src/demangle"),
+        format!("{LIBCXXABI}/include"),
+    ]
+}
+
+fn llvm_includes() -> [String; 8] {
+    [
+        // libcxx includes
+        format!("{LIBCXX}/src"),
+        format!("{LIBCXX}/include"),
+        format!("{LIBCXX}/src/include"),
+        format!("{LIBCXX}/src/include/ryu"),
+        // llvm-libc (provides shared/fp_bits.h needed by charconv.cpp)
+        LLVM_LIBC.into(),
+        // libcxxabi includes
+        format!("{LIBCXXABI}/include"),
+        format!("{LIBCXXABI}/src"),
+        format!("{LIBCXXABI}/src/demangle"),
     ]
 }
 
@@ -67,11 +76,8 @@ pub fn main() {
     // LLVM fork (populated by git submodule). Build configuration mirrors
     // emscripten's system_libs.py (libcxx + libcxxabi classes).
 
-    let libcxx = "vendored/emscripten/system/lib/libcxx";
-    let libcxxabi = "vendored/emscripten/system/lib/libcxxabi";
-
     // ── libcxx sources (glob minus exclusions, matching emscripten) ───────
-    let libcxx_sources = glob_cpp(&format!("{libcxx}/src"), LIBCXX_EXCLUDE);
+    let libcxx_sources = glob_cpp(&format!("{LIBCXX}/src"), LIBCXX_EXCLUDE);
 
     // ── libcxxabi sources (no-exceptions mode, matching emscripten) ───────
     let cxxabi_files: Vec<String> = [
@@ -94,18 +100,18 @@ pub fn main() {
         "cxa_noexception.cpp",
     ]
     .iter()
-    .map(|f| format!("{libcxxabi}/src/{f}"))
+    .map(|f| format!("{LIBCXXABI}/src/{f}"))
     .collect();
 
     // ── Compile libcxx + libcxxabi together ──────────────────────────────
-    let libc_includes: [PathBuf; 5] = wasm_libc::includes();
+    let libc_includes = wasm_libc::includes();
 
     let mut build = cc::Build::new();
     build
         .cpp(true)
         .std("c++23")
         .cpp_link_stdlib(None)
-        .includes(includes())
+        .includes(llvm_includes())
         // musl libc includes from wasm32-libc crate
         .includes(&libc_includes);
 
@@ -128,9 +134,4 @@ pub fn main() {
         .files(libcxx_sources)
         .files(cxxabi_files)
         .compile("wasm32-libcxx");
-
-    println!(
-        "cargo::metadata=include={}/{libcxx}/include",
-        env!("CARGO_MANIFEST_DIR")
-    );
 }

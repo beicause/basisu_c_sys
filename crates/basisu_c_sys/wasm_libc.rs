@@ -46,15 +46,13 @@ fn copy_headers(src_dir: &str, dest_dir: &Path) {
 /// `vendored/musl/include` before `vendored/musl/src/include` so `<stdio.h>`
 /// is the public one (`extern FILE *stdout`) and the internal
 /// `__stdout_FILE` redirects in `src/include/stdio.h` stay inactive.
-pub fn includes() -> [PathBuf; 5] {
+pub fn includes() -> [PathBuf; 3] {
     let out_dir = PathBuf::from(env::var("OUT_DIR").unwrap());
     let generated_include = out_dir.join("include");
     [
         generated_include,
         "vendored/musl/include".into(),
         "vendored/musl/src/include".into(),
-        "vendored/musl/src/internal".into(),
-        "src/wasm_ffi/c".into(),
     ]
 }
 
@@ -151,8 +149,6 @@ pub fn main() {
         }
     }
 
-    let generated_include = out_dir.join("include");
-
     // The actual libc comes from musl C sources (below) plus a small set of
     // Rust files (src/wasm_ffi/rust/*.rs: malloc/itoa/atexit/signal) and C
     // shims (errno, nanoprintf, stdio_shim, wasm_libc_shim).
@@ -186,12 +182,4 @@ pub fn main() {
         .file("src/wasm_ffi/c/wasm_libc_shim.c")
         .files(sources)
         .compile("wasm32-libc");
-
-    let manifest_dir = env!("CARGO_MANIFEST_DIR");
-    // Export both include paths separated by ':' for downstream crates
-    println!(
-        "cargo::metadata=include={}:{}/musl/include",
-        generated_include.display(),
-        manifest_dir,
-    );
 }
