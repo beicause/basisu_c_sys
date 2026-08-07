@@ -176,8 +176,8 @@ jobs:
 
   build-wasm:
     name: Build and test wasm
-    # runtime is normally 5 minutes
-    timeout-minutes: 15
+    # runtime is normally 10 minutes
+    timeout-minutes: 30
     # ubuntu-26.04 (preview) ships clang 21 by default, which satisfies the
     # vendored emscripten libc++ requirement (clang >= 19).
     runs-on: ubuntu-26.04
