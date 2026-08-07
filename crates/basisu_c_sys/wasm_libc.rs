@@ -169,7 +169,14 @@ pub fn main() {
         .includes(musl_includes())
         // musl's own build flags
         .flag("-D_XOPEN_SOURCE=700")
-        .flag("-D_GNU_SOURCE")
+        // Don't let clang assume standard-library semantics for our custom
+        // libc: without -fno-builtin, calls to memcpy/strlen/... can be
+        // rewritten or optimized away based on glibc assumptions. Mirrors
+        // emscripten's libc cflags in system_libs.py.
+        .flag("-fno-builtin")
+        // Matches emscripten's non-debug system library builds
+        // (DebugLibrary adds -DNDEBUG).
+        .flag("-DNDEBUG")
         .flag_if_supported("-Wno-macro-redefined")
         .flag_if_supported("-w")
         .std("c17")

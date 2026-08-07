@@ -118,6 +118,9 @@ pub fn main() {
     build
         .flag_if_supported("-Wno-macro-redefined")
         .flag("-fno-exceptions")
+        // Matches emscripten's non-debug system library builds
+        // (DebugLibrary adds -DNDEBUG).
+        .flag("-DNDEBUG")
         // Defines matching emscripten's system_libs.py
         .flag("-w")
         .flag("-DLIBCXX_BUILDING_LIBCXXABI=1")
