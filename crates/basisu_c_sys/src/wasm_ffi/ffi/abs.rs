@@ -1,6 +1,6 @@
 //! Rust implementation of C library function `abs`
 //!
-//! Licensed under the Blue Oak Model Licence 1.0.0
+//! Licensed under the Blue Oak Model License 1.0.0
 
 use super::CInt;
 

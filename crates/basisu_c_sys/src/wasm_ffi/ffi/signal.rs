@@ -1,7 +1,7 @@
 //! Rust implementation of the C standard library's `signal` related functions.
 //!
 //! Copyright (c) Gyungmin Myung <gmmyung@kaist.ac.kr>
-//! Licensed under the Blue Oak Model Licence 1.0.0
+//! Licensed under the Blue Oak Model License 1.0.0
 
 use core::sync::atomic::{AtomicUsize, Ordering};
 

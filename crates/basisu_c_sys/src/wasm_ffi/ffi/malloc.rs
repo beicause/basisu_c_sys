@@ -1,7 +1,7 @@
 //! Rust implementation of C library function `malloc`, `calloc`, `realloc`, and `free`.
 //!
 //! Copyright (c) Gyungmin Myung <gmmyung@kaist.ac.kr>
-//! This file is licensed under the Blue Oak Model Licence 1.0.0
+//! This file is licensed under the Blue Oak Model License 1.0.0
 
 extern crate alloc;
 use super::CSizeT;

@@ -1,6 +1,6 @@
 //! Rust implementation of C library function `strcat`
 //!
-//! Licensed under the Blue Oak Model Licence 1.0.0
+//! Licensed under the Blue Oak Model License 1.0.0
 
 use super::{CChar, strcpy, strlen};
 

@@ -1,7 +1,7 @@
 //! Rust implementation of C library function `itoa`
 //!
 //! Copyright (c) Jonathan 'theJPster' Pallant 2019
-//! Licensed under the Blue Oak Model Licence 1.0.0
+//! Licensed under the Blue Oak Model License 1.0.0
 
 use super::CChar;
 
