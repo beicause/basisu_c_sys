@@ -27,11 +27,6 @@ features = [
 ]
 rustdoc-args = ["--cfg", "docsrs"]
 
-[[example]]
-name = "encoder_smoke"
-path = "examples/encoder_smoke.rs"
-required-features = ["encoder", "extra"]
-
 [[test]]
 name = "transcoder"
 path = "tests/transcoder.rs"
@@ -40,6 +35,16 @@ required-features = ["extra"]
 [[test]]
 name = "encoder"
 path = "tests/encoder.rs"
+required-features = ["encoder", "extra"]
+
+# The wasm test target has `harness = false`: the libtest harness cannot
+# report pass/fail on wasm32-unknown-unknown (std stubs stdout and
+# `process::exit`), so it has a custom entry point (`_start` on wasm) that
+# traps on failure, which wasmtime reports with a non-zero exit code.
+[[test]]
+harness = false
+name = "wasm"
+path = "tests/wasm.rs"
 required-features = ["encoder", "extra"]
 
 [dependencies]
@@ -62,6 +67,7 @@ image = {
   features = [
     "exr",
     "jpeg",
+    "png",
     "webp",
   ]
 }
