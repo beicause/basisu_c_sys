@@ -1,8 +1,6 @@
 mod common;
 use std::io::Cursor;
 
-use common::block_on;
-
 use basisu_c_sys::extra::{
     BasisuTranscodeError, BasisuTranscoder, ChannelType, SupportedTextureCompression,
     TranscodeInfo, TranscodedImage, basisu_transcoder_init, types,
@@ -13,7 +11,7 @@ use crate::common::SNAPSHOT_PATH;
 
 #[test]
 fn transcode_invalid_data() {
-    block_on(basisu_transcoder_init());
+    basisu_transcoder_init();
     let transcoder =
         BasisuTranscoder::new(&[], SupportedTextureCompression::empty(), ChannelType::Auto);
     assert_eq!(transcoder.err(), Some(BasisuTranscodeError::EmptyInputData));
@@ -36,7 +34,7 @@ fn snapshot(
     supported_format: SupportedTextureCompression,
     each_data_result: impl Fn(&str, TranscodedImage),
 ) -> Vec<(String, TranscodeInfo, TranscodedImage)> {
-    block_on(basisu_transcoder_init());
+    basisu_transcoder_init();
 
     let mut path = std::path::PathBuf::new();
     path.push(std::env!("CARGO_MANIFEST_DIR"));

@@ -1,5 +1,4 @@
 mod common;
-use common::block_on;
 use image::{DynamicImage, ImageFormat, ImageReader};
 
 use std::{
@@ -47,7 +46,7 @@ fn skybox_images_iter() -> impl Iterator<Item = DynamicImage> {
 }
 
 fn encode_cubemap_xuastc_ldr_4x4_by_slice() -> Vec<u8> {
-    block_on(basisu_encoder_init());
+    basisu_encoder_init();
 
     let mut encoder = BasisuEncoder::new();
     for (i, img) in skybox_images_iter().enumerate() {
@@ -72,7 +71,7 @@ fn encode_cubemap_xuastc_ldr_4x4_by_slice() -> Vec<u8> {
 }
 
 fn encode_cubemap_astc_ldr_8x8_mips_by_image() -> Vec<u8> {
-    block_on(basisu_encoder_init());
+    basisu_encoder_init();
 
     let mut images = Vec::new();
     let mut encoder = BasisuEncoder::new();
@@ -143,7 +142,7 @@ fn encode_exr_image() -> Vec<u8> {
     let dir = std::env!("CARGO_MANIFEST_DIR");
     let exr_image_path = Path::new(dir).join("../../original_assets/Desk_fixed_6x6.exr");
 
-    block_on(basisu_encoder_init());
+    basisu_encoder_init();
 
     let mut encoder = BasisuEncoder::new();
     let image = read_exr_image(&exr_image_path);

@@ -17,7 +17,6 @@ concurrency:
 
 env:
   CARGO_TERM_COLOR: always
-  EM_VERSION: 6.0.0
   CACHE_SUFFIX: e # cache busting
 
 jobs:
@@ -25,18 +24,15 @@ jobs:
     environment:
       name: github-pages
       url: ${{ steps.deployment.outputs.page_url }}
-    runs-on: ubuntu-latest
+    # ubuntu-26.04 (preview) ships clang 21 by default, which satisfies the
+    # vendored emscripten libc++ requirement (clang >= 19).
+    runs-on: ubuntu-26.04
     # runtime is normally 10-15 minutes
     timeout-minutes: 45
     steps:
       - uses: actions/checkout@v7.0.1
         with:
-          submodules: "recursive"
-
-      - name: Install Emscripten
-        uses: mymindstorm/setup-emsdk@v16
-        with:
-          version: ${{ env.EM_VERSION }}
+          submodules: "true"
 
       - name: Install wasm-opt
         run: >

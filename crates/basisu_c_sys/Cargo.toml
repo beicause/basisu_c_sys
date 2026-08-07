@@ -5,17 +5,16 @@ edition = "2024"
 description = "Rust binding and wrappers for Basis Universal C API"
 repository.workspace = true
 license.workspace = true
-keywords = ["basis-universal", "ffi", "wasm-bindgen"]
+keywords = ["basis-universal", "ffi", "texture", "wasm"]
 include = [
   "CHANGELOG.md",
-  "CMakeLists.txt",
   "README.md",
   "build.rs",
-  "src/*.rs",
-  "src/extra/*.rs",
-  "vendored/basis_universal",
-  "wasm_bindgen.rs",
-  "write_cmake_args.rs"
+  "examples/",
+  "src/",
+  "vendored/",
+  "wasm_libc.rs",
+  "wasm_libcxx.rs",
 ]
 
 [package.metadata.docs.rs]
@@ -28,6 +27,11 @@ features = [
 ]
 rustdoc-args = ["--cfg", "docsrs"]
 
+[[example]]
+name = "encoder_smoke"
+path = "examples/encoder_smoke.rs"
+required-features = ["encoder", "extra"]
+
 [[test]]
 name = "transcoder"
 path = "tests/transcoder.rs"
@@ -39,7 +43,6 @@ path = "tests/encoder.rs"
 required-features = ["encoder", "extra"]
 
 [dependencies]
-async-lock = { version = "3.4.2", default-features = false, optional = true }
 bitflags = { version = "2.11.0", optional = true }
 serde = {
   version = "1.0.228",
@@ -67,13 +70,6 @@ insta = "1.47.2"
 [build-dependencies]
 bindgen = "0.72"
 cc = { version = "1.2", features = ["parallel"] }
-cmake = "0.1.58"
-
-[target.wasm32-unknown-unknown.dependencies]
-async-lock = { version = "3.4.2", default-features = false }
-js-sys = "0.3"
-wasm-bindgen = "0.2"
-wasm-bindgen-futures = "0.4"
 
 [features]
 default = [
@@ -87,7 +83,6 @@ default = [
 ]
 encoder = []
 extra = [
-  "dep:async-lock",
   "dep:bitflags",
   "dep:thiserror",
 ]
@@ -101,3 +96,6 @@ transcode_etc1s_etc2 = []
 transcode_uastc = []
 transcode_uastc_hdr = []
 transcode_xuastc = []
+
+[lints]
+workspace = true

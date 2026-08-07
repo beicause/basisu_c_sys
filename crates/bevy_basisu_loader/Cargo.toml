@@ -18,7 +18,6 @@ basisu_c_sys = {
   ]
 }
 
-async-lock = "3.4.2"
 bevy = {
   workspace = true,
   features = [
@@ -55,3 +54,6 @@ transcode_etc1s_etc2 = ["basisu_c_sys/transcode_etc1s_etc2"]
 transcode_uastc = ["basisu_c_sys/transcode_uastc"]
 transcode_uastc_hdr = ["basisu_c_sys/transcode_uastc_hdr"]
 transcode_xuastc = ["basisu_c_sys/transcode_xuastc"]
+
+[lints]
+workspace = true
