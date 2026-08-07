@@ -224,13 +224,9 @@ jobs:
       # `harness = false` and its own `_start` entry that traps on failure,
       # which wasmtime reports as a non-zero exit code.
       - name: Test wasm with wasmtime
-        run: |
-          cat >> .cargo/config.toml <<EOF
-
-          [target.wasm32-unknown-unknown]
-          runner = "wasmtime run"
-          EOF
-          cargo test -p basisu_c_sys --test wasm --all-features --target wasm32-unknown-unknown
+        env:
+          CARGO_TARGET_WASM32_UNKNOWN_UNKNOWN_RUNNER: "wasmtime run"
+        run: cargo test -p basisu_c_sys --test wasm --all-features --target wasm32-unknown-unknown
 
       # Bare-metal wasm (wasm32v1-none) has no `std`, so only `basisu_c_sys`
       # builds there; the bevy-based crates and tests (which need std / the
