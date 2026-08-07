@@ -30,7 +30,7 @@ jobs:
     steps:
       - uses: actions/checkout@v7.0.1
         with:
-          submodules: "recursive"
+          submodules: "true"
 
       - name: Install wasm-opt
         run: >
