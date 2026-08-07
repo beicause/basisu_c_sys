@@ -77,8 +77,9 @@ pub fn includes() -> [PathBuf; 4] {
         staged.join("include"),
         staged.join("src/include"),
         // emscripten's musl stdio.h pulls in <wasi/api.h> when __EMSCRIPTEN__
-        // is defined (build.rs defines it for the basisu C/zstd sources).
-        "vendored/emscripten/system/include".into(),
+        // is defined (build.rs defines it for the basisu C/zstd sources);
+        // the header is vendored at src/wasm_ffi/c/wasi/api.h.
+        "src/wasm_ffi/c".into(),
     ]
 }
 
