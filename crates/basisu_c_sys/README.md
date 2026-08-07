@@ -11,7 +11,7 @@ This crate also contains an optional high level API that is easier to use with `
 
 ## Implementation details on wasm build
 
-Greatly inspired by https://github.com/rafaelbeckel/test-c-rust-wasm
+Greatly inspired by <https://github.com/rafaelbeckel/test-c-rust-wasm>
 
 The wasm build compiles the Basis Universal C++ sources together with a vendored
 [musl](https://musl.libc.org/) libc and emscripten

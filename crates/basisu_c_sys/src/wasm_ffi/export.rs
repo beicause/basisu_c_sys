@@ -14,35 +14,23 @@
 //!
 //! - `malloc`/`calloc`/`realloc`/`free` — dlmalloc (musl's malloc needs
 //!   brk/mmap syscalls)
-//! - `itoa`/`utoa` — basisu-specific, not part of musl
 //! - `signal`/`raise`/`abort` — musl's need sigaction syscalls
 //! - `__assert_fail` — traps immediately (no stderr on bare-metal wasm)
 
 use super::rust as ffi;
-use super::rust::{CChar, CInt, CSizeT};
 
 #[unsafe(no_mangle)]
-pub unsafe extern "C" fn itoa(i: i64, s: *mut CChar, s_len: usize, radix: u8) -> i32 {
-    unsafe { ffi::itoa(i, s, s_len, radix) }
-}
-
-#[unsafe(no_mangle)]
-pub unsafe extern "C" fn utoa(u: u64, s: *mut CChar, s_len: usize, radix: u8) -> i32 {
-    unsafe { ffi::utoa(u, s, s_len, radix) }
-}
-
-#[unsafe(no_mangle)]
-pub unsafe extern "C" fn malloc(size: CSizeT) -> *mut u8 {
+pub unsafe extern "C" fn malloc(size: usize) -> *mut u8 {
     unsafe { ffi::malloc(size) }
 }
 
 #[unsafe(no_mangle)]
-pub unsafe extern "C" fn calloc(nmemb: CSizeT, size: CSizeT) -> *mut u8 {
+pub unsafe extern "C" fn calloc(nmemb: usize, size: usize) -> *mut u8 {
     unsafe { ffi::calloc(nmemb, size) }
 }
 
 #[unsafe(no_mangle)]
-pub unsafe extern "C" fn realloc(ptr: *mut u8, size: CSizeT) -> *mut u8 {
+pub unsafe extern "C" fn realloc(ptr: *mut u8, size: usize) -> *mut u8 {
     unsafe { ffi::realloc(ptr, size) }
 }
 
@@ -71,10 +59,10 @@ pub extern "C" fn abort() {
 /// with — trap immediately.
 #[unsafe(no_mangle)]
 pub unsafe extern "C" fn __assert_fail(
-    _assertion: *const CChar,
-    _file: *const CChar,
-    _line: CInt,
-    _function: *const CChar,
+    _assertion: *const u8,
+    _file: *const u8,
+    _line: i32,
+    _function: *const u8,
 ) {
     core::arch::wasm32::unreachable();
 }

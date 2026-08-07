@@ -31,15 +31,6 @@ mod malloc;
 #[cfg(all(target_arch = "wasm32", any(target_os = "unknown", target_os = "none")))]
 pub use self::malloc::{calloc, free, malloc, realloc};
 
-mod itoa;
-#[cfg(all(target_arch = "wasm32", any(target_os = "unknown", target_os = "none")))]
-pub use self::itoa::itoa;
-#[cfg(all(target_arch = "wasm32", any(target_os = "unknown", target_os = "none")))]
-pub use self::itoa::utoa;
-
 mod signal;
 #[cfg(all(target_arch = "wasm32", any(target_os = "unknown", target_os = "none")))]
 pub use self::signal::{abort, raise, signal};
-
-mod ctype;
-pub use self::ctype::*;

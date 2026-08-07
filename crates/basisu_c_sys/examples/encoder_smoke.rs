@@ -17,15 +17,16 @@
 
 use basisu_c_sys::BasisTextureFormat;
 use basisu_c_sys::common;
+use basisu_c_sys::extra::basisu_encoder_enable_debug_printf;
 use basisu_c_sys::extra::types::Extent3d;
 use basisu_c_sys::extra::{
     BasisuEncoder, BasisuEncoderParams, SourceImage, SourceImageFormat, basisu_encoder_init,
 };
 
 fn main() {
-    // A 4x4 RGBA8 gradient, enough for one 4x4 block.
-    const W: u32 = 4;
-    const H: u32 = 4;
+    // A 128x128 RGBA8 gradient, enough for one 4x4 block.
+    const W: u32 = 128;
+    const H: u32 = 128;
     let mut pixels = Vec::with_capacity((W * H * 4) as usize);
     for y in 0..H {
         for x in 0..W {
@@ -34,6 +35,7 @@ fn main() {
     }
 
     basisu_encoder_init();
+    basisu_encoder_enable_debug_printf(true);
 
     let image = SourceImage {
         data: &pixels,
@@ -50,10 +52,14 @@ fn main() {
         .set_image(image)
         .expect("BasisuEncoder::set_image failed");
 
-    // ETC1S with output validation on, so the encoder verifies the
+    // XuastcLdr4x4 with output validation on, so the encoder verifies the
     // compressed data and the vendored-libc symbol surface is exercised.
-    let params = BasisuEncoderParams::new_with_linear_defaults(BasisTextureFormat::Etc1s)
-        .with_flags(common::BU_COMP_FLAGS_VALIDATE_OUTPUT);
+    let params = BasisuEncoderParams::new_with_linear_defaults(BasisTextureFormat::XuastcLdr4x4)
+        .with_flags(
+            common::BU_COMP_FLAGS_DEBUG_OUTPUT
+                | common::BU_COMP_FLAGS_VALIDATE_OUTPUT
+                | common::BU_COMP_FLAGS_GEN_MIPS_CLAMP,
+        );
 
     let ktx2 = encoder.compress(params).expect("compress failed");
     assert!(!ktx2.is_empty(), "compressed payload is empty");
