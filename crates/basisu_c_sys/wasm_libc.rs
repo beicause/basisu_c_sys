@@ -65,17 +65,21 @@ fn copy_headers(src_dir: &str, dest_dir: &Path) {
 /// Include paths for downstream crates (libc++, basisu). Order matters:
 /// the musl `include` before musl `src/include` so `<stdio.h>` is the public
 /// one (`extern FILE *stdout`) and the internal `__stdout_FILE` redirects in
-/// `src/include/stdio.h` stay inactive. Headers come from the patched
-/// staging copy (`stage_musl`) so everything this crate builds sees one
-/// coherent tree.
+/// `src/include/stdio.h` stay inactive.
+///
+/// Downstream compiles against the vendored musl tree directly — the two
+/// files `stage_musl` patches (`src/internal/syscall.h`,
+/// `src/string/memcmp.c`) are never included downstream. The one fork
+/// divergence downstream does need, `<sys/timex.h>` (dropped by emscripten's
+/// fork, still included by basisu_enc.cpp), is restored into the generated
+/// include dir, which is first on the path.
 pub fn includes() -> [PathBuf; 4] {
     let out_dir = PathBuf::from(env::var("OUT_DIR").unwrap());
-    let staged = out_dir.join("musl");
     let generated_include = out_dir.join("include");
     [
         generated_include,
-        staged.join("include"),
-        staged.join("src/include"),
+        "vendored/musl/include".into(),
+        "vendored/musl/src/include".into(),
         // emscripten's musl stdio.h pulls in <wasi/api.h> when __EMSCRIPTEN__
         // is defined (build.rs defines it for the basisu C/zstd sources);
         // the header is vendored at src/wasm_ffi/c/wasi/api.h.
@@ -185,12 +189,6 @@ fn stage_musl() -> PathBuf {
         "#include <stdint.h>\n#include <string.h>",
     );
 
-    // Emscripten's fork dropped include/sys/timex.h (basisu_enc.cpp still
-    // includes it on the __GNUC__ timing path); restore it from our vendored
-    // copy of upstream musl 1.2.6.
-    fs::create_dir_all(staged.join("include/sys")).unwrap();
-    fs::copy("src/wasm_ffi/c/sys/timex.h", staged.join("include/sys/timex.h")).unwrap();
-
     staged
 }
 
@@ -267,6 +265,17 @@ pub fn main() {
             }
         }
     }
+
+    // Emscripten's fork dropped include/sys/timex.h (basisu_enc.cpp still
+    // includes it on the __GNUC__ timing path); restore it from our vendored
+    // copy of upstream musl 1.2.6 into the generated include dir, which is
+    // first on the downstream include paths (see `includes`).
+    fs::create_dir_all(out_dir.join("include").join("sys")).unwrap();
+    fs::copy(
+        "src/wasm_ffi/c/sys/timex.h",
+        out_dir.join("include").join("sys").join("timex.h"),
+    )
+    .unwrap();
 
     // Patch a copy of emscripten's musl src/ (see stage_musl_src) and compile
     // from that. The actual libc comes from these musl C sources plus a small
