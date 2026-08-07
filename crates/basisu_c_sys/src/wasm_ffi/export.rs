@@ -40,6 +40,11 @@ pub unsafe extern "C" fn free(ptr: *mut u8) {
 }
 
 #[unsafe(no_mangle)]
+pub unsafe extern "C" fn aligned_alloc(alignment: usize, size: usize) -> *mut u8 {
+    unsafe { ffi::aligned_alloc(alignment, size) }
+}
+
+#[unsafe(no_mangle)]
 pub unsafe extern "C" fn signal(sig: i32, handler: usize) -> usize {
     unsafe { ffi::signal(sig, handler) }
 }

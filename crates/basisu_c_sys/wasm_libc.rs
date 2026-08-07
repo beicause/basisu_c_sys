@@ -191,10 +191,4 @@ pub fn main() {
 
     println!("cargo::rustc-link-search=native={}", out_dir.display());
     println!("cargo::rustc-link-lib=static=wasm32-libc");
-
-    // Force-export allocator symbols so wasm-lld --gc-sections doesn't
-    // remove them (they're only referenced from C code, not Rust).
-    for symbol in ["malloc", "free", "calloc", "realloc"] {
-        println!("cargo::rustc-link-arg=--export={symbol}");
-    }
 }

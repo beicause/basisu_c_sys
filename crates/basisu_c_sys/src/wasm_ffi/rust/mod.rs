@@ -29,7 +29,7 @@
 // imports (the functions stay alive via the `expect(dead_code)` above).
 mod malloc;
 #[cfg(all(target_arch = "wasm32", any(target_os = "unknown", target_os = "none")))]
-pub use self::malloc::{calloc, free, malloc, realloc};
+pub use self::malloc::{aligned_alloc, calloc, free, malloc, realloc};
 
 mod signal;
 #[cfg(all(target_arch = "wasm32", any(target_os = "unknown", target_os = "none")))]
