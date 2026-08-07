@@ -5,11 +5,21 @@
 [![Cargo](https://img.shields.io/crates/v/basisu_c_sys.svg)](https://crates.io/crates/basisu_c_sys)
 [![Documentation](https://docs.rs/basisu_c_sys/badge.svg)](https://docs.rs/basisu_c_sys)
 
-Rust binding and wrappers for the basisu pure C API, through FFI on native and direct compilation to `wasm32-unknown-unknown` on web. See also <https://github.com/BinomialLLC/basis_universal/wiki#encoder-and-transcoding-c-api-documentation>.
+Rust binding and wrappers for the basisu pure C API, through FFI on native and wasm32. See also <https://github.com/BinomialLLC/basis_universal/wiki#encoder-and-transcoding-c-api-documentation>.
 
 This crate also contains an optional high level API that is easier to use with `wgpu-types`. Enabling the `extra` cargo feature to use the high level `BasisuEncoder` and `BasisuTranscoder`.
 
-Feature flags:
+## Implementation details on wasm build
+
+Greatly inspired by https://github.com/rafaelbeckel/test-c-rust-wasm
+
+The wasm build compiles the Basis Universal C++ sources together with a vendored
+[musl](https://musl.libc.org/) libc and emscripten
+[libc++/libc++abi](https://github.com/emscripten-core/emscripten) directly from source,
+which requires **clang++ >= 19**.
+
+## Feature flags
+
 - `encoder`: Enable basisu encoder, which will significantly increase the binary size. By default only transcoder is enabled.
 - `serde`: Enable `serde` on some structs.
 - `extra`: Enable extra high level encoder and transcoder API that is easier to use with `wgpu-types`.

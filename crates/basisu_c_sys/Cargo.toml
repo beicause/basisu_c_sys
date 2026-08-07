@@ -8,12 +8,11 @@ license.workspace = true
 keywords = ["basis-universal", "ffi", "texture", "wasm"]
 include = [
   "CHANGELOG.md",
-  "CMakeLists.txt",
   "README.md",
   "build.rs",
   "src/*.rs",
   "src/extra/*.rs",
-  "vendored/basis_universal",
+  "vendored/",
 ]
 
 [package.metadata.docs.rs]

@@ -13,7 +13,7 @@ Although Bevy's `ImageLoader` has built-in support for Basis Universal textures 
 3. No support for Web. Bevy can't be compiled to `wasm32-unknown-emscripten` and `basis-universal-rs` can't be compiled to `wasm32-unknown-unknown`.
 4. It compiles both the encoder and transcoder and includes transcoding formats not supported by wgpu, which increases binary size.
 
-This plugin adds a loader for Basis Universal KTX2 textures with support for all formats supported by basis universal v2.0 (ETC1S, UASTC, ASTC, XUASTC), and web support through JavaScript glue to call [Basis Universal][] C++ library compiled with Emscripten which includes only the transcoder and necessary transcoding formats.
+This plugin adds a loader for Basis Universal KTX2 textures with support for all formats supported by basis universal including ETC1S, UASTC, ASTC, XUASTC and XUBC7.
 
 WebGPU example: <https://beicause.github.io/basisu_c_sys>
 
