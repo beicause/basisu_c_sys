@@ -1,4 +1,5 @@
-//! The wasm32-unknown-unknown symbol export table.
+//! The bare-metal wasm symbol export table (`wasm32-unknown-unknown`,
+//! `wasm32-unknown-none`, `wasm32v1-none`).
 //!
 //! Every `no_mangle` symbol of this crate lives here, in one place,
 //! compiled only for the wasm target. The implementations in `ffi/` are

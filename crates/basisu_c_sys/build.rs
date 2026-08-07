@@ -51,6 +51,18 @@ const DEFINES: &[(&str, &str)] = &[
     ("BASISD_SUPPORT_UASTC_HDR", "0"),
 ];
 
+/// Bare-metal wasm targets (no OS) have no system libc/libc++; the vendored
+/// musl libc + emscripten libc++ must be built and linked in for them.
+///
+/// Covers `wasm32-unknown-unknown`, `wasm32-unknown-none`, and `wasm32v1-none`.
+/// Targets that ship their own libc (`wasm32-wasip1/2`, `wasm32-unknown-emscripten`)
+/// are intentionally excluded — linking a second libc would conflict.
+fn is_bare_wasm() -> bool {
+    let arch = std::env::var("CARGO_CFG_TARGET_ARCH").unwrap_or_default();
+    let os = std::env::var("CARGO_CFG_TARGET_OS").unwrap_or_default();
+    arch == "wasm32" && matches!(os.as_str(), "unknown" | "none")
+}
+
 static ENCODER_SRCS: OnceLock<Vec<String>> = OnceLock::new();
 
 fn get_encoder_srcs() -> &'static [String] {
@@ -97,10 +109,9 @@ fn main() {
     bindgen();
 
     let is_docs_rs = std::env::var("DOCS_RS").is_ok();
-    let target = std::env::var("TARGET").unwrap();
 
     if !is_docs_rs {
-        if target == "wasm32-unknown-unknown" {
+        if is_bare_wasm() {
             wasm_libc::main();
             wasm_libcxx::main();
         }
@@ -146,10 +157,23 @@ impl bindgen::callbacks::ParseCallbacks for WasmBoolRenameCallbacks {
 }
 
 fn bindgen() {
+    // rustc-only bare-wasm triples (wasm32v1-none, wasm32-unknown-none) are
+    // not valid clang target triples; clang only knows the underlying LLVM
+    // triple wasm32-unknown-unknown. Pass it explicitly so bindgen doesn't
+    // forward the raw cargo TARGET (it would make libclang error out).
+    // For wasm32-unknown-unknown itself this is the same value bindgen would
+    // infer, so the generated bindings are unchanged.
+    let clang_target_args: &[&str] = if is_bare_wasm() {
+        &["--target=wasm32-unknown-unknown"]
+    } else {
+        &[]
+    };
+
     let binding_file =
         std::path::PathBuf::from_iter([&std::env::var("OUT_DIR").unwrap(), "basisu_api_common.rs"]);
     bindgen::Builder::default()
         .clang_args(&["-fvisibility=default"])
+        .clang_args(clang_target_args)
         .header("vendored/basis_universal/encoder/basisu_wasm_api_common.h")
         .use_core()
         .allowlist_var("^(BU_QUALITY_.*)$")
@@ -169,6 +193,7 @@ fn bindgen() {
         std::path::PathBuf::from_iter([&std::env::var("OUT_DIR").unwrap(), "basisu_c_api.rs"]);
     bindgen::Builder::default()
         .clang_args(&["-fvisibility=default"])
+        .clang_args(clang_target_args)
         .header("vendored/basis_universal/encoder/basisu_wasm_api.h")
         .use_core()
         .must_use_type("wasm_bool_t")
@@ -187,6 +212,7 @@ fn bindgen() {
     ]);
     bindgen::Builder::default()
         .clang_args(&["-fvisibility=default"])
+        .clang_args(clang_target_args)
         .header("vendored/basis_universal/encoder/basisu_wasm_transcoder_api.h")
         .use_core()
         .must_use_type("wasm_bool_t")
@@ -204,8 +230,7 @@ fn compile_basisu_static() {
     for is_cpp in [true, false] {
         let mut build = cc::Build::new();
 
-        let target = std::env::var("TARGET").unwrap();
-        if target == "wasm32-unknown-unknown" {
+        if is_bare_wasm() {
             if is_cpp {
                 // libc++ headers must come before the C library headers,
                 // otherwise libc++'s <cstddef>/<cctype>/... wrappers can't find

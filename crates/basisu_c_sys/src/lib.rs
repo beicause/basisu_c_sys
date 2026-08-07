@@ -17,8 +17,7 @@ pub mod common {
     test,
     all(
         target_arch = "wasm32",
-        target_vendor = "unknown",
-        target_os = "unknown",
+        any(target_os = "unknown", target_os = "none"),
     ),
 ))]
 mod wasm_ffi;

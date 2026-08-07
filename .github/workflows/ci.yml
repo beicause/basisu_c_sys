@@ -199,6 +199,7 @@ jobs:
         run: |
           rustup toolchain install stable --no-self-update --profile=minimal --component clippy
           rustup target add wasm32-unknown-unknown
+          rustup target add wasm32v1-none
 
       - name: Caching
         uses: Swatinem/rust-cache@v2
@@ -216,6 +217,12 @@ jobs:
 
       - name: Build wasm
         run: cargo build --workspace --target wasm32-unknown-unknown --all-targets
+
+      # Bare-metal wasm (wasm32v1-none) has no `std`, so only `basisu_c_sys`
+      # builds there; the bevy-based crates and tests (which need std / the
+      # test harness) cannot compile for it.
+      - name: Build wasm bare-metal
+        run: cargo build -p basisu_c_sys --target wasm32v1-none
 
   build-android:
     name: Build android

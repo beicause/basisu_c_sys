@@ -1,5 +1,5 @@
 //! Rust implementations of a few libc symbols needed by basis_universal and
-//! libc++ on wasm32-unknown-unknown (no system libc).
+//! libc++ on bare-metal wasm (no system libc).
 //!
 //! - `atof`  — basisu's HDR nit-multiplier parsing
 //! - `lrintf` — basisu's ASTC HDR->LDR fixed-point conversion (round-half-to-even)
