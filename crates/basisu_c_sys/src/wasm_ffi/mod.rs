@@ -1,4 +1,4 @@
-mod ffi;
+mod rust;
 
 // `__errno_location` is defined in C (src/errno.c) with the correct
 // `int *` signature. `puts` and `getenv` are not provided here — if
@@ -14,7 +14,7 @@ mod export;
 
 #[cfg(test)]
 mod test {
-    use super::*;
+    use super::rust as ffi;
 
     #[test]
     fn strncpy_short() {

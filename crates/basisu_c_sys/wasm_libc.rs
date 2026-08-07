@@ -47,7 +47,7 @@ pub fn includes() -> [PathBuf; 5] {
         "vendored/musl/include".into(),
         "vendored/musl/src/include".into(),
         "vendored/musl/src/internal".into(),
-        "src/wasm_ffi".into(),
+        "src/wasm_ffi/c".into(),
     ]
 }
 
@@ -92,10 +92,10 @@ pub fn main() {
     cc::Build::new()
         .includes(includes())
         .flag_if_supported("-Wno-macro-redefined")
-        .file("src/wasm_ffi/errno.c")
-        .file("src/wasm_ffi/version.c")
-        .file("src/wasm_ffi/nanoprintf.c")
-        .file("src/wasm_ffi/stdio_shim.c")
+        .file("src/wasm_ffi/c/errno.c")
+        .file("src/wasm_ffi/c/version.c")
+        .file("src/wasm_ffi/c/nanoprintf.c")
+        .file("src/wasm_ffi/c/stdio_shim.c")
         .std("c17")
         .compile("wasm32-libc");
 

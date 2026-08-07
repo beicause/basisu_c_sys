@@ -109,6 +109,7 @@ fn main() {
     }
 
     println!("cargo::rerun-if-changed=vendored/");
+    println!("cargo::rerun-if-changed=src/wasm_ffi/");
 }
 
 #[derive(Debug)]

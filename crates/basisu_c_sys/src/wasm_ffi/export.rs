@@ -8,8 +8,8 @@
 
 use core::ffi::{c_char, c_void};
 
-use super::ffi;
-use super::ffi::{
+use super::rust as ffi;
+use super::rust::{
     CChar, CInt, CIntMax, CLong, CLongLong, CSizeT, CUIntMax, CULong, CULongLong, CVoid,
 };
 
