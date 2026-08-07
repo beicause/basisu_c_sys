@@ -13,8 +13,9 @@ This crate also contains an optional high level API that is easier to use with `
 
 Greatly inspired by <https://github.com/rafaelbeckel/test-c-rust-wasm>
 
-The wasm build compiles the Basis Universal C++ sources together with a vendored
-[musl](https://musl.libc.org/) libc and emscripten
+The wasm build compiles the Basis Universal C++ sources together with a
+[musl](https://musl.libc.org/) libc (emscripten's fork of musl 1.2.6,
+from the `3rdparty/emscripten` submodule) and emscripten
 [libc++/libc++abi](https://github.com/emscripten-core/emscripten) directly from source,
 which requires **clang++ >= 19**.
 
