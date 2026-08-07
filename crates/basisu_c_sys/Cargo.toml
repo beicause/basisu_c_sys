@@ -42,10 +42,10 @@ required-features = ["encoder", "extra"]
 # `process::exit`), so it has a custom entry point (`_start` on wasm) that
 # traps on failure, which wasmtime reports with a non-zero exit code.
 [[test]]
+harness = false
 name = "wasm"
 path = "tests/wasm.rs"
 required-features = ["encoder", "extra"]
-harness = false
 
 [dependencies]
 bitflags = { version = "2.11.0", optional = true }
