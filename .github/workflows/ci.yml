@@ -15,7 +15,6 @@ concurrency:
 env:
   CARGO_TERM_COLOR: always
   ANDROID_NDK_VERSION: 29.0.14206865
-  EM_VERSION: 6.0.0
   CACHE_SUFFIX: e # cache busting
 
 jobs:
@@ -183,11 +182,6 @@ jobs:
       - uses: actions/checkout@v7.0.1
         with:
           submodules: "recursive"
-
-      - name: Install Emscripten
-        uses: mymindstorm/setup-emsdk@v16
-        with:
-          version: ${{ env.EM_VERSION }}
 
       - name: Disable debug symbols
         shell: bash
