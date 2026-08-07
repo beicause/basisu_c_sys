@@ -10,7 +10,6 @@
 //!
 //! See each module for its respective license.
 
-#![allow(clippy::missing_safety_doc)]
 // On native test builds nothing references these functions: they are only
 // used via the `no_mangle` forwards in `export.rs`, which is
 // wasm32-unknown-unknown-only (compiled on wasm, not on native test).
@@ -21,8 +20,17 @@
         test,
         not(all(target_arch = "wasm32", any(target_os = "unknown", target_os = "none"),)),
     ),
-    expect(dead_code)
+    expect(
+        dead_code,
+        reason = "Native test builds compile the shim only so the unit tests run on the host; the functions are reached via the wasm-only no_mangle forwards"
+    )
 )]
+
+// No `expect(clippy::missing_safety_doc)` here: `wasm_ffi` is a private
+// module (`mod wasm_ffi;` in lib.rs), so none of these functions are
+// exported from the crate and that lint never fires on them, on any
+// target. The crate-visible safety contract lives on the `no_mangle`
+// forwards in `export.rs` instead.
 
 // The re-exports are consumed by `export.rs`, which is compiled only for
 // bare-metal wasm targets; on native test builds they would be unused

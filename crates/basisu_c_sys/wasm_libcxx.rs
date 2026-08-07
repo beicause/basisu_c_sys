@@ -1,5 +1,5 @@
 use std::path::PathBuf;
-use std::{env, fs};
+use std::fs;
 
 use crate::wasm_libc;
 
@@ -133,8 +133,4 @@ pub fn main() {
         "cargo::metadata=include={}/{libcxx}/include",
         env!("CARGO_MANIFEST_DIR")
     );
-
-    let out_dir = PathBuf::from(env::var("OUT_DIR").unwrap());
-    println!("cargo::rustc-link-search=native={}", out_dir.display());
-    println!("cargo::rustc-link-lib=static=wasm32-libcxx");
 }

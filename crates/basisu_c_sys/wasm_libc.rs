@@ -107,6 +107,12 @@ const MUSL_FILES: &[&str] = &[
     "misc/dirname.c",
     // locale — the _l variants simply forward to the plain functions
     "locale/strtod_l.c",
+    // fenv — dummy implementations for archs without an FP environment
+    // (wasm has no runtime rounding-mode register, so fegetround returns
+    // FE_TONEAREST). Referenced by math/fmaf.c and math/fmal.c, which are
+    // compiled wholesale from the math/ directory above.
+    "fenv/fenv.c",
+    "fenv/fesetround.c",
     // stdio — the scanf family (needs the internal scan helpers below)
     "stdio/sscanf.c",
     "stdio/vsscanf.c",
@@ -188,7 +194,4 @@ pub fn main() {
         generated_include.display(),
         manifest_dir,
     );
-
-    println!("cargo::rustc-link-search=native={}", out_dir.display());
-    println!("cargo::rustc-link-lib=static=wasm32-libc");
 }

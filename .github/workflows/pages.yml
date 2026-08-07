@@ -24,9 +24,7 @@ jobs:
     environment:
       name: github-pages
       url: ${{ steps.deployment.outputs.page_url }}
-    # ubuntu-26.04 (preview) ships clang 21 by default, which satisfies the
-    # vendored emscripten libc++ requirement (clang >= 19).
-    runs-on: ubuntu-26.04
+    runs-on: ubuntu-latest
     # runtime is normally 10-15 minutes
     timeout-minutes: 45
     steps:

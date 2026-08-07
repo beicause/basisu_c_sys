@@ -11,9 +11,10 @@ include = [
   "README.md",
   "build.rs",
   "examples/",
-  "src/*.rs",
-  "src/extra/*.rs",
+  "src/",
   "vendored/",
+  "wasm_libc.rs",
+  "wasm_libcxx.rs",
 ]
 
 [package.metadata.docs.rs]
@@ -95,3 +96,6 @@ transcode_etc1s_etc2 = []
 transcode_uastc = []
 transcode_uastc_hdr = []
 transcode_xuastc = []
+
+[lints]
+workspace = true

@@ -177,9 +177,7 @@ jobs:
     name: Build wasm
     # runtime is normally 5 minutes
     timeout-minutes: 15
-    # ubuntu-26.04 (preview) ships clang 21 by default, which satisfies the
-    # vendored emscripten libc++ requirement (clang >= 19).
-    runs-on: ubuntu-26.04
+    runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v7.0.1
         with:
@@ -222,14 +220,14 @@ jobs:
       # encoder (C++) pulls in.
       - name: Build wasm
         run: |
-          cargo build -p basisu_c_sys --example encoder_smoke --target wasm32-unknown-unknown --all-features
-          cargo build --example test_scene --target wasm32-unknown-unknown
+          cargo build -p basisu_c_sys --example encoder_smoke --all-features --target wasm32-unknown-unknown
+          cargo build -p test_scene --target wasm32-unknown-unknown
 
       # Bare-metal wasm (wasm32v1-none) has no `std`, so only `basisu_c_sys`
       # builds there; the bevy-based crates and tests (which need std / the
       # test harness) cannot compile for it.
       - name: Build wasm bare-metal
-        run: cargo build -p basisu_c_sys --target wasm32v1-none
+        run: cargo build -p basisu_c_sys --all-features --target wasm32v1-none
 
   build-android:
     name: Build android

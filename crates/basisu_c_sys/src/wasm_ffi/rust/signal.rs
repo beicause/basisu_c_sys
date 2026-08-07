@@ -5,7 +5,10 @@
 
 use core::sync::atomic::{AtomicUsize, Ordering};
 
-#[allow(clippy::declare_interior_mutable_const)]
+#[expect(
+    clippy::declare_interior_mutable_const,
+    reason = "The handler table is deliberately an array of interior-mutable atomics; `signal`/`raise` share it without locking"
+)]
 const SIG_DFL_ATOMIC: AtomicUsize = AtomicUsize::new(SIG_DFL);
 
 static SIGNAL_HANDLERS: [AtomicUsize; 16] = [SIG_DFL_ATOMIC; 16];

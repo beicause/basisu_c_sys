@@ -35,7 +35,7 @@
 #include "locale_impl.h"
 #include "pthread_impl.h"
 
-/* defined in section 7 (single-threaded pthread glue) */
+/* The single-threaded pthread object backing `__get_tp()` (section 7). */
 static struct __pthread wasm_main_thread;
 
 /* ────────────────────────── 1. pthread stubs ────────────────────────── */
@@ -576,7 +576,8 @@ size_t strftime_l(char *restrict s, size_t max, const char *restrict fmt,
             out = wasm_months[tm->tm_mon];
             break;
         case 'C':
-            if (wasm_append_num(s, max, &len, 100 + tm->tm_year / 100, 2) < 0)
+            /* %C = year / 100 (e.g. 2024 -> 20); tm_year is years since 1900. */
+            if (wasm_append_num(s, max, &len, (1900 + tm->tm_year) / 100, 2) < 0)
                 return 0;
             continue;
         case 'd':
@@ -591,10 +592,15 @@ size_t strftime_l(char *restrict s, size_t max, const char *restrict fmt,
                 wasm_append_num(s, max, &len, tm->tm_year % 100, 2) < 0)
                 return 0;
             continue;
-        case 'e':
-            if (wasm_append_num(s, max, &len, tm->tm_mday, 2) < 0)
+        case 'e': {
+            /* POSIX %e is the day of month, space-padded instead of
+             * zero-padded (" 1".."31"). %2ld right-aligns in 2 columns. */
+            char tmp[32];
+            snprintf(tmp, sizeof tmp, "%2ld", (long)tm->tm_mday);
+            if (wasm_append(s, max, &len, tmp) < 0)
                 return 0;
             continue;
+        }
         case 'F':
             if (wasm_append_num(s, max, &len, tm->tm_year + 1900, 4) < 0 ||
                 wasm_append(s, max, &len, "-") < 0 ||
@@ -764,7 +770,6 @@ size_t strftime(char *restrict s, size_t max, const char *restrict fmt,
 /* The musl multibyte/locale sources compiled into the libc archive query
  * the current thread's locale through __pthread_self() → __get_tp().
  * wasm32 has no thread pointer: hand out a static, always-UTF-8 thread. */
-static struct __pthread wasm_main_thread;
 static struct __locale_map wasm_utf8_map;
 static struct __locale_struct wasm_utf8_locale = {
     .cat = {&wasm_utf8_map, 0, 0, 0, 0, 0},

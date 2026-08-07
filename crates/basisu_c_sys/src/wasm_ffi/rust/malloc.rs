@@ -20,9 +20,11 @@ const MAX_ALIGN: usize = 16;
 const HDR_BASE: usize = 0;
 const HDR_SIZE: usize = 8;
 
-/// Total size to allocate for a payload of `size` bytes.
-fn total_for(size: usize) -> usize {
-    size + MAX_ALIGN
+/// Total size to allocate for a payload of `size` bytes, or `None` if the
+/// total overflows `usize`. C `malloc` must report failure (NULL) on
+/// overflow, not wrap around.
+fn total_for(size: usize) -> Option<usize> {
+    size.checked_add(MAX_ALIGN)
 }
 
 /// Write the two-word header directly before `payload` (16 bytes before).
@@ -57,19 +59,29 @@ unsafe fn alloc_with_header(alloc_size: usize) -> *mut u8 {
 }
 
 pub unsafe extern "C" fn malloc(size: usize) -> *mut u8 {
-    unsafe { alloc_with_header(total_for(size)) }
+    let Some(total) = total_for(size) else {
+        return ptr::null_mut();
+    };
+    unsafe { alloc_with_header(total) }
 }
 
 pub unsafe extern "C" fn calloc(nmemb: usize, size: usize) -> *mut u8 {
-    let total_size = nmemb * size;
-    let layout = alloc::alloc::Layout::from_size_align(total_for(total_size), MAX_ALIGN).unwrap();
+    // C11: `nmemb * size` overflow is undefined behavior; fail like a
+    // conforming libc (return NULL) instead of wrapping.
+    let Some(total_size) = nmemb.checked_mul(size) else {
+        return ptr::null_mut();
+    };
+    let Some(total) = total_for(total_size) else {
+        return ptr::null_mut();
+    };
+    let layout = alloc::alloc::Layout::from_size_align(total, MAX_ALIGN).unwrap();
     let base = unsafe { alloc::alloc::alloc_zeroed(layout) };
     if base.is_null() {
         return base;
     }
     let payload = unsafe { base.add(MAX_ALIGN) };
     unsafe {
-        set_header(payload, base, total_for(total_size));
+        set_header(payload, base, total);
     }
     payload
 }
@@ -81,7 +93,9 @@ pub unsafe extern "C" fn realloc(ptr: *mut u8, size: usize) -> *mut u8 {
         }
         let (base, old_total) = read_header(ptr);
         let layout = alloc::alloc::Layout::from_size_align(old_total, MAX_ALIGN).unwrap();
-        let new_total = total_for(size);
+        let Some(new_total) = total_for(size) else {
+            return ptr::null_mut();
+        };
         let new_base = alloc::alloc::realloc(base, layout, new_total);
         if new_base.is_null() {
             return new_base;
@@ -119,10 +133,18 @@ pub unsafe extern "C" fn aligned_alloc(alignment: usize, size: usize) -> *mut u8
     }
     // Round the payload size up to a multiple of the alignment (the C
     // standard requires it; callers like C++ aligned new don't always do).
-    let payload_size = (size + alignment - 1) & !(alignment - 1);
+    let Some(rounded) = size.checked_add(alignment - 1) else {
+        return ptr::null_mut();
+    };
+    let payload_size = rounded & !(alignment - 1);
     // Worst case: MAX_ALIGN header + (alignment - MAX_ALIGN) padding so the
     // payload can be nudged up to an alignment boundary.
-    let alloc_size = payload_size + MAX_ALIGN + alignment;
+    let Some(alloc_size) = payload_size
+        .checked_add(MAX_ALIGN)
+        .and_then(|v| v.checked_add(alignment))
+    else {
+        return ptr::null_mut();
+    };
     let layout = alloc::alloc::Layout::from_size_align(alloc_size, MAX_ALIGN).unwrap();
     let base = unsafe { alloc::alloc::alloc(layout) };
     if base.is_null() {
@@ -218,5 +240,40 @@ mod test {
         // Non-power-of-two alignment is rejected.
         let ptr = unsafe { aligned_alloc(3, 8) };
         assert!(ptr.is_null());
+    }
+
+    #[test]
+    fn test_size_overflow_returns_null() {
+        // C `malloc`/`calloc` report overflow by returning NULL instead of
+        // wrapping around (which would corrupt the header invariants).
+        let ptr = unsafe { malloc(usize::MAX) };
+        assert!(ptr.is_null());
+        let ptr = unsafe { calloc(usize::MAX, 2) };
+        assert!(ptr.is_null());
+        let ptr = unsafe { calloc(usize::MAX, usize::MAX) };
+        assert!(ptr.is_null());
+        let ptr = unsafe { aligned_alloc(16, usize::MAX) };
+        assert!(ptr.is_null());
+        let ptr = unsafe { aligned_alloc(usize::MAX, 1) };
+        assert!(ptr.is_null());
+        // realloc with an overflowing size leaves the old block untouched.
+        let ptr = unsafe { malloc(10) };
+        assert!(!ptr.is_null());
+        unsafe {
+            (0..10).for_each(|i| {
+                *ptr.add(i) = i as u8;
+            });
+        }
+        let new_ptr = unsafe { realloc(ptr, usize::MAX) };
+        assert!(new_ptr.is_null());
+        unsafe {
+            let (base, alloc_size) = read_header(ptr);
+            assert_eq!(base, ptr.sub(MAX_ALIGN));
+            assert_eq!(alloc_size, 10 + MAX_ALIGN);
+            (0..10).for_each(|i| {
+                assert_eq!(*ptr.add(i), i as u8);
+            });
+        }
+        unsafe { free(ptr) };
     }
 }
