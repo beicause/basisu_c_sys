@@ -23,12 +23,8 @@ use bevy::{
     },
     scene::EntityScene,
     text::LineBreak,
-    ui::{
-        Checked, GlobalZIndex,
-        widget::{ImageNodeSize, NodeImageMode},
-    },
+    ui::{Checked, GlobalZIndex, widget::NodeImageMode},
     ui_widgets::{RadioGroup, ValueChange, radio_self_update},
-    window::WindowResolution,
 };
 use bevy_basisu_loader::{BasisuLoaderPlugin, BasisuLoaderSettings};
 
@@ -95,14 +91,17 @@ const SKYBOX_FACES: [&str; 6] = [
     ORIGINAL_PATH_SKYBOX_BACK,
 ];
 
-/// Grid layout: `GRID_COLS` equal columns; every image row is exactly `100 / GRID_ROWS`
-/// percent of the grid's height (labels sit in their own auto-sized rows below each
-/// image), so `GRID_ROWS` image rows are visible on screen at once — fractions allowed,
-/// e.g. 3.5 means three and a half rows — and the remaining cells are reached by
+/// Grid layout: every cell is 50% of the viewport width, capped at
+/// `GRID_CELL_MAX_WIDTH` logical px (the label sits in its own auto-sized row below
+/// the image, which keeps its natural aspect ratio). Cells flow left-to-right and
+/// wrap, so the number of columns adapts to the viewport width — there is no fixed
+/// row or column count. Two cells always fit per row even on narrow screens (each is
+/// exactly 50% of the width; the horizontal gap is per-cell padding, see
+/// [`image_cell`] — a container `column_gap` would push two 50% cells past 100% and
+/// collapse to a single column). Cells beyond the visible area are reached by
 /// scrolling (the clipped viewport + translated `GridContent`, driven by
 /// [`scroll_grid`]).
-const GRID_COLS: f32 = 5.0;
-const GRID_ROWS: f32 = 3.5;
+const GRID_CELL_MAX_WIDTH: f32 = 300.0;
 const GRID_GAP: f32 = 8.0;
 const GRID_MARGIN: f32 = 12.0;
 /// Bottom padding that clears the persistent button bar (absolute, bottom-left).
@@ -225,13 +224,6 @@ pub fn main() {
                         // Bind to canvas included in `index.html`
                         canvas: Some("#bevy".to_owned()),
                         fit_canvas_to_parent: true,
-                        // Workaround for https://github.com/bevyengine/bevy/issues/25306:
-                        // on touch screens /
-                        // device emulation the backend scale factor is != 1.0, and
-                        // bevy 0.19 UI renders 2x and picking coordinates misalign.
-                        // Forcing 1.0 lays the UI correctly,
-                        // though touch input is still incorrect.
-                        resolution: WindowResolution::default().with_scale_factor_override(1.0),
                         ..Default::default()
                     }),
                     ..Default::default()
@@ -250,13 +242,7 @@ pub fn main() {
         .add_systems(Startup, setup)
         .add_systems(
             Update,
-            (
-                rotate_camera_by_drag,
-                build_face_cubemap,
-                fit_grid_images,
-                size_grid_rows,
-                scroll_grid,
-            ),
+            (rotate_camera_by_drag, build_face_cubemap, scroll_grid),
         )
         .run();
 }
@@ -289,7 +275,7 @@ fn setup(mut commands: Commands, asset_server: Res<AssetServer>) {
     commands.insert_resource(loaded);
     // Persistent UI layer (scene-switch radio bar), not part of either switchable scene.
     commands.spawn_scene(ui_scene());
-    commands.spawn_scene(grid_scene);
+    commands.spawn_scene_list(grid_scene);
 }
 
 fn load_alpha0(asset_server: &AssetServer) -> Handle<Image> {
@@ -350,7 +336,7 @@ fn ui_scene() -> impl Scene {
                             for root in &roots {
                                 commands.entity(root).despawn();
                             }
-                            commands.spawn_scene(images_scene(&loaded));
+                            commands.spawn_scene_list(images_scene(&loaded));
                         })
                     ),
                     (
@@ -378,7 +364,7 @@ fn ui_scene() -> impl Scene {
 
 /// One cell of the Scene 1 grid, in display order. The grid is fully described by the
 /// [`GRID_ENTRIES`] table below — add, remove, or reorder entries to reconfigure it
-/// (combined with `GRID_COLS` / `GRID_ROWS` for the layout).
+/// (combined with `GRID_CELL_MAX_WIDTH` for the layout).
 #[derive(Clone, Copy)]
 enum GridEntry {
     /// Load this asset path with default loader settings.
@@ -393,11 +379,6 @@ enum HandleKind {
     Alpha0,
     Desk2,
 }
-
-/// Marks a Scene-1 grid image entity; [`fit_grid_images`] sizes it to fit its cell
-/// while keeping the source aspect ratio.
-#[derive(Component, Default, Clone)]
-struct GridImage;
 
 /// Scene 1's grid cells, left-to-right / top-to-bottom: every compressed `.basisu.ktx2`
 /// with its original next to it (alpha0, desk, kodim20, tough, wikipedia, skybox faces).
@@ -429,18 +410,13 @@ fn file_name(path: &'static str) -> &'static str {
 }
 
 /// Builds one cell per [`GRID_ENTRIES`] entry, in order. Returns a `SceneList`
-/// so it can be spliced into the grid's `Children` with `{ … }`. Each entry is two
-/// placed grid items: the image on row `2k+1`, its label on the auto-sized row `2k+2`.
-/// Every cell uses a cached handle from [`LoadedAssets`]: plain paths from the `grid`
-/// cache (filled in `setup`), the two special-settings loads from `alpha0`/`desk2`.
+/// so it can be spliced into the flex container's `Children` with `{ … }`. Each
+/// entry is a single flex item: the image with its label beneath. Every cell uses a
+/// cached handle from [`LoadedAssets`]: plain paths from the `grid` cache (filled in
+/// `setup`), the two special-settings loads from `alpha0`/`desk2`.
 fn grid_cells(loaded: &LoadedAssets) -> impl SceneList {
     let mut cells: Vec<Box<dyn SceneList>> = Vec::new();
-    let cols = GRID_COLS as i16;
-    for (i, entry) in GRID_ENTRIES.iter().enumerate() {
-        let i = i as i16;
-        let col = i % cols + 1;
-        let image_row = (i / cols) * 2 + 1;
-        let label_row = image_row + 1;
+    for entry in GRID_ENTRIES {
         let cell: Box<dyn SceneList> = match entry {
             GridEntry::Path(path) => Box::new(image_cell(
                 loaded
@@ -449,23 +425,14 @@ fn grid_cells(loaded: &LoadedAssets) -> impl SceneList {
                     .expect("grid asset cached in setup")
                     .clone(),
                 file_name(path),
-                col,
-                image_row,
-                label_row,
             )),
             GridEntry::Handle(HandleKind::Alpha0) => Box::new(image_cell(
                 loaded.alpha0.clone(),
                 file_name(IMAGE_PATH_ALPHA0),
-                col,
-                image_row,
-                label_row,
             )),
             GridEntry::Handle(HandleKind::Desk2) => Box::new(image_cell(
                 loaded.desk2.clone(),
                 file_name(IMAGE_PATH_DESK2),
-                col,
-                image_row,
-                label_row,
             )),
         };
         cells.push(cell);
@@ -473,102 +440,122 @@ fn grid_cells(loaded: &LoadedAssets) -> impl SceneList {
     cells
 }
 
-/// Scene 1: image grid. Every entry of [`GRID_ENTRIES`] gets one cell in a CSS grid:
-/// `GRID_COLS` equal `fr` columns; image rows are sized by [`size_grid_rows`] so that
-/// `GRID_ROWS` image rows fit the visible height (labels live in auto-sized rows under
-/// each image). Rows beyond the viewport are reached by scrolling: the grid lives
-/// inside a clipped viewport and [`scroll_grid`] translates the `GridContent` wrapper
-/// (bevy 0.19's `ScrollPosition` mechanism cannot scroll grid containers — taffy
-/// reports a grid's content size as its largest item, so the scroll range is always
-/// empty). Every image is contain-fitted into its cell by [`fit_grid_images`], so it
-/// never exceeds the cell and keeps its original aspect ratio.
-fn images_scene(loaded: &LoadedAssets) -> impl Scene {
-    // Grid tracks: GRID_COLS equal columns; one image row per visible row (px, sized
-    // by `size_grid_rows` from the viewport height), each followed by an auto-sized
-    // label row (explicit tracks, so labels never change the image row height).
-    let columns = vec![RepeatedGridTrack::flex(GRID_COLS as u16, 1.0)];
-    let image_row_count = (GRID_ENTRIES.len() as f32 / GRID_COLS).ceil() as usize;
-    let mut rows: Vec<RepeatedGridTrack> = Vec::with_capacity(image_row_count * 2);
-    for _ in 0..image_row_count {
-        rows.push(GridTrack::px::<RepeatedGridTrack>(0.0)); // placeholder; sized below
-        rows.push(GridTrack::auto::<RepeatedGridTrack>());
-    }
-    let auto_rows = vec![GridTrack::auto()];
-    bsn! {
-        Camera2d
-        // The grid shows HDR assets (desk .exr, HDR ktx2): an HDR target plus no
-        // tonemapping keeps the float values intact instead of clamping them to LDR.
-        Hdr
-        template_value(Tonemapping::None)
-        SceneRoot
-        // Clipped viewport: rows below the visible area are hidden and revealed by
-        // translating the GridContent wrapper below (`scroll_grid`).
-        GridViewport
-        Node {
-            width: percent(100),
-            height: percent(100),
-            // Flex-start so the GridContent wrapper below sizes to its content
-            // (the grid's full height) instead of stretching to the viewport —
-            // the wrapper's height IS the scrollable extent.
-            align_items: AlignItems::FlexStart,
-            overflow: Overflow::clip(),
-            padding: UiRect::new(
-                px(GRID_MARGIN),
-                px(GRID_MARGIN),
-                px(GRID_MARGIN),
-                px(GRID_BOTTOM),
-            ),
-        }
-        ThemeBackgroundColor(tokens::WINDOW_BG)
-        InheritableThemeTextColor(tokens::TEXT_MAIN)
-        Children [
-            (
-                // Scrollable content: translated by -scroll in `scroll_grid`.
-                GridContent
-                ScrollStart(0.0)
-                Node {
-                    width: percent(100),
-                    position_type: PositionType::Relative,
-                    top: px(0.0),
-                }
-                Children [
-                    (
-                        // The actual CSS grid; its height is its content (auto), so
-                        // the wrapper's ComputedNode gives the scrollable extent.
-                        GridRoot
-                        Node {
-                            width: percent(100),
-                            display: Display::Grid,
-                            grid_template_columns: columns,
-                            grid_template_rows: rows,
-                            grid_auto_rows: auto_rows,
-                            // Top-aligned so overflowing rows scroll into view from
-                            // the bottom instead of being clipped symmetrically.
-                            align_content: AlignContent::FlexStart,
-                            column_gap: px(GRID_GAP),
-                            row_gap: px(GRID_GAP),
-                        }
-                        Children [
-                            { grid_cells(loaded) }
-                        ]
-                    )
-                ]
-            )
-        ]
+/// Scene 1: image grid. Every entry of [`GRID_ENTRIES`] gets one cell in a flex
+/// container that wraps, so the number of columns adapts to the viewport width (no
+/// fixed row or column counts). Each cell is 50% of the viewport width, capped at
+/// `GRID_CELL_MAX_WIDTH` logical px; the image sizes itself to the cell width at its
+/// natural aspect ratio, and the label sits in an auto-sized row directly beneath it.
+/// Rows beyond the viewport are reached by scrolling: the flex container lives inside
+/// a clipped viewport and [`scroll_grid`] translates the `GridContent` wrapper (bevy
+/// 0.19's `ScrollPosition` mechanism cannot scroll flex containers — taffy reports
+/// their content size as the largest item, so the scroll range is always empty).
+///
+/// Two scene roots, each marked `SceneRoot` so the whole scene despawns when
+/// switching to the skybox:
+/// 1. the camera + clipped viewport with the flex-wrap cell container,
+/// 2. the top-left scroll hint overlay.
+fn images_scene(loaded: &LoadedAssets) -> impl SceneList {
+    bsn_list! {
+        (
+            Camera2d
+            // The grid shows HDR assets (desk .exr, HDR ktx2): an HDR target plus no
+            // tonemapping keeps the float values intact instead of clamping them to LDR.
+            Hdr
+            template_value(Tonemapping::None)
+            SceneRoot
+            // Clipped viewport: rows below the visible area are hidden and revealed by
+            // translating the GridContent wrapper below (`scroll_grid`).
+            GridViewport
+            Node {
+                width: percent(100),
+                height: percent(100),
+                // Flex-start so the GridContent wrapper below sizes to its content
+                // (the grid's full height) instead of stretching to the viewport —
+                // the wrapper's height IS the scrollable extent.
+                align_items: AlignItems::FlexStart,
+                overflow: Overflow::clip(),
+                padding: UiRect::new(
+                    px(GRID_MARGIN),
+                    px(GRID_MARGIN),
+                    px(GRID_MARGIN),
+                    px(GRID_BOTTOM),
+                ),
+            }
+            ThemeBackgroundColor(tokens::WINDOW_BG)
+            InheritableThemeTextColor(tokens::TEXT_MAIN)
+            Children [
+                (
+                    // Scrollable content: translated by -scroll in `scroll_grid`.
+                    GridContent
+                    ScrollStart(0.0)
+                    Node {
+                        width: percent(100),
+                        position_type: PositionType::Relative,
+                        top: px(0.0),
+                    }
+                    Children [
+                        (
+                            // The flex-wrap container; its height is its content (auto),
+                            // so the wrapper's ComputedNode gives the scrollable extent.
+                            // Fixed-px cells flow left-to-right and wrap to new rows
+                            // automatically when the viewport width runs out.
+                            Node {
+                                width: percent(100),
+                                flex_direction: FlexDirection::Row,
+                                flex_wrap: FlexWrap::Wrap,
+                                // Top-aligned so overflowing rows scroll into view from
+                                // the bottom instead of being clipped symmetrically.
+                                align_content: AlignContent::FlexStart,
+                                // Vertical gap between wrapped rows only. The horizontal
+                                // gap is per-cell padding (`image_cell`): a container
+                                // `column_gap` would make two 50% cells overflow 100%
+                                // and wrap into a single column on narrow screens.
+                                row_gap: px(GRID_GAP),
+                            }
+                            Children [
+                                { grid_cells(loaded) }
+                            ]
+                        )
+                    ]
+                )
+            ]
+        ),
+        (
+            // Scroll hint: the grid scrolls with the mouse wheel (hovering the
+            // grid) and by dragging (touch or mouse), see [`scroll_grid`].
+            Node {
+                position_type: PositionType::Absolute,
+                top: px(12.0),
+                left: px(12.0),
+                padding: UiRect::axes(px(10.0), px(6.0)),
+                border_radius: px(6.0),
+            }
+            GlobalZIndex(1)
+            BackgroundColor(OVERLAY_BG)
+            SceneRoot
+            Children [
+                (
+                    Text("Scroll for more images")
+                    TextFont { font_size: px(16.0) }
+                    ThemedText
+                )
+            ]
+        )
     }
 }
 
-/// Scene 2: skybox with a camera-control hint (top-left) and a radio group (top-right)
-/// that switches between the three cube-map ktx2 assets and the runtime-stitched
-/// uncompressed cubemap. Four scene roots, each marked
+/// Scene 2: skybox with a full-width top overlay: the camera-control hint at the
+/// left end, the cubemap radio group at the right end, spread with `space-between`
+/// (both shrink on narrow screens so they never overlap) — the radios switch between
+/// the three cube-map ktx2 assets and the runtime-stitched uncompressed cubemap.
+/// Three scene roots, each marked
 /// `SceneRoot` so the whole scene despawns when switching back to the grid:
 /// 1. the camera (Camera3d + Skybox),
 /// 2. the full-screen drag surface (pointer drag rotates the camera),
-/// 3. the hint UI root,
-/// 4. the cubemap picker UI root.
+/// 3. the overlay UI root (hint + cubemap picker).
 ///
-/// UI roots must have no parent (no `ChildOf`), which is why the overlays are roots here
-/// instead of children of the camera.
+/// UI roots must have no parent (no `ChildOf`), which is why the overlay is a root
+/// here instead of a child of the camera.
 fn skybox_scene() -> impl SceneList {
     let skybox_image = OptionTemplate::from(HandleTemplate::from(IMAGE_PATH_SKYBOX));
     let backdrop = OVERLAY_BG;
@@ -586,10 +573,10 @@ fn skybox_scene() -> impl SceneList {
         ),
         (
             // Full-screen invisible drag surface: the target for the drag-to-look
-            // camera control ([`rotate_camera_by_drag`]). It sits below the hint and
-            // cubemap picker (both `GlobalZIndex(1)`) and does not block lower
-            // entities, so only drags that start on empty skybox space rotate the
-            // camera; drags starting on the UI widgets are ignored.
+            // camera control ([`rotate_camera_by_drag`]). It sits below the top
+            // overlay (hint + cubemap picker, `GlobalZIndex(1)`) and does not block
+            // lower entities, so only drags that start on empty skybox space rotate
+            // the camera; drags starting on the UI widgets are ignored.
             Node {
                 position_type: PositionType::Absolute,
                 left: px(0.0),
@@ -601,53 +588,75 @@ fn skybox_scene() -> impl SceneList {
             SkyboxDragSurface
             SceneRoot
         ),
+
         (
-            // Camera-control hint (only shown in this scene).
+            // Full-width top overlay: the camera-control hint at the left end, the
+            // cubemap picker at the right end, spread with `space-between`. The hint
+            // flex-shrinks (wrapping at word boundaries via
+            // `LineBreak::WordBoundary`) to absorb narrow screens; the picker keeps
+            // its natural width with single-line captions (`LineBreak::NoWrap`) so
+            // its height never changes. `should_block_lower: false` lets drags on
+            // the empty band between them reach the drag surface below.
             Node {
                 position_type: PositionType::Absolute,
                 top: px(12.0),
                 left: px(12.0),
-                padding: UiRect::axes(px(10.0), px(6.0)),
-                border_radius: px(6.0),
+                right: px(12.0),
+                flex_direction: FlexDirection::Row,
+                justify_content: JustifyContent::SpaceBetween,
+                align_items: AlignItems::FlexStart,
+                column_gap: px(8.0),
             }
+            Pickable { is_hoverable: true, should_block_lower: false }
             GlobalZIndex(1)
-            BackgroundColor(backdrop)
             SceneRoot
             Children [
                 (
-                    Text("Drag: rotate camera")
-                    TextFont { font_size: px(16.0) }
-                    // Match the radio captions' effective rendering: the caption
-                    // wrapper `Node` has no `ThemedText`, so the theme's
-                    // `With<ThemedText>` propagation filter stops before the caption
-                    // text and it never receives the RADIO_TEXT color — it renders
-                    // bevy's default `TextColor::WHITE`. An explicit white here
-                    // reproduces that exactly; without it the hint root's TEXT_MAIN
-                    // token would propagate LIGHT_GRAY_1 and the hint would look
-                    // grayer than the captions.
-                    TextColor(Color::WHITE)
-                    ThemedText
-                )
-            ]
-        ),
-        (
-            // Cube-map picker: the three cube-map ktx2 assets share the same skybox
-            // shader, only the texture handle changes.
-            Node {
-                position_type: PositionType::Absolute,
-                top: px(12.0),
-                right: px(12.0),
-                flex_direction: FlexDirection::Column,
-                row_gap: px(6.0),
-                padding: UiRect::all(px(8.0)),
-                border_radius: px(6.0),
-            }
-            GlobalZIndex(1)
-            BackgroundColor(backdrop)
-            RadioGroup
-            on(radio_self_update)
-            SceneRoot
-            Children [
+                    // Camera-control hint (only shown in this scene), left end, no
+                    // backdrop (stacked translucent backgrounds over the skybox
+                    // would double-darken the corner).
+                    Node {
+                        flex_shrink: 1.0,
+                        min_width: px(0.0),
+                    }
+                    Children [
+                        (
+                            Text("Drag: rotate camera")
+                            TextFont { font_size: px(16.0) }
+                            TextLayout { linebreak: LineBreak::WordBoundary }
+                            // Match the radio captions' effective rendering: the
+                            // caption wrapper `Node` has no `ThemedText`, so the
+                            // theme's `With<ThemedText>` propagation filter stops
+                            // before the caption text and it never receives the
+                            // RADIO_TEXT color — it renders bevy's default
+                            // `TextColor::WHITE`. An explicit white here reproduces
+                            // that exactly; without it the overlay's TEXT_MAIN
+                            // token would propagate LIGHT_GRAY_1 and the hint would
+                            // look grayer than the captions.
+                            TextColor(Color::WHITE)
+                            ThemedText
+                        )
+                    ]
+                ),
+                (
+                    // Cube-map picker: the three cube-map ktx2 assets share the
+                    // same skybox shader, only the texture handle changes. Right
+                    // end; captions are single-line (`LineBreak::NoWrap`) so the
+                    // group's height never changes, and `align_self: FlexStart`
+                    // keeps it independent of the container height. The hint
+                    // absorbs narrow-screen shrinking.
+                    Node {
+                        flex_shrink: 1.0,
+                        align_self: AlignSelf::FlexStart,
+                        flex_direction: FlexDirection::Column,
+                        row_gap: px(6.0),
+                        padding: UiRect::all(px(8.0)),
+                        border_radius: px(6.0),
+                    }
+                    BackgroundColor(backdrop)
+                    RadioGroup
+                    on(radio_self_update)
+                    Children [
                 (
                     @FeathersRadio {
                         @caption: bsn! {
@@ -655,7 +664,7 @@ fn skybox_scene() -> impl SceneList {
                                 padding: px(4.0),
                                 align_items: AlignItems::Center,
                             }
-                            Children [ (Text("xuastc 8x8") TextFont { font_size: px(16.0) } ThemedText) ]
+                            Children [ (Text("xuastc 8x8") TextFont { font_size: px(16.0) } TextLayout { linebreak: LineBreak::NoWrap } ThemedText) ]
                         },
                     }
                     Checked
@@ -670,7 +679,7 @@ fn skybox_scene() -> impl SceneList {
                                 padding: px(4.0),
                                 align_items: AlignItems::Center,
                             }
-                            Children [ (Text("astc 8x8 snap") TextFont { font_size: px(16.0) } ThemedText) ]
+                            Children [ (Text("astc 8x8 snap") TextFont { font_size: px(16.0) } TextLayout { linebreak: LineBreak::NoWrap } ThemedText) ]
                         },
                     }
                     on(|_change: On<ValueChange<bool>>, mut skybox: Single<&mut Skybox>, loaded: Res<LoadedAssets>| {
@@ -684,7 +693,7 @@ fn skybox_scene() -> impl SceneList {
                                 padding: px(4.0),
                                 align_items: AlignItems::Center,
                             }
-                            Children [ (Text("xuastc 4x4 snap") TextFont { font_size: px(16.0) } ThemedText) ]
+                            Children [ (Text("xuastc 4x4 snap") TextFont { font_size: px(16.0) } TextLayout { linebreak: LineBreak::NoWrap } ThemedText) ]
                         },
                     }
                     on(|_change: On<ValueChange<bool>>, mut skybox: Single<&mut Skybox>, loaded: Res<LoadedAssets>| {
@@ -700,7 +709,7 @@ fn skybox_scene() -> impl SceneList {
                                 padding: px(4.0),
                                 align_items: AlignItems::Center,
                             }
-                            Children [ (Text("uncompressed") TextFont { font_size: px(16.0) } ThemedText) ]
+                            Children [ (Text("uncompressed") TextFont { font_size: px(16.0) } TextLayout { linebreak: LineBreak::NoWrap } ThemedText) ]
                         },
                     }
                     on(|_change: On<ValueChange<bool>>, mut skybox: Single<&mut Skybox>, loaded: Res<LoadedAssets>| {
@@ -709,77 +718,68 @@ fn skybox_scene() -> impl SceneList {
                         }
                     })
                 ),
+                    ]
+                ),
             ]
         )
     }
 }
 
-/// A grid cell: the image on its `100/GRID_ROWS`-percent row, the file-name label in
-/// the auto-sized row beneath it. `col`/`image_row`/`label_row` are 1-based grid
-/// lines. The image keeps its own aspect ratio and is contain-fitted into the cell
-/// by [`fit_grid_images`] (largest aspect-preserving box, centered); the
-/// overflow-hidden wrapper only guards sub-pixel rounding. The label uses a
-/// viewport-relative (`Vw`) font and wraps at any character (`LineBreak::AnyCharacter`),
-/// so it never exceeds the column width. The handle comes from [`LoadedAssets`] —
-/// every grid asset is cached in `setup`, including the special
-/// `BasisuLoaderSettings` loads (alpha0 Rg channel hint, desk2 Rgb9e5 transcode).
-fn image_cell(
-    handle: Handle<Image>,
-    label: &'static str,
-    col: i16,
-    image_row: i16,
-    label_row: i16,
-) -> impl SceneList {
-    let col = GridPlacement::start(col);
-    let image_row = GridPlacement::start(image_row);
-    let label_row = GridPlacement::start(label_row);
-    (
-        // Image row item: `fit_grid_images` sets the image's explicit px size to the
-        // largest aspect-preserving box in the cell (`width: percent(100)` is only
-        // the pre-fit fallback while the texture is still loading).
-        EntityScene(bsn! {
-            Node {
-                overflow: Overflow::hidden(),
-                align_items: AlignItems::Center,
-                justify_content: JustifyContent::Center,
-                grid_row: image_row,
-                grid_column: col,
-            }
-            Children [
-                (
-                    ImageNode {
-                        image: handle,
-                        image_mode: NodeImageMode::Auto,
-                    }
-                    Node {
-                        width: percent(100),
-                    }
-                    GridImage
-                )
-            ]
-        }),
-        // Label row item: centers the file name under the image; the item stretches
-        // to the grid column, so the text wraps within the column (file names have no
-        // spaces, so `AnyCharacter` breaks at any char). Font size is viewport-
-        // relative (`Vw`), so it scales with the window; wrapping keeps the label
-        // inside the cell at any size.
-        EntityScene(bsn! {
-            Node {
-                align_items: AlignItems::Center,
-                justify_content: JustifyContent::Center,
-                grid_row: label_row,
-                grid_column: col,
-            }
-            Children [
-                (
-                    Text(label)
-                    TextFont { font_size: FontSize::Vw(1.0) }
-                    TextLayout { linebreak: LineBreak::AnyCharacter }
-                    ThemedText
-                )
-            ]
-        }),
-    )
+/// A flex cell: the image on top, the file-name label in an auto-sized row beneath.
+/// The cell is 50% of the viewport width, capped at `GRID_CELL_MAX_WIDTH` logical px
+/// (`width: percent(50)` with `max_width` — the CSS `max-width` equivalent), and
+/// flows left-to-right inside the wrapping flex container, so no explicit row or
+/// column placement is needed. The image keeps its natural aspect ratio: it sizes to
+/// the cell width with `NodeImageMode::Auto`, so the label directly below always hugs
+/// the image (no empty fixed-height area). The label wraps at any character
+/// (`LineBreak::AnyCharacter`) and is centered, so it never exceeds the cell width
+/// (file names have no spaces). The handle comes from [`LoadedAssets`] — every grid
+/// asset is cached in `setup`, including the special `BasisuLoaderSettings` loads
+/// (alpha0 Rg channel hint, desk2 Rgb9e5 transcode).
+fn image_cell(handle: Handle<Image>, label: &'static str) -> impl SceneList {
+    EntityScene(bsn! {
+        Node {
+            flex_direction: FlexDirection::Column,
+            width: percent(50),
+            max_width: px(GRID_CELL_MAX_WIDTH),
+            // Border-box sizing (bevy default): width includes this padding, so two
+            // cells are exactly 100% wide and always fit on one row — at least two
+            // columns even on narrow screens. Each half-gap padding forms the
+            // horizontal gap between adjacent cells (the container has no
+            // `column_gap`, see [`images_scene`]).
+            padding: UiRect::axes(px(GRID_GAP / 2.0), px(0.0)),
+            align_items: AlignItems::Center,
+            row_gap: px(6.0),
+        }
+        Children [
+            (
+                ImageNode {
+                    image: handle,
+                    image_mode: NodeImageMode::Auto,
+                }
+                Node {
+                    width: percent(100),
+                }
+            ),
+            (
+                // The label wraps within the cell width and stays right below the
+                // image.
+                Node {
+                    width: percent(100),
+                    align_items: AlignItems::Center,
+                    justify_content: JustifyContent::Center,
+                }
+                Children [
+                    (
+                        Text(label)
+                        TextFont { font_size: px(16.0) }
+                        TextLayout { linebreak: LineBreak::AnyCharacter }
+                        ThemedText
+                    )
+                ]
+            )
+        ]
+    })
 }
 
 /// Marks the full-screen drag surface of the skybox scene (see [`skybox_scene`]).
@@ -827,7 +827,10 @@ fn rotate_camera_by_drag(
     if !changed {
         return;
     }
-    angles.pitch = angles.pitch.clamp(-(std::f32::consts::FRAC_PI_2 - 0.01), std::f32::consts::FRAC_PI_2 - 0.01);
+    angles.pitch = angles.pitch.clamp(
+        -(std::f32::consts::FRAC_PI_2 - 0.01),
+        std::f32::consts::FRAC_PI_2 - 0.01,
+    );
     transform.rotation = Quat::from_euler(EulerRot::YXZ, angles.yaw, angles.pitch, 0.0);
 }
 
@@ -840,11 +843,6 @@ struct GridViewport;
 #[derive(Component, Default, Clone)]
 struct GridContent;
 
-/// Marks the CSS grid node inside [`GridContent`]; [`size_grid_rows`] sizes its
-/// image rows from the viewport height.
-#[derive(Component, Default, Clone)]
-struct GridRoot;
-
 /// Drag-scroll state on the [`GridContent`] wrapper: the scroll offset captured at
 /// `Pointer<DragStart>`, so the drag delta maps 1:1 to the scroll offset (same
 /// pattern as bevy 0.19's `ui/scroll_and_overflow/drag_to_scroll` example). Works
@@ -854,33 +852,6 @@ struct ScrollStart(f32);
 
 /// Mouse-wheel distance per `MouseScrollUnit::Line`, in logical pixels.
 const SCROLL_LINE_HEIGHT: f32 = 40.0;
-
-/// Sizes the grid's image rows so `GRID_ROWS` of them fit the viewport's visible
-/// height (the CSS-grid equivalent of the old `percent(100 / GRID_ROWS)` tracks,
-/// but in px so the grid's auto height equals its content extent — required for
-/// [`scroll_grid`] to measure the scroll range). Writes only on change.
-/// All math is in logical px (`ComputedNode` is physical; `GridTrack::px` rescales
-/// by the scale factor at layout time, so converting here avoids double-scaling).
-fn size_grid_rows(
-    mut q_grid: Query<&mut Node, With<GridRoot>>,
-    viewport: Single<&ComputedNode, With<GridViewport>>,
-) {
-    let Ok(mut grid) = q_grid.single_mut() else {
-        return;
-    };
-    let viewport_logical = viewport.size() * viewport.inverse_scale_factor();
-    let visible_h = (viewport_logical.y - GRID_MARGIN - GRID_BOTTOM).max(1.0);
-    let image_h = visible_h / GRID_ROWS;
-    let image_row_count = (GRID_ENTRIES.len() as f32 / GRID_COLS).ceil() as usize;
-    let mut rows: Vec<RepeatedGridTrack> = Vec::with_capacity(image_row_count * 2);
-    for _ in 0..image_row_count {
-        rows.push(GridTrack::px::<RepeatedGridTrack>(image_h));
-        rows.push(GridTrack::auto::<RepeatedGridTrack>());
-    }
-    if grid.grid_template_rows != rows {
-        grid.grid_template_rows = rows;
-    }
-}
 
 /// Scrolls the grid by translating the `GridContent` wrapper, driven by two inputs:
 /// - wheel: `MouseWheel` deltas, same sign and `Line` scaling as bevy 0.19's
@@ -968,38 +939,6 @@ fn scroll_grid(
         let next = (current + delta_y).clamp(0.0, max_scroll);
         if (next - current).abs() > 0.01 {
             content_node.top = Val::Px(-next);
-        }
-    }
-}
-
-/// Contain-fits each grid image inside its cell: reads the cell size from the
-/// wrapper's `ComputedNode` and the source texture size from `ImageNodeSize`
-/// (auto-maintained by bevy's `update_image_content_size_system`), then sets the
-/// image node's `width`/`height` in logical px so the image fills the largest
-/// aspect-preserving box inside the cell. No-op while the texture is unloaded or
-/// the wrapper is not laid out; converges one frame after either becomes ready;
-/// re-fits automatically on window resize. The skybox scene has no `GridImage`
-/// entities, so it is a no-op there.
-fn fit_grid_images(
-    mut q_image: Query<(&ChildOf, &mut Node, &ImageNodeSize), With<GridImage>>,
-    q_wrapper: Query<&ComputedNode>,
-) {
-    for (parent, mut node, image_size) in &mut q_image {
-        let Ok(wrapper) = q_wrapper.get(parent.0) else {
-            continue;
-        };
-        let src = image_size.size().as_vec2();
-        // `ComputedNode` is physical; convert to logical px so `Val::Px` (rescaled
-        // by the layout's scale factor) lands on the intended size at any DPR.
-        let cell = wrapper.size() * wrapper.inverse_scale_factor();
-        if src.x <= 0.0 || src.y <= 0.0 || cell.x <= 0.0 || cell.y <= 0.0 {
-            continue; // texture not loaded yet, or cell not laid out yet
-        }
-        let scale = (cell / src).min_element();
-        let fit = src * scale;
-        if node.width != Val::Px(fit.x) || node.height != Val::Px(fit.y) {
-            node.width = Val::Px(fit.x);
-            node.height = Val::Px(fit.y);
         }
     }
 }
