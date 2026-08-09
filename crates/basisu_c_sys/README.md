@@ -15,25 +15,30 @@ Greatly inspired by <https://github.com/rafaelbeckel/test-c-rust-wasm>
 
 The wasm build compiles the Basis Universal C++ sources together with a vendored
 [musl](https://musl.libc.org/) libc and emscripten
-[libc++/libc++abi](https://github.com/emscripten-core/emscripten) directly from source,
-which requires **clang++ >= 19**.
+[libc++/libc++abi](https://github.com/emscripten-core/emscripten) directly from source.
+
+⚠️ Note: this requires a relatively new clang version (Ubuntu 26.04 with clang 21 is tested in CI).
 
 ## Feature flags
 
 - `encoder`: Enable basisu encoder, which will significantly increase the binary size. By default only transcoder is enabled.
 - `serde`: Enable `serde` on some structs.
 - `extra`: Enable extra high level encoder and transcoder API that is easier to use with `wgpu-types`.
+- `std`
 
 Feature flags to enable specific transcode target:
+
+- `transcode_etc1s_bc1`
 - `transcode_etc1s_bc3`
-- `transcode_etc1s_bc1` 
-- `transcode_etc1s_bc4_5` 
-- `transcode_etc1s_bc7` 
-- `transcode_etc1s_etc2` 
-- `transcode_uastc` 
-- `transcode_uastc_hdr` 
-- `transcode_xuastc` 
-- `transcode_astc`
+
+- `transcode_default`:
+  - `transcode_etc1s_bc4_5`
+  - `transcode_etc1s_bc7`
+  - `transcode_etc1s_etc2`
+  - `transcode_uastc`
+  - `transcode_uastc_hdr`
+  - `transcode_xuastc`
+  - `transcode_astc`
 
 It's recommended to disable unused targets (especially for ETC1S) to reduce binary size.
 

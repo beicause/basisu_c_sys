@@ -1,10 +1,13 @@
 use alloc::vec::Vec;
 
-use super::once::Once;
 use crate::common;
 use crate::encoder as enc_sys;
 use crate::extra::types;
 use crate::utils::BasisTextureFormat;
+#[cfg(not(feature = "std"))]
+use spin::Once;
+#[cfg(feature = "std")]
+use std::sync::Once;
 
 #[derive(Debug, Clone, Copy)]
 pub enum SourceImageFormat {
@@ -55,6 +58,17 @@ impl SourceImage<'_> {
 }
 
 static BASISU_ENCODER_INITIALIZED: Once = Once::new();
+
+pub(crate) fn encoder_is_init() -> bool {
+    #[cfg(not(feature = "std"))]
+    return BASISU_ENCODER_INITIALIZED.get().is_some();
+    #[cfg(feature = "std")]
+    return BASISU_ENCODER_INITIALIZED.is_completed();
+}
+
+pub(crate) fn encoder_is_uninit() -> bool {
+    !encoder_is_init()
+}
 
 /// Init global data of encoder ([`enc_sys::bu_init`]).
 pub fn basisu_encoder_init() {
@@ -172,7 +186,7 @@ impl BasisuEncoderParams {
 impl BasisuEncoder {
     /// Create a encoder. Panic if [`basisu_encoder_init`] hasn't been called.
     pub fn new() -> Self {
-        if !BASISU_ENCODER_INITIALIZED.is_initialized() {
+        if encoder_is_uninit() {
             panic!("`basisu_encoder_init` must be called before create encoder");
         }
         Self {
@@ -326,13 +340,13 @@ impl Drop for BasisuEncoder {
 mod tests {
     use crate::extra::{
         BasisuEncodeError, BasisuEncoder, SourceImage, SourceImageFormat, basisu_encoder_init,
-        encoder::BASISU_ENCODER_INITIALIZED, types,
+        types,
     };
 
     #[test]
     #[should_panic]
     fn encoder_create_before_init() {
-        if BASISU_ENCODER_INITIALIZED.is_initialized() {
+        if super::encoder_is_init() {
             panic!("Basisu is already initialized, panic to skip this test");
         } else {
             BasisuEncoder::new();

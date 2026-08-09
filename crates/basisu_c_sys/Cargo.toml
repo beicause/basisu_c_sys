@@ -30,12 +30,12 @@ rustdoc-args = ["--cfg", "docsrs"]
 [[test]]
 name = "transcoder"
 path = "tests/transcoder.rs"
-required-features = ["extra"]
+required-features = ["extra", "transcode_default"]
 
 [[test]]
 name = "encoder"
 path = "tests/encoder.rs"
-required-features = ["encoder", "extra"]
+required-features = ["encoder", "extra", "transcode_default"]
 
 # The wasm test target has `harness = false`: the libtest harness cannot
 # report pass/fail on wasm32-unknown-unknown (std stubs stdout and
@@ -57,6 +57,11 @@ serde = {
   ],
   optional = true
 }
+spin = {
+  version = "0.12",
+  default-features = false,
+  features = ["once"],
+}
 thiserror = { version = "2.0.18", default-features = false, optional = true }
 
 [dev-dependencies]
@@ -77,8 +82,26 @@ insta = "1.47.2"
 bindgen = "0.72"
 cc = { version = "1.2", features = ["parallel"] }
 
+[target.'cfg(not(target_has_atomic = "8"))'.dependencies]
+spin = {
+  version = "0.12",
+  default-features = false,
+  features = [
+    "portable-atomic",
+  ]
+}
+
 [features]
-default = [
+default = ["std", "transcode_default"]
+encoder = []
+extra = [
+  "dep:bitflags",
+  "dep:thiserror",
+]
+serde = ["dep:serde"]
+std = []
+
+transcode_default = [
   "transcode_astc",
   "transcode_etc1s_bc4_5",
   "transcode_etc1s_bc7",
@@ -87,12 +110,7 @@ default = [
   "transcode_uastc_hdr",
   "transcode_xuastc",
 ]
-encoder = []
-extra = [
-  "dep:bitflags",
-  "dep:thiserror",
-]
-serde = ["dep:serde"]
+
 transcode_astc = []
 transcode_etc1s_bc1 = []
 transcode_etc1s_bc3 = ["transcode_etc1s_bc1", "transcode_etc1s_bc4_5"]

@@ -260,9 +260,7 @@ fn encode_kodim20() {
     let info = transcoder.get_info();
     assert_eq!(info.width, rgba.width(), "decoded width mismatch");
     assert_eq!(info.height, rgba.height(), "decoded height mismatch");
-    let image = transcoder
-        .transcode(None, None)
-        .expect("transcode failed");
+    let image = transcoder.transcode(None, None).expect("transcode failed");
     assert!(!image.data.is_empty(), "transcoded image is empty");
     println!("decoded kodim20: {} bytes", image.data.len());
 }
@@ -316,9 +314,7 @@ fn encode_gradient_roundtrip() {
     let info = transcoder.get_info();
     assert_eq!(info.width, W, "decoded width mismatch");
     assert_eq!(info.height, H, "decoded height mismatch");
-    let image = transcoder
-        .transcode(None, None)
-        .expect("transcode failed");
+    let image = transcoder.transcode(None, None).expect("transcode failed");
     assert!(!image.data.is_empty(), "transcoded image is empty");
     println!("decoded gradient: {} bytes", image.data.len());
 }
