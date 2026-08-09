@@ -10,7 +10,7 @@ keywords = ["asset", "basis-universal", "bevy", "encoder"]
 [dependencies]
 basisu_c_sys = {
   path = "../basisu_c_sys",
-  version = "0.9.0-dev",
+  version = "0.9.0",
   default-features = false,
   features = [
     "encoder",
