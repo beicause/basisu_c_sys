@@ -30,7 +30,7 @@ jobs:
       - uses: actions/checkout@v7.0.1
 
       - name: Check for typos
-        uses: crate-ci/typos@v1.48.0
+        uses: crate-ci/typos@v1.50.1
 
       - name: Check formatting
         run: cargo fmt --all -- --check
@@ -249,7 +249,7 @@ jobs:
           cache-bin: false
 
       - name: Install cargo-binstall
-        uses: cargo-bins/cargo-binstall@v1.21.1
+        uses: cargo-bins/cargo-binstall@v1.22.0
 
       - name: Install Android NDK
         run: ${ANDROID_HOME}/cmdline-tools/latest/bin/sdkmanager 'ndk;${{env.ANDROID_NDK_VERSION}}'
