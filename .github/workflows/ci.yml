@@ -28,8 +28,11 @@ jobs:
       - name: Check for typos
         uses: crate-ci/typos@v1.48.0
 
+      - name: Check formatting
+        run: cargo fmt --all -- --check
+
       - name: Install tombi
-        uses: tombi-toml/setup-tombi@v1.2.4
+        uses: tombi-toml/setup-tombi@v1.4
 
       - name: Check for tombi
         run: tombi lint --error-on-warnings; tombi format --check --diff
