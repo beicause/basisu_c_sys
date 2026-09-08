@@ -32,6 +32,9 @@ jobs:
       - name: Check for typos
         uses: crate-ci/typos@v1.48.0
 
+      - name: Check formatting
+        run: cargo fmt --all -- --check
+
       - name: Install tombi
         uses: tombi-toml/setup-tombi@v1.4
 
