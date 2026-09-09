@@ -29,10 +29,17 @@ jobs:
         uses: crate-ci/typos@v1.48.0
 
       - name: Install tombi
-        uses: tombi-toml/setup-tombi@v1.2.4
+        uses: tombi-toml/setup-tombi@v1.4
 
       - name: Check for tombi
         run: tombi lint --error-on-warnings; tombi format --check --diff
+
+      - name: Install rust toolchain
+        run: |
+          rustup toolchain install stable --no-self-update --profile=minimal
+
+      - name: Check rust formatting
+        run: cargo fmt --all -- --check
 
   build:
     name: Build ${{matrix.os}}
