@@ -7,7 +7,7 @@ repository = "https://github.com/beicause/basisu_c_sys"
 license = "MIT OR Apache-2.0"
 
 [workspace.dependencies]
-bevy = { version = "0.19", default-features = false }
+bevy = { version = "0.20.0-rc.1", default-features = false }
 
 [workspace.lints.clippy]
 allow_attributes = "warn"

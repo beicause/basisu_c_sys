@@ -312,52 +312,47 @@ fn ui_scene() -> impl Scene {
         BackgroundColor(OVERLAY_BG)
         InheritableThemeTextColor(tokens::TEXT_MAIN)
         Children [
-            (
-                Node {
-                    flex_direction: FlexDirection::Row,
-                    align_items: AlignItems::Center,
-                    column_gap: px(16.0),
+            Node {
+                flex_direction: FlexDirection::Row,
+                align_items: AlignItems::Center,
+                column_gap: px(16.0),
+            }
+            RadioGroup
+            on(radio_self_update)
+            Children [
+                @FeathersRadio {
+                    @caption: bsn! {
+                        Node {
+                            padding: px(8.0),
+                            align_items: AlignItems::Center,
+                        }
+                        Children [ Text("Images") TextFont { font_size: px(20.0) } ThemedText ]
+                    },
                 }
-                RadioGroup
-                on(radio_self_update)
-                Children [
-                    (
-                        @FeathersRadio {
-                            @caption: bsn! {
-                                Node {
-                                    padding: px(8.0),
-                                    align_items: AlignItems::Center,
-                                }
-                                Children [ (Text("Images") TextFont { font_size: px(20.0) } ThemedText) ]
-                            },
+                Checked
+                on(|_change: On<ValueChange<bool>>, mut commands: Commands, loaded: Res<LoadedAssets>, roots: Query<Entity, With<SceneRoot>>| {
+                    for root in &roots {
+                        commands.entity(root).despawn();
+                    }
+                    commands.spawn_scene_list(images_scene(&loaded));
+                })
+                --
+                @FeathersRadio {
+                    @caption: bsn! {
+                        Node {
+                            padding: px(8.0),
+                            align_items: AlignItems::Center,
                         }
-                        Checked
-                        on(|_change: On<ValueChange<bool>>, mut commands: Commands, loaded: Res<LoadedAssets>, roots: Query<Entity, With<SceneRoot>>| {
-                            for root in &roots {
-                                commands.entity(root).despawn();
-                            }
-                            commands.spawn_scene_list(images_scene(&loaded));
-                        })
-                    ),
-                    (
-                        @FeathersRadio {
-                            @caption: bsn! {
-                                Node {
-                                    padding: px(8.0),
-                                    align_items: AlignItems::Center,
-                                }
-                                Children [ (Text("Skybox") TextFont { font_size: px(20.0) } ThemedText) ]
-                            },
-                        }
-                        on(|_change: On<ValueChange<bool>>, mut commands: Commands, roots: Query<Entity, With<SceneRoot>>| {
-                            for root in &roots {
-                                commands.entity(root).despawn();
-                            }
-                            commands.spawn_scene_list(skybox_scene());
-                        })
-                    ),
-                ]
-            ),
+                        Children [ Text("Skybox") TextFont { font_size: px(20.0) } ThemedText ]
+                    },
+                }
+                on(|_change: On<ValueChange<bool>>, mut commands: Commands, roots: Query<Entity, With<SceneRoot>>| {
+                    for root in &roots {
+                        commands.entity(root).despawn();
+                    }
+                    commands.spawn_scene_list(skybox_scene());
+                })
+            ]
         ]
     }
 }
@@ -456,91 +451,82 @@ fn grid_cells(loaded: &LoadedAssets) -> impl SceneList {
 /// 2. the top-left scroll hint overlay.
 fn images_scene(loaded: &LoadedAssets) -> impl SceneList {
     bsn_list! {
-        (
-            Camera2d
-            // The grid shows HDR assets (desk .exr, HDR ktx2): an HDR target plus no
-            // tonemapping keeps the float values intact instead of clamping them to LDR.
-            Hdr
-            template_value(Tonemapping::None)
-            SceneRoot
-            // Clipped viewport: rows below the visible area are hidden and revealed by
-            // translating the GridContent wrapper below (`scroll_grid`).
-            GridViewport
+        Camera2d
+        // The grid shows HDR assets (desk .exr, HDR ktx2): an HDR target plus no
+        // tonemapping keeps the float values intact instead of clamping them to LDR.
+        Hdr
+        Tonemapping::None
+        SceneRoot
+        // Clipped viewport: rows below the visible area are hidden and revealed by
+        // translating the GridContent wrapper below (`scroll_grid`).
+        GridViewport
+        Node {
+            width: percent(100),
+            height: percent(100),
+            // Flex-start so the GridContent wrapper below sizes to its content
+            // (the grid's full height) instead of stretching to the viewport —
+            // the wrapper's height IS the scrollable extent.
+            align_items: AlignItems::FlexStart,
+            overflow: Overflow::clip(),
+            padding: UiRect::new(
+                px(GRID_MARGIN),
+                px(GRID_MARGIN),
+                px(GRID_MARGIN),
+                px(GRID_BOTTOM),
+            ),
+        }
+        ThemeBackgroundColor(tokens::WINDOW_BG)
+        InheritableThemeTextColor(tokens::TEXT_MAIN)
+        Children [
+            // Scrollable content: translated by -scroll in `scroll_grid`.
+            GridContent
+            ScrollStart(0.0)
             Node {
                 width: percent(100),
-                height: percent(100),
-                // Flex-start so the GridContent wrapper below sizes to its content
-                // (the grid's full height) instead of stretching to the viewport —
-                // the wrapper's height IS the scrollable extent.
-                align_items: AlignItems::FlexStart,
-                overflow: Overflow::clip(),
-                padding: UiRect::new(
-                    px(GRID_MARGIN),
-                    px(GRID_MARGIN),
-                    px(GRID_MARGIN),
-                    px(GRID_BOTTOM),
-                ),
+                position_type: PositionType::Relative,
+                top: px(0.0),
             }
-            ThemeBackgroundColor(tokens::WINDOW_BG)
-            InheritableThemeTextColor(tokens::TEXT_MAIN)
             Children [
-                (
-                    // Scrollable content: translated by -scroll in `scroll_grid`.
-                    GridContent
-                    ScrollStart(0.0)
-                    Node {
-                        width: percent(100),
-                        position_type: PositionType::Relative,
-                        top: px(0.0),
-                    }
-                    Children [
-                        (
-                            // The flex-wrap container; its height is its content (auto),
-                            // so the wrapper's ComputedNode gives the scrollable extent.
-                            // Fixed-px cells flow left-to-right and wrap to new rows
-                            // automatically when the viewport width runs out.
-                            Node {
-                                width: percent(100),
-                                flex_direction: FlexDirection::Row,
-                                flex_wrap: FlexWrap::Wrap,
-                                // Top-aligned so overflowing rows scroll into view from
-                                // the bottom instead of being clipped symmetrically.
-                                align_content: AlignContent::FlexStart,
-                                // Vertical gap between wrapped rows only. The horizontal
-                                // gap is per-cell padding (`image_cell`): a container
-                                // `column_gap` would make two 50% cells overflow 100%
-                                // and wrap into a single column on narrow screens.
-                                row_gap: px(GRID_GAP),
-                            }
-                            Children [
-                                { grid_cells(loaded) }
-                            ]
-                        )
-                    ]
-                )
+                // The flex-wrap container; its height is its content (auto),
+                // so the wrapper's ComputedNode gives the scrollable extent.
+                // Fixed-px cells flow left-to-right and wrap to new rows
+                // automatically when the viewport width runs out.
+                Node {
+                    width: percent(100),
+                    flex_direction: FlexDirection::Row,
+                    flex_wrap: FlexWrap::Wrap,
+                    // Top-aligned so overflowing rows scroll into view from
+                    // the bottom instead of being clipped symmetrically.
+                    align_content: AlignContent::FlexStart,
+                    // Vertical gap between wrapped rows only. The horizontal
+                    // gap is per-cell padding (`image_cell`): a container
+                    // `column_gap` would make two 50% cells overflow 100%
+                    // and wrap into a single column on narrow screens.
+                    row_gap: px(GRID_GAP),
+                }
+                Children [
+                    { grid_cells(loaded) }
+                ]
             ]
-        ),
-        (
-            // Scroll hint: the grid scrolls with the mouse wheel (hovering the
-            // grid) and by dragging (touch or mouse), see [`scroll_grid`].
-            Node {
-                position_type: PositionType::Absolute,
-                top: px(12.0),
-                left: px(12.0),
-                padding: UiRect::axes(px(10.0), px(6.0)),
-                border_radius: px(6.0),
-            }
-            GlobalZIndex(1)
-            BackgroundColor(OVERLAY_BG)
-            SceneRoot
-            Children [
-                (
-                    Text("Scroll for more images")
-                    TextFont { font_size: px(16.0) }
-                    ThemedText
-                )
-            ]
-        )
+        ]
+        --
+        // Scroll hint: the grid scrolls with the mouse wheel (hovering the
+        // grid) and by dragging (touch or mouse), see [`scroll_grid`].
+        Node {
+            position_type: PositionType::Absolute,
+            top: px(12.0),
+            left: px(12.0),
+            padding: UiRect::axes(px(10.0), px(6.0)),
+            border_radius: px(6.0),
+        }
+        GlobalZIndex(1)
+        BackgroundColor(OVERLAY_BG)
+        SceneRoot
+        Children [
+            Text("Scroll for more images")
+            TextFont { font_size: px(16.0) }
+            ThemedText
+        ]
     }
 }
 
@@ -560,168 +546,153 @@ fn skybox_scene() -> impl SceneList {
     let skybox_image = OptionTemplate::from(HandleTemplate::from(IMAGE_PATH_SKYBOX));
     let backdrop = OVERLAY_BG;
     bsn_list! {
-        (
-            Camera3d::default()
-            template_value(Tonemapping::None)
-            Transform::from_xyz(0.0, 0.0, 3.0)
-            Skybox {
-                image: skybox_image,
-                brightness: 1000.0,
-            }
-            SkyboxAngles
-            SceneRoot
-        ),
-        (
-            // Full-screen invisible drag surface: the target for the drag-to-look
-            // camera control ([`rotate_camera_by_drag`]). It sits below the top
-            // overlay (hint + cubemap picker, `GlobalZIndex(1)`) and does not block
-            // lower entities, so only drags that start on empty skybox space rotate
-            // the camera; drags starting on the UI widgets are ignored.
+        Camera3d::default()
+        Tonemapping::None
+        Transform::from_xyz(0.0, 0.0, 3.0)
+        Skybox {
+            image: skybox_image,
+            brightness: 1000.0,
+        }
+        SkyboxAngles
+        SceneRoot
+        --
+        // Full-screen invisible drag surface: the target for the drag-to-look
+        // camera control ([`rotate_camera_by_drag`]). It sits below the top
+        // overlay (hint + cubemap picker, `GlobalZIndex(1)`) and does not block
+        // lower entities, so only drags that start on empty skybox space rotate
+        // the camera; drags starting on the UI widgets are ignored.
+        Node {
+            position_type: PositionType::Absolute,
+            left: px(0.0),
+            right: px(0.0),
+            top: px(0.0),
+            bottom: px(0.0),
+        }
+        Pickable { is_hoverable: true, should_block_lower: false }
+        SkyboxDragSurface
+        SceneRoot
+        --
+        // Full-width top overlay: the camera-control hint at the left end, the
+        // cubemap picker at the right end, spread with `space-between`. The hint
+        // flex-shrinks (wrapping at word boundaries via
+        // `LineBreak::WordBoundary`) to absorb narrow screens; the picker keeps
+        // its natural width with single-line captions (`LineBreak::NoWrap`) so
+        // its height never changes. `should_block_lower: false` lets drags on
+        // the empty band between them reach the drag surface below.
+        Node {
+            position_type: PositionType::Absolute,
+            top: px(12.0),
+            left: px(12.0),
+            right: px(12.0),
+            flex_direction: FlexDirection::Row,
+            justify_content: JustifyContent::SpaceBetween,
+            align_items: AlignItems::FlexStart,
+            column_gap: px(8.0),
+        }
+        Pickable { is_hoverable: true, should_block_lower: false }
+        GlobalZIndex(1)
+        SceneRoot
+        Children [
+            // Camera-control hint (only shown in this scene), left end, no
+            // backdrop (stacked translucent backgrounds over the skybox
+            // would double-darken the corner).
             Node {
-                position_type: PositionType::Absolute,
-                left: px(0.0),
-                right: px(0.0),
-                top: px(0.0),
-                bottom: px(0.0),
+                flex_shrink: 1.0,
+                min_width: px(0.0),
             }
-            Pickable { is_hoverable: true, should_block_lower: false }
-            SkyboxDragSurface
-            SceneRoot
-        ),
-
-        (
-            // Full-width top overlay: the camera-control hint at the left end, the
-            // cubemap picker at the right end, spread with `space-between`. The hint
-            // flex-shrinks (wrapping at word boundaries via
-            // `LineBreak::WordBoundary`) to absorb narrow screens; the picker keeps
-            // its natural width with single-line captions (`LineBreak::NoWrap`) so
-            // its height never changes. `should_block_lower: false` lets drags on
-            // the empty band between them reach the drag surface below.
-            Node {
-                position_type: PositionType::Absolute,
-                top: px(12.0),
-                left: px(12.0),
-                right: px(12.0),
-                flex_direction: FlexDirection::Row,
-                justify_content: JustifyContent::SpaceBetween,
-                align_items: AlignItems::FlexStart,
-                column_gap: px(8.0),
-            }
-            Pickable { is_hoverable: true, should_block_lower: false }
-            GlobalZIndex(1)
-            SceneRoot
             Children [
-                (
-                    // Camera-control hint (only shown in this scene), left end, no
-                    // backdrop (stacked translucent backgrounds over the skybox
-                    // would double-darken the corner).
-                    Node {
-                        flex_shrink: 1.0,
-                        min_width: px(0.0),
-                    }
-                    Children [
-                        (
-                            Text("Drag: rotate camera")
-                            TextFont { font_size: px(16.0) }
-                            TextLayout { linebreak: LineBreak::WordBoundary }
-                            // Match the radio captions' effective rendering: the
-                            // caption wrapper `Node` has no `ThemedText`, so the
-                            // theme's `With<ThemedText>` propagation filter stops
-                            // before the caption text and it never receives the
-                            // RADIO_TEXT color — it renders bevy's default
-                            // `TextColor::WHITE`. An explicit white here reproduces
-                            // that exactly; without it the overlay's TEXT_MAIN
-                            // token would propagate LIGHT_GRAY_1 and the hint would
-                            // look grayer than the captions.
-                            TextColor(Color::WHITE)
-                            ThemedText
-                        )
-                    ]
-                ),
-                (
-                    // Cube-map picker: the three cube-map ktx2 assets share the
-                    // same skybox shader, only the texture handle changes. Right
-                    // end; captions are single-line (`LineBreak::NoWrap`) so the
-                    // group's height never changes, and `align_self: FlexStart`
-                    // keeps it independent of the container height. The hint
-                    // absorbs narrow-screen shrinking.
-                    Node {
-                        flex_shrink: 1.0,
-                        align_self: AlignSelf::FlexStart,
-                        flex_direction: FlexDirection::Column,
-                        row_gap: px(6.0),
-                        padding: UiRect::all(px(8.0)),
-                        border_radius: px(6.0),
-                    }
-                    BackgroundColor(backdrop)
-                    RadioGroup
-                    on(radio_self_update)
-                    Children [
-                (
-                    @FeathersRadio {
-                        @caption: bsn! {
-                            Node {
-                                padding: px(4.0),
-                                align_items: AlignItems::Center,
-                            }
-                            Children [ (Text("xuastc 8x8") TextFont { font_size: px(16.0) } TextLayout { linebreak: LineBreak::NoWrap } ThemedText) ]
-                        },
-                    }
-                    Checked
-                    on(|_change: On<ValueChange<bool>>, mut skybox: Single<&mut Skybox>, loaded: Res<LoadedAssets>| {
-                        skybox.image = Some(loaded.skybox.clone());
-                    })
-                ),
-                (
-                    @FeathersRadio {
-                        @caption: bsn! {
-                            Node {
-                                padding: px(4.0),
-                                align_items: AlignItems::Center,
-                            }
-                            Children [ (Text("astc 8x8 snap") TextFont { font_size: px(16.0) } TextLayout { linebreak: LineBreak::NoWrap } ThemedText) ]
-                        },
-                    }
-                    on(|_change: On<ValueChange<bool>>, mut skybox: Single<&mut Skybox>, loaded: Res<LoadedAssets>| {
-                        skybox.image = Some(loaded.skybox_astc.clone());
-                    })
-                ),
-                (
-                    @FeathersRadio {
-                        @caption: bsn! {
-                            Node {
-                                padding: px(4.0),
-                                align_items: AlignItems::Center,
-                            }
-                            Children [ (Text("xuastc 4x4 snap") TextFont { font_size: px(16.0) } TextLayout { linebreak: LineBreak::NoWrap } ThemedText) ]
-                        },
-                    }
-                    on(|_change: On<ValueChange<bool>>, mut skybox: Single<&mut Skybox>, loaded: Res<LoadedAssets>| {
-                        skybox.image = Some(loaded.skybox_xuastc.clone());
-                    })
-                ),
-                (
-                    // Cubemap stitched at runtime from the six skybox face jpgs by
-                    // `build_face_cubemap` (uncompressed). No-op until it is ready.
-                    @FeathersRadio {
-                        @caption: bsn! {
-                            Node {
-                                padding: px(4.0),
-                                align_items: AlignItems::Center,
-                            }
-                            Children [ (Text("uncompressed") TextFont { font_size: px(16.0) } TextLayout { linebreak: LineBreak::NoWrap } ThemedText) ]
-                        },
-                    }
-                    on(|_change: On<ValueChange<bool>>, mut skybox: Single<&mut Skybox>, loaded: Res<LoadedAssets>| {
-                        if let Some(handle) = loaded.face_cubemap.clone() {
-                            skybox.image = Some(handle);
-                        }
-                    })
-                ),
-                    ]
-                ),
+                Text("Drag: rotate camera")
+                TextFont { font_size: px(16.0) }
+                TextLayout { linebreak: LineBreak::WordBoundary }
+                // Match the radio captions' effective rendering: the
+                // caption wrapper `Node` has no `ThemedText`, so the
+                // theme's `With<ThemedText>` propagation filter stops
+                // before the caption text and it never receives the
+                // RADIO_TEXT color — it renders bevy's default
+                // `TextColor::WHITE`. An explicit white here reproduces
+                // that exactly; without it the overlay's TEXT_MAIN
+                // token would propagate LIGHT_GRAY_1 and the hint would
+                // look grayer than the captions.
+                TextColor(Color::WHITE)
+                ThemedText
             ]
-        )
+            --
+            // Cube-map picker: the three cube-map ktx2 assets share the
+            // same skybox shader, only the texture handle changes. Right
+            // end; captions are single-line (`LineBreak::NoWrap`) so the
+            // group's height never changes, and `align_self: FlexStart`
+            // keeps it independent of the container height. The hint
+            // absorbs narrow-screen shrinking.
+            Node {
+                flex_shrink: 1.0,
+                align_self: AlignSelf::FlexStart,
+                flex_direction: FlexDirection::Column,
+                row_gap: px(6.0),
+                padding: UiRect::all(px(8.0)),
+                border_radius: px(6.0),
+            }
+            BackgroundColor(backdrop)
+            RadioGroup
+            on(radio_self_update)
+            Children [
+                @FeathersRadio {
+                    @caption: bsn! {
+                        Node {
+                            padding: px(4.0),
+                            align_items: AlignItems::Center,
+                        }
+                        Children [ Text("xuastc 8x8") TextFont { font_size: px(16.0) } TextLayout { linebreak: LineBreak::NoWrap } ThemedText ]
+                    },
+                }
+                Checked
+                on(|_change: On<ValueChange<bool>>, mut skybox: Single<&mut Skybox>, loaded: Res<LoadedAssets>| {
+                    skybox.image = Some(loaded.skybox.clone());
+                })
+                --
+                @FeathersRadio {
+                    @caption: bsn! {
+                        Node {
+                            padding: px(4.0),
+                            align_items: AlignItems::Center,
+                        }
+                        Children [ Text("astc 8x8 snap") TextFont { font_size: px(16.0) } TextLayout { linebreak: LineBreak::NoWrap } ThemedText ]
+                    },
+                }
+                on(|_change: On<ValueChange<bool>>, mut skybox: Single<&mut Skybox>, loaded: Res<LoadedAssets>| {
+                    skybox.image = Some(loaded.skybox_astc.clone());
+                })
+                --
+                @FeathersRadio {
+                    @caption: bsn! {
+                        Node {
+                            padding: px(4.0),
+                            align_items: AlignItems::Center,
+                        }
+                        Children [ Text("xuastc 4x4 snap") TextFont { font_size: px(16.0) } TextLayout { linebreak: LineBreak::NoWrap } ThemedText ]
+                    },
+                }
+                on(|_change: On<ValueChange<bool>>, mut skybox: Single<&mut Skybox>, loaded: Res<LoadedAssets>| {
+                    skybox.image = Some(loaded.skybox_xuastc.clone());
+                })
+                --
+                // Cubemap stitched at runtime from the six skybox face jpgs by
+                // `build_face_cubemap` (uncompressed). No-op until it is ready.
+                @FeathersRadio {
+                    @caption: bsn! {
+                        Node {
+                            padding: px(4.0),
+                            align_items: AlignItems::Center,
+                        }
+                        Children [ Text("uncompressed") TextFont { font_size: px(16.0) } TextLayout { linebreak: LineBreak::NoWrap } ThemedText ]
+                    },
+                }
+                on(|_change: On<ValueChange<bool>>, mut skybox: Single<&mut Skybox>, loaded: Res<LoadedAssets>| {
+                    if let Some(handle) = loaded.face_cubemap.clone() {
+                        skybox.image = Some(handle);
+                    }
+                })
+            ]
+        ]
     }
 }
 
@@ -752,32 +723,27 @@ fn image_cell(handle: Handle<Image>, label: &'static str) -> impl SceneList {
             row_gap: px(6.0),
         }
         Children [
-            (
-                ImageNode {
-                    image: handle,
-                    image_mode: NodeImageMode::Auto,
-                }
-                Node {
-                    width: percent(100),
-                }
-            ),
-            (
-                // The label wraps within the cell width and stays right below the
-                // image.
-                Node {
-                    width: percent(100),
-                    align_items: AlignItems::Center,
-                    justify_content: JustifyContent::Center,
-                }
-                Children [
-                    (
-                        Text(label)
-                        TextFont { font_size: px(16.0) }
-                        TextLayout { linebreak: LineBreak::AnyCharacter }
-                        ThemedText
-                    )
-                ]
-            )
+            ImageNode {
+                image: handle,
+                image_mode: NodeImageMode::Auto,
+            }
+            Node {
+                width: percent(100),
+            }
+            --
+            // The label wraps within the cell width and stays right below the
+            // image.
+            Node {
+                width: percent(100),
+                align_items: AlignItems::Center,
+                justify_content: JustifyContent::Center,
+            }
+            Children [
+                Text(label)
+                TextFont { font_size: px(16.0) }
+                TextLayout { linebreak: LineBreak::AnyCharacter }
+                ThemedText
+            ]
         ]
     })
 }
@@ -806,7 +772,7 @@ const SKYBOX_LOOK_SPEED: f32 = 0.003;
 /// outside the skybox scene, where there is no `Camera3d` or drag surface.
 fn rotate_camera_by_drag(
     camera: Single<(&mut Transform, &mut SkyboxAngles), With<Camera3d>>,
-    mut drag_reader: MessageReader<Pointer<Drag>>,
+    mut drag_reader: MessageReader<PointerDrag>,
     surface: Query<Entity, With<SkyboxDragSurface>>,
 ) {
     let Ok(surface) = surface.single() else {
@@ -868,8 +834,8 @@ const SCROLL_LINE_HEIGHT: f32 = 40.0;
 #[expect(clippy::too_many_arguments, reason = "It is a complex function")]
 fn scroll_grid(
     mut mouse_wheel_reader: MessageReader<MouseWheel>,
-    mut drag_start_reader: MessageReader<Pointer<DragStart>>,
-    mut drag_reader: MessageReader<Pointer<Drag>>,
+    mut drag_start_reader: MessageReader<PointerDragStart>,
+    mut drag_reader: MessageReader<PointerDrag>,
     hover_map: Res<HoverMap>,
     ui_scale: Res<UiScale>,
     mut q_content: Query<(&mut Node, &ComputedNode, Entity, &mut ScrollStart), With<GridContent>>,
