@@ -1,3 +1,6 @@
+//! Native integration tests for the transcoder wrappers; the decoded images
+//! are compared against the binary snapshots in the asset submodule.
+
 mod common;
 use std::io::Cursor;
 

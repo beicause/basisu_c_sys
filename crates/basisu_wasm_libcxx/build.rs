@@ -1,3 +1,7 @@
+//! Build script: compiles the vendored musl libc and emscripten libc++ into
+//! static libraries for the bare-metal wasm32 targets and publishes their
+//! include paths through `cargo::metadata`.
+
 mod wasm_libc;
 mod wasm_libcxx;
 

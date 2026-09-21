@@ -9,9 +9,12 @@ use spin::Once;
 #[cfg(feature = "std")]
 use std::sync::Once;
 
+/// Pixel layout of a [`SourceImage`] input buffer.
 #[derive(Debug, Clone, Copy)]
 pub enum SourceImageFormat {
+    /// Tightly packed 8-bit RGBA, four bytes per pixel.
     Rgba8,
+    /// Tightly packed 32-bit float RGBA, sixteen bytes per pixel.
     Rgba32Float,
 }
 
@@ -24,10 +27,12 @@ impl SourceImageFormat {
     }
 }
 
+/// One or more layers of pixel data to feed to [`BasisuEncoder::set_image`].
 #[derive(Debug, Clone, Copy)]
 pub struct SourceImage<'a> {
     /// The input data of image pixels.
     pub data: &'a [u8],
+    /// The pixel layout of `data`.
     pub format: SourceImageFormat,
     /// The size of image.
     pub size: types::Extent3d,
@@ -93,25 +98,35 @@ impl Default for BasisuEncoder {
     }
 }
 
+/// Errors returned by [`BasisuEncoder`].
 #[derive(Debug, thiserror::Error, PartialEq)]
 #[non_exhaustive]
 pub enum BasisuEncodeError {
+    /// [`BasisuEncoder::set_image_slice`] was given an image with more than one layer.
     #[error("`BasisuEncoder::set_image_slice` only accepts image with 1 layer")]
     SetImageSliceOnlyAcceptsOneLayer,
+    /// The input image has no pixel data.
     #[error("Image data is empty")]
     EmptyImageData,
+    /// The input data length does not match the image extent and format.
     #[error("Image {image_size:?} Expects data length {expected_len}, got {data_len}")]
     ImageUnmatchedDataAndSize {
+        /// The extent the encoder was given.
         image_size: types::Extent3d,
+        /// The number of bytes the extent and format require.
         expected_len: usize,
+        /// The number of bytes actually supplied.
         data_len: usize,
     },
+    /// `bu_comp_params_set_image_rgba32`/`bu_comp_params_set_image_float_rgba` failed.
     #[error("bu_comp_params_set_image_* failed")]
     BuSetImageFailed,
+    /// `bu_compress_texture` failed.
     #[error("bu_compress_texture failed")]
     BuCompressFailed,
 }
 
+/// Parameters controlling a [`BasisuEncoder::compress`] call.
 #[derive(Debug, Clone, Copy)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub struct BasisuEncoderParams {
@@ -128,6 +143,7 @@ pub struct BasisuEncoderParams {
 }
 
 impl BasisuEncoderParams {
+    /// Create parameters for an sRGB texture with the default quality and effort.
     pub const fn new_with_srgb_defaults(basis_tex_format: BasisTextureFormat) -> Self {
         Self {
             basis_tex_format,
@@ -141,6 +157,7 @@ impl BasisuEncoderParams {
         }
     }
 
+    /// Create parameters for a linear (non-sRGB) texture with the default quality and effort.
     pub const fn new_with_linear_defaults(basis_tex_format: BasisTextureFormat) -> Self {
         Self {
             basis_tex_format,

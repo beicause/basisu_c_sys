@@ -13,6 +13,9 @@ bevy = { version = "0.20.0-rc.1", default-features = false }
 allow_attributes = "warn"
 allow_attributes_without_reason = "warn"
 
+[workspace.lints.rust]
+missing_docs = "deny"
+
 [profile.test]
 opt-level = 1
 

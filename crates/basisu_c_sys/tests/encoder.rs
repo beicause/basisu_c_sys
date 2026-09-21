@@ -1,3 +1,6 @@
+//! Native integration tests for the encoder wrappers; the expected KTX2
+//! outputs are compared against the binary snapshots in the asset submodule.
+
 mod common;
 use image::{DynamicImage, ImageFormat, ImageReader};
 

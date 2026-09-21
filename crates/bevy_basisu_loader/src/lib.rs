@@ -1,3 +1,8 @@
+//! A lightweight, cross-platform KTX2 Basis Universal texture loader for Bevy.
+//!
+//! Add [`BasisuLoaderPlugin`] to an app and load textures with the
+//! `.basisu.ktx2` extension.
+
 pub use basisu_c_sys as sys;
 use bevy::prelude::*;
 use bevy::render::{RenderApp, renderer::RenderDevice};

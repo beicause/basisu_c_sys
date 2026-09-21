@@ -1,3 +1,6 @@
+//! Interactive scene that displays Basis Universal encoded textures, used as a
+//! manual test bed for the loader.
+
 use std::collections::HashMap;
 
 use bevy::{
@@ -215,6 +218,7 @@ fn build_face_cubemap(
 }
 
 #[bevy_main]
+/// Start the viewer.
 pub fn main() {
     App::new()
         .add_plugins(

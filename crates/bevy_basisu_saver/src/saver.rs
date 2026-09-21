@@ -41,12 +41,16 @@ pub enum BasisuSaverError {
     /// An error occurred while trying to load the bytes.
     #[error(transparent)]
     Io(#[from] std::io::Error),
+    /// The source image has no pixel data.
     #[error("Image data is empty")]
     EmptyData,
+    /// The source image format cannot be fed to the encoder.
     #[error("Image texture format is unsupported by the encoder")]
     UnsupportedTextureFormat(TextureFormat),
+    /// The image is `Rgba32Float` but its byte length is not a multiple of 16.
     #[error("Image format is Rgba32Float, but the data bytes is not a multiple of 16")]
     UnalignedRgba32Float,
+    /// The source image already has mipmaps, which the encoder does not accept.
     #[error("Image with mipmaps ({0}) is unsupported")]
     Mipmaps(u32),
     /// An error occurred while trying to encode the image.

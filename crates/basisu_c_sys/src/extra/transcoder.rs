@@ -12,6 +12,7 @@ use spin::Once;
 #[cfg(feature = "std")]
 use std::sync::Once;
 
+/// A transcoded texture, ready to be uploaded to the GPU.
 #[derive(Debug, Clone, PartialEq)]
 pub struct TranscodedImage {
     /// The output data of image pixels.
@@ -52,35 +53,55 @@ pub fn basisu_transcoder_enable_debug_printf(enable: bool) {
     unsafe { trans_sys::bt_enable_debug_printf(enable as u32) };
 }
 
+/// Errors returned by [`BasisuTranscoder`].
 #[derive(Debug, thiserror::Error, PartialEq)]
 #[non_exhaustive]
 pub enum BasisuTranscodeError {
+    /// The input byte slice is empty.
     #[error("Input data is empty")]
     EmptyInputData,
+    /// The input is not a valid KTX2 container.
     #[error("Failed to load ktx2 data, likely the input data isn't valid")]
     LoadKtx2DataFailed,
+    /// The KTX2 face count is neither 1 nor 6.
     #[error("Invalid ktx2 face count. It must be 1 or 6, got {0}")]
     InvalidFaceCount(u32),
+    /// The requested transcode target is unsupported for this texture or device.
     #[error("`BasisuTranscoder::prepare` isn't called before transcoding")]
     UnsupportedTranscodeTarget,
+    /// `bt_ktx2_start_transcoding` failed.
     #[error("`bt_ktx2_start_transcoding` failed")]
     BtStartTranscodingFailed,
+    /// `bt_ktx2_transcode_image_level` failed.
     #[error("`bt_ktx2_transcode_image_level` failed")]
     BtTranscodeImageLevelFailed,
 }
 
+/// Description of the texture stored in the input KTX2 container.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct TranscodeInfo {
+    /// Width of the base mip level, in texels.
     pub width: u32,
+    /// Height of the base mip level, in texels.
     pub height: u32,
+    /// Number of mip levels.
     pub levels: u32,
+    /// Number of texture array layers; `0` when the texture is not an array.
     pub layers: u32,
+    /// Number of faces: `1` for a 2D texture, `6` for a cubemap.
     pub faces: u32,
+    /// Whether the texture is sRGB encoded.
     pub is_srgb: bool,
+    /// The Basis Universal format the texture is stored in.
     pub basis_format: BasisTextureFormat,
+    /// The transcode target selected from [`BasisuTranscoder::new`]'s inputs.
     pub preferred_target: TranscodeTargetFormat,
 }
 
+/// Transcoder for a single KTX2 container held in memory.
+///
+/// Created with [`BasisuTranscoder::new`], which parses the container and
+/// selects a preferred [`TranscodeTargetFormat`].
 pub struct BasisuTranscoder {
     ktx2_data: Ktx2Data,
     info: TranscodeInfo,
@@ -338,23 +359,34 @@ impl BasisuTranscoder {
     }
 }
 
+/// Hint for which color channels a texture carries.
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub enum ChannelType {
+    /// Infer the channel type from the KTX2 data format descriptor.
     #[default]
     Auto,
+    /// Full RGBA.
     Rgba,
+    /// RGB with no alpha.
     Rgb,
+    /// Two channels, R and G.
     Rg,
+    /// Single channel R.
     R,
 }
 
 bitflags::bitflags! {
     #[derive(Clone, Copy, Debug)]
+    /// Compressed texture families the target device can sample.
     pub struct SupportedTextureCompression: u8 {
+        /// ETC2/EAC formats.
         const ETC2 = 1;
+        /// BC (DXT/BC1-BC7) formats.
         const BC = 1 << 1;
+        /// ASTC LDR formats.
         const ASTC_LDR = 1 << 2;
+        /// ASTC HDR formats.
         const ASTC_HDR = 1 << 3;
     }
 }
@@ -519,6 +551,11 @@ fn select_preferred_transcode_target(
     }
 }
 
+/// Map a Basis Universal [`TranscodeTargetFormat`] to the corresponding
+/// wgpu-compatible [`types::TextureFormat`].
+///
+/// Returns `None` for formats that wgpu cannot sample (PVRTC, ATC, FXT1, and
+/// the packed uncompressed formats).
 pub fn transcode_target_to_wgpu_format(
     transcode: TranscodeTargetFormat,
 ) -> Option<types::TextureFormat> {

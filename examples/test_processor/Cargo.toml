@@ -76,3 +76,6 @@ bevy = {
   ]
 }
 ron = "0.12.1"
+
+[lints]
+workspace = true

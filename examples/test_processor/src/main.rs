@@ -1,3 +1,6 @@
+//! Example that runs the Bevy asset processor with `BasisuSaverPlugin` and a
+//! custom skybox processor.
+
 use bevy::{
     core_pipeline::{Skybox, tonemapping::Tonemapping},
     log::LogPlugin,
@@ -8,6 +11,7 @@ use bevy_basisu_saver::BasisuSaverPlugin;
 use crate::skybox_processor::SkyboxProcessor;
 mod skybox_processor;
 
+/// Build the app, install the saver plugin, and run the processor example.
 fn main() {
     App::new()
     .add_plugins(

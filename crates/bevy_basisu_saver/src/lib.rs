@@ -12,6 +12,7 @@ use bevy::{
 
 use bevy_basisu_loader::BasisuLoaderPlugin;
 
+/// Asset saver and processor implementation for Basis Universal KTX2 textures.
 pub mod saver;
 pub use basisu_c_sys as sys;
 

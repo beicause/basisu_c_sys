@@ -1,3 +1,6 @@
+//! Build script: generates the bindgen bindings and compiles the vendored
+//! Basis Universal C/C++ sources into static libraries.
+
 use std::sync::OnceLock;
 
 const FLAGS: &[&str] = &[

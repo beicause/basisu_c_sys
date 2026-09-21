@@ -12,12 +12,18 @@ use bevy::render::render_resource::{
 use serde::{Deserialize, Serialize};
 use thiserror::Error;
 
+/// [`AssetLoader`] that transcodes `.basisu.ktx2` files into [`Image`] assets.
+///
+/// Normally installed through [`BasisuLoaderPlugin`](crate::BasisuLoaderPlugin),
+/// which builds it from the [`RenderDevice`](bevy::render::renderer::RenderDevice)
+/// features; [`BasisuLoader::from_features`] exposes that construction directly.
 #[derive(TypePath)]
 pub struct BasisuLoader {
     supported_compressed_formats: SupportedTextureCompression,
 }
 
 impl BasisuLoader {
+    /// Build a loader that only transcodes to formats the device supports.
     pub fn from_features(features: Features) -> Self {
         let mut supported_compressed_formats = SupportedTextureCompression::empty();
         if features.contains(Features::TEXTURE_COMPRESSION_ASTC) {
@@ -70,6 +76,8 @@ pub enum BasisuLoaderError {
     /// An error occurred while trying to load the image bytes.
     #[error("Failed to load image bytes: {0}")]
     Io(#[from] std::io::Error),
+    /// The Basis Universal transcoder rejected the data or the requested
+    /// format.
     #[error("BasisU failed to transcode texture: {0}")]
     TranscodeError(#[from] BasisuTranscodeError),
 }
