@@ -1,0 +1,27 @@
+[package]
+name = "basisu_wasm_libcxx"
+version = "0.1.0"
+edition = "2024"
+description = "Vendored musl libc and Emscripten libc++/libc++abi for compiling C and C++ to the bare-metal wasm32 targets"
+repository.workspace = true
+license.workspace = true
+keywords = ["ffi", "libc", "libcxx", "no-std", "wasm"]
+# The build script compiles and links the libc/libc++ archives and defines the
+# few libc symbols that musl cannot provide on bare-metal wasm; downstream
+# crates consume its include paths through the `links` metadata.
+links = "basisu_wasm_libcxx"
+include = [
+  "CHANGELOG.md",
+  "README.md",
+  "build.rs",
+  "src/",
+  "vendored/",
+  "wasm_libc.rs",
+  "wasm_libcxx.rs",
+]
+
+[build-dependencies]
+cc = { version = "1.2", features = ["parallel"] }
+
+[lints]
+workspace = true

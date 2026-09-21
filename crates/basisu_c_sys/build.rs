@@ -1,6 +1,3 @@
-mod wasm_libc;
-mod wasm_libcxx;
-
 use std::sync::OnceLock;
 
 const FLAGS: &[&str] = &[
@@ -111,16 +108,10 @@ fn main() {
     let is_docs_rs = std::env::var("DOCS_RS").is_ok();
 
     if !is_docs_rs {
-        if is_bare_wasm() {
-            wasm_libc::main();
-            wasm_libcxx::main();
-        }
-
         compile_basisu_static();
     }
 
     println!("cargo::rerun-if-changed=vendored/");
-    println!("cargo::rerun-if-changed=src/wasm_ffi/");
 }
 
 #[derive(Debug)]
@@ -231,16 +222,17 @@ fn compile_basisu_static() {
         let mut build = cc::Build::new();
 
         if is_bare_wasm() {
+            let libc_includes = dep_include_paths("DEP_BASISU_WASM_LIBCXX_INCLUDE_LIBC");
             if is_cpp {
                 // libc++ headers must come before the C library headers,
                 // otherwise libc++'s <cstddef>/<cctype>/... wrappers can't find
                 // their own <stddef.h>/<ctype.h> and abort.
                 build
-                    .includes(wasm_libcxx::includes())
-                    .includes(wasm_libc::includes())
+                    .includes(dep_include_paths("DEP_BASISU_WASM_LIBCXX_INCLUDE_LIBCXX"))
+                    .includes(&libc_includes)
                     .cpp_link_stdlib(None);
             } else {
-                build.includes(wasm_libc::includes());
+                build.includes(&libc_includes);
                 // basisu's zstd.c gates ZSTD_MULTITHREAD behind
                 // `#ifndef __EMSCRIPTEN__`, so defining __EMSCRIPTEN__ on bare
                 // wasm disables zstd's multi-threading (no pthread references
@@ -282,4 +274,14 @@ fn compile_basisu_static() {
             if is_cpp { "cpp" } else { "c" }
         ));
     }
+}
+
+/// Include paths published by the `basisu_wasm_libcxx` build script, read
+/// from this crate's `DEP_BASISU_WASM_LIBCXX_*` build-script environment.
+///
+/// An empty value means the dependency did not build (for example on
+/// `docs.rs`); the compile then fails with a clear missing-header error
+/// rather than silently dropping the paths.
+fn dep_include_paths(name: &str) -> Vec<std::path::PathBuf> {
+    std::env::var_os(name).map_or_else(Vec::new, |value| std::env::split_paths(&value).collect())
 }

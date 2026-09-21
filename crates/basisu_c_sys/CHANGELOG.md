@@ -2,7 +2,7 @@
 
 ## Unreleased
 
--
+- Extract the bare-metal wasm32 libc/libc++ compilation into the new `basisu_wasm_libcxx` crate. The wasm build behavior is unchanged.
 
 ## basisu_c_sys v0.9.0 (2026-08-10)
 

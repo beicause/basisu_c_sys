@@ -8,6 +8,7 @@
 | crate | description |
 | --- | ------------- |
 | [basisu_c_sys](./crates/basisu_c_sys)| Rust binding and wrappers for Basis Universal C API, through FFI on native and wasm32 |
+| [basisu_wasm_libcxx](./crates/basisu_wasm_libcxx)| Vendored musl libc and emscripten libc++/libc++abi for compiling C/C++ to bare-metal wasm32 |
 | [bevy_basisu_loader](./crates/bevy_basisu_loader)| Basisu texture loader for bevy |
 | [bevy_basisu_saver](./crates/bevy_basisu_saver/)| Basisu saver and asset processor for bevy |
 

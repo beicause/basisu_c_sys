@@ -68,20 +68,28 @@ jobs:
         shell: bash
         run: |
           # The superproject checkout happens before the submodules are
-          # populated, so git materializes the vendored symlinks pointing into
-          # 3rdparty/basis_universal as file-type links (or plain files).
-          # Windows then fails to traverse them ("permission denied" when the
-          # build reads through them). Recreate them now that the submodules
-          # are in place, so git creates directory links.
+          # populated, so git materializes the vendored symlinks as file-type
+          # links (or plain files). Windows then fails to traverse them
+          # ("permission denied" when the build reads through them). Recreate
+          # them now that the submodules are in place, so git creates
+          # directory links.
           git config core.symlinks true
-          rm -rf crates/basisu_c_sys/vendored/basis_universal
-          git checkout -- crates/basisu_c_sys/vendored/basis_universal
-          for link in encoder transcoder zstd; do
-            if ! test -d "crates/basisu_c_sys/vendored/basis_universal/$link"; then
-              echo "::error::vendored symlink $link is not traversable on Windows"
-              exit 1
-            fi
-          done
+          recreate_symlinks() {
+            local root="$1"
+            shift
+            rm -rf "$root"
+            git checkout -- "$root"
+            for link in "$@"; do
+              if ! test -d "$root/$link"; then
+                echo "::error::vendored symlink $root/$link is not traversable on Windows"
+                exit 1
+              fi
+            done
+          }
+          recreate_symlinks crates/basisu_c_sys/vendored/basis_universal encoder transcoder zstd
+          recreate_symlinks crates/basisu_wasm_libcxx/vendored/musl include src
+          recreate_symlinks crates/basisu_wasm_libcxx/vendored/emscripten/system/lib \
+            compiler-rt libc_musl_arch_emscripten libcxx libcxxabi llvm-libc
 
       - name: Install Linux dependencies
         if: ${{ matrix.os == 'ubuntu-latest' }}
@@ -132,20 +140,28 @@ jobs:
         shell: bash
         run: |
           # The superproject checkout happens before the submodules are
-          # populated, so git materializes the vendored symlinks pointing into
-          # 3rdparty/basis_universal as file-type links (or plain files).
-          # Windows then fails to traverse them ("permission denied" when the
-          # build reads through them). Recreate them now that the submodules
-          # are in place, so git creates directory links.
+          # populated, so git materializes the vendored symlinks as file-type
+          # links (or plain files). Windows then fails to traverse them
+          # ("permission denied" when the build reads through them). Recreate
+          # them now that the submodules are in place, so git creates
+          # directory links.
           git config core.symlinks true
-          rm -rf crates/basisu_c_sys/vendored/basis_universal
-          git checkout -- crates/basisu_c_sys/vendored/basis_universal
-          for link in encoder transcoder zstd; do
-            if ! test -d "crates/basisu_c_sys/vendored/basis_universal/$link"; then
-              echo "::error::vendored symlink $link is not traversable on Windows"
-              exit 1
-            fi
-          done
+          recreate_symlinks() {
+            local root="$1"
+            shift
+            rm -rf "$root"
+            git checkout -- "$root"
+            for link in "$@"; do
+              if ! test -d "$root/$link"; then
+                echo "::error::vendored symlink $root/$link is not traversable on Windows"
+                exit 1
+              fi
+            done
+          }
+          recreate_symlinks crates/basisu_c_sys/vendored/basis_universal encoder transcoder zstd
+          recreate_symlinks crates/basisu_wasm_libcxx/vendored/musl include src
+          recreate_symlinks crates/basisu_wasm_libcxx/vendored/emscripten/system/lib \
+            compiler-rt libc_musl_arch_emscripten libcxx libcxxabi llvm-libc
 
       - name: Install Linux dependencies
         if: ${{ matrix.os == 'ubuntu-latest' }}
@@ -163,10 +179,12 @@ jobs:
           cache-bin: false
 
       # The `wasm` test is excluded: it only runs in the `test-wasm` job on
-      # wasm32-unknown-unknown. Run the lib unit tests plus the native
-      # `encoder`/`transcoder` integration tests instead.
+      # wasm32-unknown-unknown. Run the lib unit tests (including the
+      # `basisu_wasm_libcxx` allocator/signal shims, which compile natively
+      # for exactly this purpose) plus the native `encoder`/`transcoder`
+      # integration tests instead.
       - name: Test ${{matrix.os}}
-        run: cargo test -p basisu_c_sys --all-features --release --lib --test encoder --test transcoder
+        run: cargo test -p basisu_c_sys -p basisu_wasm_libcxx --all-features --release --lib --test encoder --test transcoder
 
   build-wasm:
     name: Build and test wasm
@@ -213,8 +231,8 @@ jobs:
         run: cargo test -p basisu_c_sys --test wasm --all-features --target wasm32-unknown-unknown
 
       # Bare-metal wasm (wasm32v1-none) has no `std`, so only `basisu_c_sys`
-      # builds there; the bevy-based crates and tests (which need std / the
-      # test harness) cannot compile for it.
+      # and `basisu_wasm_libcxx` build there; the bevy-based crates and tests
+      # (which need std / the test harness) cannot compile for it.
       - name: Build wasm bare-metal
         run: cargo build -p basisu_c_sys --no-default-features --features transcode_default --target wasm32v1-none
 

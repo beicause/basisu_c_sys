@@ -13,8 +13,6 @@ include = [
   "examples/",
   "src/",
   "vendored/",
-  "wasm_libc.rs",
-  "wasm_libcxx.rs",
 ]
 
 [package.metadata.docs.rs]
@@ -81,6 +79,9 @@ insta = "1.47.2"
 [build-dependencies]
 bindgen = "0.72"
 cc = { version = "1.2", features = ["parallel"] }
+
+[target.'cfg(all(target_arch = "wasm32", any(target_os = "unknown", target_os = "none")))'.dependencies]
+basisu_wasm_libcxx = { path = "../basisu_wasm_libcxx", version = "0.1.0" }
 
 [target.'cfg(not(target_has_atomic = "8"))'.dependencies]
 spin = {

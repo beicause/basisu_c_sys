@@ -6,6 +6,12 @@ extern crate alloc;
 #[cfg(test)]
 extern crate std;
 
+// Brings the vendored musl libc / libc++ and the `#[no_mangle]` libc
+// forwarders into the link. It is only a dependency on the bare-metal wasm
+// targets, so on every other target this import does not exist either.
+#[cfg(all(target_arch = "wasm32", any(target_os = "unknown", target_os = "none"),))]
+use basisu_wasm_libcxx as _;
+
 #[cfg(feature = "extra")]
 #[cfg_attr(docsrs, doc(cfg(feature = "extra")))]
 pub mod extra;
@@ -13,12 +19,6 @@ pub mod extra;
 pub mod common {
     include!(concat!(env!("OUT_DIR"), "/basisu_api_common.rs"));
 }
-
-#[cfg(any(
-    test,
-    all(target_arch = "wasm32", any(target_os = "unknown", target_os = "none"),),
-))]
-mod wasm_ffi;
 
 mod utils;
 pub use utils::*;
