@@ -1,8 +1,10 @@
 # Change Log
 
-## Unreleased
+## basisu_c_sys v0.9.1 (2026-09-21)
 
 - Extract the bare-metal wasm32 libc/libc++ compilation into the new `basisu_wasm_libcxx` crate. The wasm build behavior is unchanged.
+- Enable the `missing_docs` lint and document all public APIs.
+- Update branch references from master to main.
 
 ## basisu_c_sys v0.9.0 (2026-08-10)
 
