@@ -16,7 +16,7 @@ Greatly inspired by <https://github.com/rafaelbeckel/test-c-rust-wasm>
 The wasm build compiles the Basis Universal C++ sources against the vendored
 [musl](https://musl.libc.org/) libc and emscripten
 [libc++/libc++abi](https://github.com/emscripten-core/emscripten) provided by the
-[basisu_wasm_libcxx](https://github.com/beicause/basisu_c_sys/tree/master/crates/basisu_wasm_libcxx)
+[basisu_wasm_libcxx](https://github.com/beicause/basisu_c_sys/tree/main/crates/basisu_wasm_libcxx)
 crate, which also links them into the final binary.
 
 ⚠️ Note: this requires a relatively new clang version (Ubuntu 26.04 with clang 21 is tested in CI).

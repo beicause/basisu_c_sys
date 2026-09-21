@@ -3,7 +3,7 @@ name: Deploy Pages
 on:
   workflow_dispatch:
   push:
-    branches: ["master"]
+    branches: ["main"]
   merge_group:
 
 permissions:

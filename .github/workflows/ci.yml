@@ -3,9 +3,9 @@ name: Rust CI
 on:
   workflow_dispatch:
   push:
-    branches: ["master"]
+    branches: ["main"]
   pull_request:
-    branches: ["master"]
+    branches: ["main"]
   merge_group:
 
 concurrency:
