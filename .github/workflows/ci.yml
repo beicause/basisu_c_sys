@@ -63,6 +63,13 @@ jobs:
         with:
           submodules: "true"
 
+      # The snapshots live in the asset submodule. `.gitmodules` marks it
+      # `update = none`, so a project that depends on this one through git does
+      # not fetch snapshots it never compares against; the tests here do, and
+      # `--checkout` is what forces past that setting.
+      - name: Check out the asset submodule
+        run: git submodule update --init --checkout
+
       - name: Recreate vendored symlinks (Windows)
         if: ${{ runner.os == 'Windows' }}
         shell: bash
@@ -135,6 +142,13 @@ jobs:
         with:
           submodules: "true"
 
+      # The snapshots live in the asset submodule. `.gitmodules` marks it
+      # `update = none`, so a project that depends on this one through git does
+      # not fetch snapshots it never compares against; the tests here do, and
+      # `--checkout` is what forces past that setting.
+      - name: Check out the asset submodule
+        run: git submodule update --init --checkout
+
       - name: Recreate vendored symlinks (Windows)
         if: ${{ runner.os == 'Windows' }}
         shell: bash
@@ -197,6 +211,13 @@ jobs:
       - uses: actions/checkout@v7.0.1
         with:
           submodules: "true"
+
+      # The snapshots live in the asset submodule. `.gitmodules` marks it
+      # `update = none`, so a project that depends on this one through git does
+      # not fetch snapshots it never compares against; the tests here do, and
+      # `--checkout` is what forces past that setting.
+      - name: Check out the asset submodule
+        run: git submodule update --init --checkout
 
       - name: Install rust toolchain
         run: |

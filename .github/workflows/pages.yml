@@ -38,6 +38,11 @@ jobs:
         with:
           submodules: "true"
 
+      # The `pages/web/assets` dir live in the asset submodule. `.gitmodules` marks it
+      # `update = none`. `--checkout` is what forces past that setting.
+      - name: Check out the asset submodule
+        run: git submodule update --init --checkout
+
       - name: Install wasm-opt
         run: >
           wget https://github.com/WebAssembly/binaryen/releases/download/version_125/binaryen-version_125-x86_64-linux.tar.gz
