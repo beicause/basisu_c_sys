@@ -77,7 +77,7 @@ image = {
 insta = "1.47.2"
 
 [build-dependencies]
-bindgen = "0.72"
+bindgen = "0.73"
 cc = { version = "1.2", features = ["parallel"] }
 
 [target.'cfg(all(target_arch = "wasm32", any(target_os = "unknown", target_os = "none")))'.dependencies]
