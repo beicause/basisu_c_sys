@@ -1,0 +1,127 @@
+name: Publish
+
+# Publishing lives in its own workflow rather than in `ci.yml` because the two
+# want opposite things: `ci.yml` runs on every pull request and must never be
+# able to write to the registry, while a release is started by hand and does
+# nothing else.
+#
+# What the job publishes with is not a stored secret. It proves its identity to
+# crates.io with the OIDC token GitHub mints for it, and
+# `rust-lang/crates-io-auth-action` exchanges that for an access token which
+# lives half an hour and is bound to this repository, this workflow file and the
+# environment named below. There is nothing to rotate and nothing that can be
+# stolen.
+#
+# Every crate published here needs its own Trusted Publishing configuration on
+# crates.io, and all of them have to name the same repository, this workflow
+# file (`publish.yml`) and the `release` environment. Leaving the environment
+# field empty there is allowed: a configuration without one accepts any.
+#
+# A dispatch runs against whichever branch or tag it is started from: the
+# packages carry that commit's sources, and crates.io cannot know or check which
+# it is. Start it from the commit `ci.yml` has already passed.
+
+on:
+  workflow_dispatch:
+
+# One release at a time, and never cancelled. A publish that is interrupted
+# leaves the registry holding part of a release, and a version that is already
+# up cannot be replaced — only a new version can be published over it.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+env:
+  CARGO_TERM_COLOR: always
+  CARGO_INCREMENTAL: 0
+  CARGO_PROFILE_TEST_DEBUG: 0
+  CARGO_PROFILE_DEV_DEBUG: 0
+  RUSTFLAGS: "-C debuginfo=0 -D warnings"
+  CACHE_SUFFIX: e # cache busting
+
+jobs:
+  publish:
+    name: Publish
+    runs-on: ubuntu-latest
+    # The environment is what a protection rule hangs off — required reviewers,
+    # a deployment branch — so that a dispatch is not by itself enough to
+    # publish.
+    environment: release
+    # Publishing verifies each package by building it, and the two C++ crates
+    # here are the slow part of any build of this repository: the cold-cache
+    # figure is the one to leave room for, since a release that follows a change
+    # to the vendored sources rebuilds all of Basis Universal.
+    timeout-minutes: 45
+    permissions:
+      # The OIDC token crates.io verifies the workflow's identity with.
+      # Everything else the job does is a read.
+      id-token: write
+      contents: read
+
+    steps:
+      - uses: actions/checkout@v7.0.1
+        with:
+          # The C++ sources are submodules, and the vendored paths the packages
+          # carry (`vendored/`) are symlinks into them. A package built without
+          # them would be an empty shell: `include` lists `vendored/`, so what
+          # gets uploaded is whatever the checkout has there.
+          submodules: "true"
+
+      - name: Install Linux dependencies
+        uses: ./.github/actions/install-linux-deps
+
+      - name: Install rust toolchain
+        run: |
+          rustup toolchain install stable --no-self-update --profile=minimal
+
+      - name: Caching
+        uses: Swatinem/rust-cache@v2
+        with:
+          key: publish-${{ env.CACHE_SUFFIX }}
+          env-vars: ImageVersion
+          cache-bin: false
+
+      # One token, one exchange, for the four crates below. They have to finish
+      # inside the half hour the token lives; the cache above is what keeps the
+      # verification builds of the two bevy crates from making that tight.
+      #
+      # The token is handed to cargo as `CARGO_REGISTRY_TOKEN`, the variable it
+      # reads by name, rather than as `--token`, which would put it in the
+      # command line the log records.
+      - name: Authenticate with crates.io
+        id: auth
+        uses: rust-lang/crates-io-auth-action@v1.0.6
+
+      # The order below is the order the dependencies point in, and it is not a
+      # preference: packaging a crate resolves its dependencies against the
+      # registry, so a crate published before the one it depends on fails to
+      # find it. `cargo publish` waits for each crate to appear in the index
+      # before it returns, which is what lets one step follow another.
+      #
+      # There is no separate `--dry-run` pass. `cargo publish` builds the package
+      # it is about to upload and stops before uploading if that fails, so the
+      # upload already carries the check a dry run would make — and a dry run of
+      # any crate after the first could not make it, since it would fail on the
+      # dependency published a moment ago rather than on the package.
+      - name: Publish `basisu_wasm_libcxx`
+        run: cargo publish -p basisu_wasm_libcxx
+        env:
+          CARGO_REGISTRY_TOKEN: ${{ steps.auth.outputs.token }}
+
+      - name: Publish `basisu_c_sys`
+        run: cargo publish -p basisu_c_sys
+        env:
+          CARGO_REGISTRY_TOKEN: ${{ steps.auth.outputs.token }}
+
+      - name: Publish `bevy_basisu_loader`
+        run: cargo publish -p bevy_basisu_loader
+        env:
+          CARGO_REGISTRY_TOKEN: ${{ steps.auth.outputs.token }}
+
+      - name: Publish `bevy_basisu_saver`
+        run: cargo publish -p bevy_basisu_saver
+        env:
+          CARGO_REGISTRY_TOKEN: ${{ steps.auth.outputs.token }}
