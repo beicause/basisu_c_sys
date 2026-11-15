@@ -69,14 +69,25 @@ jobs:
         uses: cargo-bins/cargo-binstall@v1.22.0
 
       - name: Install wasm-bindgen
+        # The token lifts the unauthenticated 60 requests/hour budget on
+        # api.github.com to 1000 for this repository; it is scoped to this step
+        # so dependency build scripts cannot read it.
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: cargo binstall --version ^0.2 --force wasm-bindgen-cli
 
-      - name: Install cargo-docs-rs
-        run: cargo binstall cargo-docs-rs
-
+      # The command line below is what `[package.metadata.docs.rs]` in the crate
+      # manifest asks cargo-docs-rs to run. Spelling it out drops the dependency on
+      # cargo-docs-rs, which probes every non-host target with a bare `#![no_std]`
+      # crate and now exits before rustdoc starts.
       - name: Build docs
         run: >
-          cargo +nightly docs-rs -p basisu_c_sys
+          DOCS_RS=1
+          RUSTDOCFLAGS="--cfg docsrs"
+          cargo +nightly doc -p basisu_c_sys --lib --no-deps
+          --no-default-features --features encoder,serde,extra
+          --target wasm32-unknown-unknown --target x86_64-unknown-linux-gnu
+          --config 'doc.extern-map.registries.crates-io="https://docs.rs"'
           && cp -r target/wasm32-unknown-unknown/doc pages/docs/wasm32-unknown-unknown
           && cp -r target/x86_64-unknown-linux-gnu/doc pages/docs/x86_64-unknown-linux-gnu
 
