@@ -294,7 +294,15 @@ jobs:
         run: ${ANDROID_HOME}/cmdline-tools/latest/bin/sdkmanager 'ndk;${{env.ANDROID_NDK_VERSION}}'
 
       - name: Install cargo-ndk
-        run: cargo binstall cargo-ndk
+        # cargo-ndk disables the quick-install and compile strategies in its own
+        # manifest, so a rate-limited metadata lookup leaves no fallback and the
+        # job dies. Listing the strategies explicitly overrides that and lets it
+        # build from source instead. The token lifts the unauthenticated 60
+        # requests/hour budget on api.github.com to 1000 for this repository;
+        # it is scoped to this step so dependency build scripts cannot read it.
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: cargo binstall --strategies crate-meta-data,quick-install,compile cargo-ndk
 
       - name: Build
         run: >
